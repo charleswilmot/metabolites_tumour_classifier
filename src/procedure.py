@@ -1,6 +1,7 @@
 import dataio
 import numpy as np
 import logging as log
+import tensorflow as tf
 
 
 logger = log.getLogger("classifier")
@@ -9,8 +10,8 @@ logger = log.getLogger("classifier")
 def compute(sess, args, graph, data, fetches, training):
     ret = []
     nsample = data.shape[0]
-    caesuras = list(range(0, nsample, args.batch_size))
-    if nsample % args.batch_size != 0:
+    caesuras = list(range(0, nsample, args.maximum_batch_size))
+    if nsample % args.maximum_batch_size != 0:
         caesuras = caesuras + [nsample]
     caesuras = np.array(caesuras)
     net = graph["network"]
@@ -30,7 +31,7 @@ def reduce_mean_loss_accuracy(ret, N):
     return loss, accuracy
 
 
-def reduce_sum_loss_accuracy(ret, N):
+def reduce_sum_loss_accuracy(ret):
     loss = sum([b["loss_sum"] for b in ret])
     accuracy = sum([b["ncorrect"] for b in ret])
     return loss, accuracy
@@ -42,20 +43,13 @@ def testing(sess, args, graph, test_data):
         "ncorrect": graph["ncorrect"],
         "loss_sum": graph["loss_sum"]
     }
-    ret = compute(sess, args, graph, data, fetches, False)
+    ret = compute(sess, args, graph, test_data, fetches, False)
     N = test_data.shape[0]
     loss, accuracy = reduce_mean_loss_accuracy(ret, N)
     return {"accuracy": accuracy, "loss": loss}
 
 
 test_phase = testing
-
-
-def condition(nepoch, epoch_number):
-    if nepoch != -1 and epoch_number < nepoch:
-        return True
-    else:
-        return False
 
 
 def train_phase(sess, args, graph, train_data, cursor, how_many, epoch_number):
@@ -76,31 +70,57 @@ def _rec_train_phase(sess, args, graph, train_data, cursor, how_many, epoch_numb
         "loss_sum": graph["loss_sum"],
         "train_op": graph["train_op"]
     }
-    if cursor + how_many <= train_data.shape[0]:
+    if cursor + how_many < train_data.shape[0]:
         # enough data remaining for one phase
         data = train_data[cursor: cursor + how_many]
+        logger.debug("Processing training set from {} to {}".format(cursor, cursor + how_many))
         ret = compute(sess, args, graph, data, fetches, True)
-        loss, ncorrect = reduce_sum_loss_accuracy(ret)
+        loss_sum, ncorrect = reduce_sum_loss_accuracy(ret)
         return {"ncorrect": ncorrect, "loss_sum": loss_sum, "epoch_number": epoch_number, "cursor": cursor + how_many, "N": how_many}
     else:
         # not enough data remaining for one phase
         data = train_data[cursor:]
+        logger.debug("Processing training set from {} to the end ({})".format(cursor, len(train_data)))
         ret = compute(sess, args, graph, data, fetches, True)
         N = data.shape[0]
         loss_sum, ncorrect = reduce_sum_loss_accuracy(ret)
-        if epoch_number + 1 == args.nepoch:
+        logger.info("Epoch number {} done".format(epoch_number + 1))
+        if epoch_number + 1 == args.number_of_epochs:
             return {"ncorrect": ncorrect, "loss_sum": loss_sum, "epoch_number": epoch_number + 1, "cursor": 0, "N": N}
         train_data = dataio.shuffle(train_data)
-        rec_ret = _rec_train_phase(sess, args, graph, train_data, 0, how_many - N, epoch_number + 1)
-        rec_ret["loss_sum"] += loss_sum
-        rec_ret["ncorrect"] += ncorrect
-        rec_ret["epoch_number"] += 1
-        rec_ret["N"] += N
-        return rec_ret
+        if how_many - N > 0:
+            rec_ret = _rec_train_phase(sess, args, graph, train_data, 0, how_many - N, epoch_number + 1)
+            rec_ret["loss_sum"] += loss_sum
+            rec_ret["ncorrect"] += ncorrect
+            rec_ret["N"] += N
+            return rec_ret
+        else:
+            return {"ncorrect": ncorrect, "loss_sum": loss_sum, "epoch_number": epoch_number + 1, "cursor": 0, "N": N}
+
+
+def condition(nepoch, epoch_number, output_data):
+    if nepoch != -1:
+        c = epoch_number < nepoch
+        if not c:
+            logger.info("Termination condition fulfilled: epoch number {}".format(epoch_number))
+        return c
+    else:
+        if len(output_data["test_accuracy"]) < 2:
+            return True
+        else:
+            c = output_data["test_accuracy"][-2] >= output_data["test_accuracy"][-1]
+            if not c:
+                logger.info("Termination condition fulfilled: accuracy t-1 {} < {} accuracy t0".format(output_data["test_accuracy"][-2], output_data["test_accuracy"][-1]))
+            return c
 
 
 def training(sess, args, graph, input_data):
     logger.info("Starting training procedure")
+    if args.resume_training:
+        raise(NotImplementedError("Restore weights here"))
+    else:
+        logger.info("Initializing network with random weights")
+        sess.run(tf.global_variables_initializer())
     output_data = {}
     output_data["train_loss"] = []
     output_data["train_accuracy"] = []
@@ -110,9 +130,10 @@ def training(sess, args, graph, input_data):
     test_data = input_data["test"]
     epoch_number = 0
     cursor = 0
-    test_phase_size = input_data["test"].shape[0]
-    train_phase_size = (test_phase_size * 100) // args.train_test_compute_time_ratio
-    while condition(args.nepoch, epoch_number):
+    l = input_data["test"].shape[0]
+    r = args.train_test_compute_time_ratio
+    train_phase_size = int(l * (100 - r) / r)
+    while condition(args.number_of_epochs, epoch_number, output_data):
         # train phase
         ret = train_phase(sess, args, graph, train_data, cursor, train_phase_size, epoch_number)
         epoch_number = ret["epoch_number"]
@@ -123,6 +144,7 @@ def training(sess, args, graph, input_data):
         ret = test_phase(sess, args, graph, test_data)
         output_data["test_loss"].append(ret["loss"])
         output_data["test_accuracy"].append(ret["accuracy"])
+        logger.debug("Testing phase done")
     logger.info("Training procedure done")
     return output_data
 
