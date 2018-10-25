@@ -13,6 +13,8 @@ def padding(message):
     return " " + "." * (PADDING_SIZE - len(message)) + " "
 
 
+## Interprets the string passed as an argument to the option --train-test-split-ratio
+# @param s the string
 def split_ratio(s):
     f = float(s)
     if f < 5:
@@ -24,6 +26,8 @@ def split_ratio(s):
     return f
 
 
+## Interprets the string passed as an argument to the option --train-test-compute-time-ratio
+# @param s the string
 def compute_ratio(s):
     f = float(s)
     if f < 5:
@@ -35,6 +39,8 @@ def compute_ratio(s):
     return f
 
 
+## Interprets the string passed as an argument to the option --number-of-epochs
+# @param s the string
 def nepoch(s):
     f = float(s)
     if f < 0.05 and f != -1:
@@ -44,6 +50,8 @@ def nepoch(s):
 
 
 _layer_number_dropout = 1
+## Interprets the string passed as an argument to the option --dropout-probs
+# @param s the string
 def dropout_prob(s):
     global _layer_number_dropout
     f = float(s)
@@ -61,6 +69,8 @@ def dropout_prob(s):
 
 
 _layer_number_batch_norm = 1
+## Interprets the string passed as an argument to the option --batch-norms
+# @param s the string
 def batch_norm(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
@@ -75,12 +85,15 @@ def batch_norm(v):
     _layer_number_batch_norm += 1
 
 
+## custom activation function
 def lrelu(x):
     a = 1 / 3
     return tf.nn.relu(x) * (1 - a) + a * x
 
 
 _layer_number_activation = 1
+## Interprets the string passed as an argument to the option --activations
+# @param s the string
 def activation(s):
     if s == 'relu':
         return tf.nn.relu
@@ -100,6 +113,8 @@ def activation(s):
 
 
 _layer_number_dim = 0
+## Interprets the string passed as an argument to the option --layers-dims
+# @param s the string
 def layer_dim(s):
     global _layer_number_dim
     i = int(s)
@@ -117,6 +132,9 @@ def layer_dim(s):
 
 
 
+## Helper function to produce the DEBUG messages during argument parsing
+# @param type_constructor python built-in type or interpreter function
+# @param message a string containing one placeholder that is printed when parsing the argument
 def log_debug_arg(type_constructor, message):
     def f(s):
         r = type_constructor(s)
@@ -278,11 +296,13 @@ train_parser.add_argument(
     help="Path to a pretrained model. Resumes the training from the last checkpoint."
     )
 
+## Read arguments once to get the verbosity level
 args = parser.parse_args()
 _layer_number_dim = 0
 _layer_number_dropout = 1
 _layer_number_batch_norm = 1
 _layer_number_activation = 1
+## Verbosity level:
 level = 50 - (args.verbose * 10) + 1
 logger.setLevel(level)
 ch = log.StreamHandler()
@@ -290,4 +310,5 @@ ch.setLevel(level)
 formatter = log.Formatter(" " * 12 + '%(message)s\r' + '[\033[1m%(levelname)s\033[0m]')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
+## Re-read the arguments after the verbosity has been set correctly
 args = parser.parse_args()
