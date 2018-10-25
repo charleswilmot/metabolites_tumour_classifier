@@ -1,5 +1,5 @@
-## @package network
-#  Package responsible for the neural network definition.
+## @package graph
+#  Package responsible for the tensorflow graph definition.
 #
 #  This package provides functions to define a multi-layer perceptron according to the arguments passed.
 #  It also provides separate functions to define the loss and the training algorithm.
@@ -14,7 +14,12 @@ logger = log.getLogger("classifier")
 DTYPE = tf.float32
 
 
+## Class for a Multilayer perceptron
+# defines and store the layers of the network
+# implements batch normalization and dropout
 class MLP:
+    ## Constructor
+    #  @param args arguments passed to the command line
     def __init__(self, args):
         logger.debug("Defining multilayer perceptron")
         self.layers_dims = np.array(args.layers_dims)
@@ -26,12 +31,18 @@ class MLP:
         self.biases = []
         self.training = tf.placeholder(shape=(), dtype=tf.bool)
         for out_size, batch_norm, dropout, activation in zip(self.layers_dims[1:], self.batch_norm, self.dropout_probs, self.activations):
-            self.add_layer(self.layers[-1], out_size, batch_norm, dropout, activation)
+            self._add_layer(self.layers[-1], out_size, batch_norm, dropout, activation)
         self.inp = self.layers[0]
         self.out = self.layers[-1]
         self.out_true = tf.placeholder(shape=self.out.shape, dtype=self.out.dtype)
 
-    def add_layer(self, inp, out_size, batch_norm, dropout, activation):
+    ## Private function for adding layers to the network
+    # @param inp input tensor
+    # @param out_size size of the new layer
+    # @param batch_norm bool stating if batch normalization should be used
+    # @param dropout droupout probability. Set to 0 to disable
+    # @param activation activation function
+    def _add_layer(self, inp, out_size, batch_norm, dropout, activation):
         logger.debug("Creating new layer:")
         logger.debug("Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {}".format(out_size, batch_norm, dropout, activation))
         in_size = int(self.layers[-1].shape[-1])
@@ -46,6 +57,10 @@ class MLP:
         self.biases.append(B)
 
 
+## Computes the loss tensor according to the arguments passed to the software
+# @param args arguments passed to the command line
+# @param net the network object
+# @see MLP example of a network object
 def get_loss_sum(args, net):
     logger.debug("Defining loss")
     loss_type = args.loss_type
@@ -58,6 +73,9 @@ def get_loss_sum(args, net):
     return loss
 
 
+## Compute a tensor containing the amount of example correctly classified in a batch
+# @param net the network object
+# @see MLP example of a network object
 def get_ncorrect(net):
     out = net.out
     out_true = net.out_true
@@ -66,6 +84,10 @@ def get_ncorrect(net):
     return ncorrect
 
 
+## Defines an optimizer object according to the arguments passed to the software
+# @param args arguments passed to the command line
+# @param loss loss tensor
+# @see get_loss_sum function to generate a loss tensor
 def get_optimizer(args, loss):
     logger.debug("Defining optimizer")
     optimizer_type = args.optimizer_type
@@ -79,6 +101,12 @@ def get_optimizer(args, loss):
     return optimizer
 
 
+## General function defining a complete tensorflow graph
+# @param args arguments passed to the command line
+# @see get_loss_sum function to generate a loss tensor
+# @see get_ncorrect function to generate a tensor containing number of correct classification in a batch
+# @see get_optimizer function to generate an optimizer object
+# @see MLP example of a network object
 def get_graph(args):
     logger.info("Defining graph")
     graph = {}

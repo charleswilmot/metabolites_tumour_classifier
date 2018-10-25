@@ -1,7 +1,10 @@
 ## @package classifier
 #  This is the main file of the software.
 #
-#  Run python3 classifier.py -h for more details.
+#  For more details, try:\n
+#  python3 classifier.py -h\n
+#  python3 classifier.py train -h\n
+#  python3 classifier.py test -h\n
 import graph
 import dataio
 import argument
