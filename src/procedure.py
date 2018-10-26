@@ -4,7 +4,7 @@ import dataio
 import numpy as np
 import logging as log
 import tensorflow as tf
-
+import ipdb
 
 logger = log.getLogger("classifier")
 
@@ -98,8 +98,8 @@ test_phase = testing
 # @param how_many amount of training sample to use for training
 # @param epoch_number current epoch number. Used to determine if training should stop prematurely
 # @see _rec_train_phase
-def train_phase(sess, args, graph, train_data, cursor, how_many, epoch_number):
-    _ret = _rec_train_phase(sess, args, graph, train_data, cursor, how_many, epoch_number)
+def train_phase(sess, args, graph, train_features, train_label, cursor, how_many, epoch_number):
+    _ret = _rec_train_phase(sess, args, graph, train_features, train_label, cursor, how_many, epoch_number)
     N = _ret["N"]
     ret = {
         "accuracy": _ret["ncorrect"] / N,
@@ -120,13 +120,13 @@ def train_phase(sess, args, graph, train_data, cursor, how_many, epoch_number):
 # @param epoch_number current epoch number. Used to determine if training should stop prematurely
 # @see train_phase
 # @todo there is room for improvement here...
-def _rec_train_phase(sess, args, graph, train_data, cursor, how_many, epoch_number):
+def _rec_train_phase(sess, args, graph, train_data, train_label, cursor, how_many, epoch_number):
     fetches = {
         "ncorrect": graph["ncorrect"],
         "loss_sum": graph["loss_sum"],
         "train_op": graph["train_op"]
     }
-    if cursor + how_many < train_data.shape[0]:
+    if cursor + how_many < train_data.shape[0]: # don't understand?
         # There are more than how_many samples remaining in the training set
         data = train_data[cursor: cursor + how_many]  # get the data that should be trained
         logger.debug("Processing training set from {} to {}".format(cursor, cursor + how_many))
@@ -211,16 +211,23 @@ def training(sess, args, graph, input_data):
     output_data["train_accuracy"] = []
     output_data["test_loss"] = []
     output_data["test_accuracy"] = []
-    train_data = input_data["train"]
-    test_data = input_data["test"]
+
+    data = sess.run(input_data["data"])  # train and test with features and labels
+    train_ft, train_lb = train_data[0], train_data[1]
+    # test_data, test_lb = input_data["test_data"], input_data["test_lb"]
     epoch_number = 0
     cursor = 0
-    l = input_data["test"].shape[0]
+    # data["train_data"], data["train_lb"]
+    # data["test_data"], data["test_lb"]
+    # l = input_data["test"].shape[0]
+    l = 20
     r = args.train_test_compute_time_ratio
+    # train_phase_size = int(l * (100 - r) / r)
     train_phase_size = int(l * (100 - r) / r)
     while condition(args.number_of_epochs, epoch_number, output_data):
         # train phase
-        ret = train_phase(sess, args, graph, train_data, cursor, train_phase_size, epoch_number)
+        ipdb.set_trace()
+        ret = train_phase(sess, args, graph, train_ft, train_lb, cursor, train_phase_size, epoch_number)
         epoch_number = ret["epoch_number"]
         cursor = ret["cursor"]
         output_data["train_loss"].append(ret["loss"])
@@ -239,8 +246,10 @@ def training(sess, args, graph, input_data):
 # @param args the arguments passed to the software
 # @param graph the graph (cf See also)
 # @param input_data training and testing data
-def run(sess, args, graph, input_data):
+def run(sess, args, graph, iters):
+    
+
     if args.test_or_train == 'train':
-        return training(sess, args, graph, input_data)
+        return training(sess, args, graph)
     else:
-        return testing(sess, args, graph, input_data)
+        return testing(sess, args, graph)

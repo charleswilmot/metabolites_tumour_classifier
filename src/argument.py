@@ -211,7 +211,7 @@ test_parser.add_argument(
     )
 
 test_parser.add_argument(
-    'input_data', metavar='INPUT',
+    'input_dir', metavar='INPUT',
     type=log_debug_arg(str, "Data path:"),
     help="Path to the input data file."
     )
@@ -230,7 +230,7 @@ test_parser.add_argument(
 
 train_parser = subparsers.add_parser('train')
 train_parser.add_argument(
-    'input_data', metavar='INPUT',
+    'input_dir', metavar='INPUT', default="../data/",
     type=log_debug_arg(str, "Data path:"),
     help="Path to the input data file."
     )
@@ -278,7 +278,7 @@ train_parser.add_argument(
 train_parser.add_argument(
     '-e', '--number-of-epochs',
     type=log_debug_arg(nepoch, "Number of epoch:"),
-    action='store', default='-1', metavar='N',
+    action='store', default='100', metavar='N',
     help="Determines the amount of times the algorithm will see each of the training examples. If this flag is not set, the algorithm trains until convergence."
     )
 

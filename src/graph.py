@@ -6,7 +6,7 @@
 import tensorflow as tf
 import numpy as np
 import logging as log
-
+import ipdb
 
 logger = log.getLogger("classifier")
 
@@ -107,9 +107,20 @@ def get_optimizer(args, loss):
 # @see get_ncorrect function to generate a tensor containing number of correct classification in a batch
 # @see get_optimizer function to generate an optimizer object
 # @see MLP example of a network object
-def get_graph(args):
+def get_graph(args, data_tensors):
     logger.info("Defining graph")
     graph = {}
+    iters = {}
+    # train_features = data_tensors["train_features"]
+    # train_labels = data_tensors["train_labels"]
+    # train_iter = data_tensors["train_iter"]
+    #
+    # test_features = data_tensors["test_features"]
+    # test_labels = data_tensors["test_labels"]
+    # test_iter = data_tensors["test_iter"]
+    iters["train"] = data_tensors["train_iter"]
+    iters["test"] = data_tensors["test_iter"]
+
     net = MLP(args)
     graph["network"] = net
     graph["ncorrect"] = get_ncorrect(net)
@@ -118,4 +129,4 @@ def get_graph(args):
         graph["optimizer"] = get_optimizer(args, graph["loss_sum"])
         graph["train_op"] = graph["optimizer"].minimize(graph["loss_sum"])
     logger.info("Graph defined")
-    return graph
+    return graph, iters
