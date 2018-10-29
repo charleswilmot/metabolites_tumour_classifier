@@ -1,16 +1,21 @@
-# Implementation of a multilayer perceptron for classifying spectrum.
+# Implementation of a multilayer perceptron for classifying spectrums.
 ## Requirements
 
 This framework requires tensorflow
 
 You can check if tensorflow is installed by running
-
-`python3 -c "import tensorflow"`
-
+```
+python3 -c "import tensorflow"
+```
 You can install it with
-
-`sudo pip3 install tensorflow` if you have sudo access or
-`sudo pip3 install --user tensorflow` otherwise
+```
+sudo pip3 install tensorflow
+```
+if you have sudo access or
+```
+sudo pip3 install --user tensorflow
+```
+otherwise
 
 To generate the documentation, you will also need doxygen. This is installed on most systems though.
 

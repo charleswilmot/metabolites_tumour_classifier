@@ -4,7 +4,7 @@ import dataio
 import numpy as np
 import logging as log
 import tensorflow as tf
-import ipdb
+
 
 logger = log.getLogger("classifier")
 
@@ -34,12 +34,26 @@ def compute(sess, graph, fetches, max_batches=None):
     # return loss / accuracy for the complete set
     ret = []
     tape_end = False
+    i = 0
     for _ in limit(max_batches):
         try:
             ret.append(sess.run(fetches))
         except tf.errors.OutOfRangeError:
             tape_end = True
+            break
     return ret, tape_end
+
+
+def initialize(sess, graph, test_only=False):
+    if test_only:
+        fetches = graph["test_initializer"]
+    else:
+        fetches = [graph["test_initializer"], graph["train_initializer"]]
+    feed_dict = {
+        graph["features_phd"]: graph["features"],
+        graph["labels_phd"]: graph["labels"]
+    }
+    sess.run(fetches, feed_dict=feed_dict)
 
 
 ## Testing phase
@@ -54,14 +68,9 @@ def testing(sess, graph):
         "loss_sum": graph["test_loss_sum"],
         "batch_size": graph["test_batch_size"]
     }
-    # logger.critical("TODO: initialize testing iterator here...") # change
-    # raise(NotImplementedError("Please implement me  !!!")) # change
-    # ipdb.set_trace()
-    graph["test_features"], graph["test_labels"] = sess.run([graph["test_features"], graph["test_labels"]])
+    initialize(sess, graph, test_only=True)
     ret, tape_end = compute(sess, graph, fetches)
     loss, accuracy = reduce_mean_loss_accuracy(ret)
-    print("test accuracy:", accuracy, "test loss:", loss)
-
     return {"accuracy": accuracy, "loss": loss}
 
 
@@ -69,19 +78,18 @@ test_phase = testing
 
 ##
 #
-def train_phase(sess, graph, nbatches=50): # change
+def train_phase(sess, graph, nbatches): # change
     fetches = {
         "ncorrect": graph["train_ncorrect"],
         "loss_sum": graph["train_loss_sum"],
         "batch_size": graph["train_batch_size"],
         "train_op": graph["train_op"]
     }
-    # ipdb.set_trace()
-    graph["train_features"], graph["train_labels"] = sess.run([graph["train_features"], graph["train_labels"]])
     ret, tape_end = compute(sess, graph, fetches, max_batches=nbatches)
+    if tape_end:
+        return None
     loss, accuracy = reduce_mean_loss_accuracy(ret)
-
-    return {"accuracy": accuracy, "loss": loss, "end": tape_end}
+    return {"accuracy": accuracy, "loss": loss}
 
 
 ## Termination contition of the training
@@ -94,15 +102,15 @@ def train_phase(sess, graph, nbatches=50): # change
 # @param output_data output data of the training (contains the test accuracy)
 # @return False if the termination condition is fulfilled
 # @see training
-def condition(end, output_data):
+def condition(end, output_data, number_of_epochs):
     if end:
         return False
-    if len(output_data["test_accuracy"]) < 2:
+    if len(output_data["test_accuracy"]) < 2 or number_of_epochs != -1:
         return True
     else:
-        c = output_data["test_accuracy"][-2] >= output_data["test_accuracy"][-1]
+        c = output_data["test_accuracy"][-2] <= output_data["test_accuracy"][-1]
         if not c:
-            logger.info("Termination condition fulfilled: accuracy t-1 {} < {} accuracy t0".format(output_data["test_accuracy"][-2], output_data["test_accuracy"][-1]))
+            logger.info("Termination condition fulfilled: accuracy t-1 {} > {} accuracy t0".format(output_data["test_accuracy"][-2], output_data["test_accuracy"][-1]))
         return c
 
 
@@ -134,27 +142,23 @@ def training(sess, args, graph):
     output_data["test_accuracy"] = []
     end = False
     batch = 0
-    print_every = 5 # print training process every 50 batches
-    test_every = 20  # test every 20 batches
-    while condition(end, output_data):
+    saver = tf.train.Saver()
+    while condition(end, output_data, args.number_of_epochs):
         # train phase
-        ret = train_phase(sess, graph)
-        batch += 1
-        output_data["train_loss"].append(ret["loss"])
-        output_data["train_accuracy"].append(ret["accuracy"])
-        end = ret["end"]
-        if batch % print_every == 0:
-            print("train batch:", batch, "accuracy:", ret["accuracy"], "loss:", ret["loss"])
-        if batch == 31:
-            ipdb.set_trace()
+        ret = train_phase(sess, graph, args.test_every)
+        if ret is not None:
+            output_data["train_loss"].append(ret["loss"])
+            output_data["train_accuracy"].append(ret["accuracy"])
+        else:
+            end = True
         logger.debug("Training phase done")
+        saver.save(sess, args.output_path + "/network/model.ckpt")
+        logger.debug("Model saved")
         # test phase
-        # if batch % test_every == 0:
-        #     ret = test_phase(sess, graph)
-        #     output_data["test_loss"].append(ret["loss"])
-        #     output_data["test_accuracy"].append(ret["accuracy"])
-        #     print("test batch:", batch, "accuracy:", ret["accuracy"], "loss:", ret["loss"])
-        #     logger.debug("Testing phase done")
+        ret = test_phase(sess, graph)
+        output_data["test_loss"].append(ret["loss"])
+        output_data["test_accuracy"].append(ret["accuracy"])
+        logger.debug("Testing phase done")
     logger.info("Training procedure done")
     return output_data
 

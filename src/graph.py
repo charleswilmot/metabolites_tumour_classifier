@@ -6,7 +6,8 @@
 import tensorflow as tf
 import numpy as np
 import logging as log
-import ipdb
+import dataio
+
 
 logger = log.getLogger("classifier")
 
@@ -26,7 +27,6 @@ class MLP:
         self.batch_norm = np.array(args.batch_norms)
         self.activations = np.array(args.activations)
         self.dropout_probs = np.array(args.dropout_probs)
-        #ipdb.set_trace()
         assert(len(self.batch_norm) ==
                len(self.activations) ==
                len(self.dropout_probs) ==
@@ -64,18 +64,18 @@ class MLP:
         dropout = self.dropout_probs[layer_number]
         activation = self.activations[layer_number]
         _to_format = [out_size, batch_norm, dropout, activation]
-        layer_name = "layer_{}".format(layer_number + 1) if self._net_constructed_once else None
+        layer_name = "layer_{}".format(layer_number + 1)
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {}"
         logger.debug(string.format(*_to_format))
         W = self.weights[layer_number]
         B = self.biases[layer_number]
-
-        out = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
-        out = tf.layers.batch_normalization(out, training=training) #, reuse=layer_namelayer_name
-        out = out if activation is None else activation(out)
-        out = tf.layers.dropout(out, rate=dropout, training=training) if dropout != 0 else out
-        return out
+        with tf.variable_scope(layer_name):
+            out = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
+            out = tf.layers.batch_normalization(out, training=training, reuse=self._net_constructed_once)
+            out = out if activation is None else activation(out)
+            out = tf.layers.dropout(out, rate=dropout, training=training) if dropout != 0 else out
+            return out
 
 
 ## Computes the loss tensor according to the arguments passed to the software
@@ -91,7 +91,7 @@ def get_loss_sum(args, out, out_true):
     if loss_type == "rmse":
         loss = tf.reduce_sum(tf.reduce_mean(tf.abs(out - out_true), axis=1))
     if loss_type == "softmax_ce":
-        loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=out, labels=out_true))
+        loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits_v2(logits=out, labels=out_true))
     return loss
 
 
@@ -112,12 +112,14 @@ def get_train_op(args, loss):
     logger.debug("Defining optimizer")
     optimizer_type = args.optimizer_type
     lr = args.learning_rate
-    if optimizer_type == "adam":
-        optimizer = tf.train.AdamOptimizer(lr).minimize(loss)
-    if optimizer_type == "rmsprop":
-        optimizer = tf.train.RMSPropOptimizer(lr).minimize(loss)
-    if optimizer_type == "gradient_descent":
-        optimizer = tf.train.GradientDescentOptimizer(lr).minimize(loss)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        if optimizer_type == "adam":
+            optimizer = tf.train.AdamOptimizer(lr).minimize(loss)
+        if optimizer_type == "rmsprop":
+            optimizer = tf.train.RMSPropOptimizer(lr).minimize(loss)
+        if optimizer_type == "gradient_descent":
+            optimizer = tf.train.GradientDescentOptimizer(lr).minimize(loss)
     return optimizer
 
 
@@ -127,16 +129,9 @@ def get_train_op(args, loss):
 # @see get_ncorrect function to generate a tensor containing number of correct classification in a batch
 # @see get_optimizer function to generate an optimizer object
 # @see MLP example of a network object
-def get_graph(args, data_tensors):
+def get_graph(args):
     logger.info("Defining graph")
-    graph = {}
-    graph["train_iter"] = data_tensors["train_iter"]
-    graph["train_features"] = data_tensors["train_features"]
-    graph["train_labels"] = data_tensors["train_labels"]
-    graph["test_iter"] = data_tensors["test_iter"]
-    graph["test_features"] = data_tensors["test_features"]
-    graph["test_labels"] = data_tensors["test_labels"]
-
+    graph = dataio.get_data_tensors(args)
     net = MLP(args)
     graph["test_out"] = net(graph["test_features"])
     graph["test_batch_size"] = tf.shape(graph["test_out"])[0]

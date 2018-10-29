@@ -40,16 +40,6 @@ def compute_ratio(s):
     return f
 
 
-## Interprets the string passed as an argument to the option --number-of-epochs
-# @param s the string
-def nepoch(s):
-    f = float(s)
-    if f < 0.05 and f != -1:
-        logger.critical("Not enough epochs (asked {}, minimum is 0.05)".format(s))
-        raise argparse.ArgumentTypeError("Not enough epochs (asked {}, minimum is 0.05)".format(s))
-    return f
-
-
 _layer_number_dropout = 1
 ## Interprets the string passed as an argument to the option --dropout-probs
 # @param s the string
@@ -278,14 +268,14 @@ train_parser.add_argument(
 
 train_parser.add_argument(
     '-e', '--number-of-epochs',
-    type=log_debug_arg(nepoch, "Number of epoch:"),
+    type=log_debug_arg(int, "Number of epoch:"),
     action='store', default='-1', metavar='N',
     help="Determines the amount of times the algorithm will see each of the training examples. If this flag is not set, the algorithm trains until convergence."
     )
 
 train_parser.add_argument(
-    '-c', '--train-test-compute-time-ratio',
-    type=log_debug_arg(compute_ratio, "Train/Test compute time ratio:"),
+    '-t', '--test-every',
+    type=log_debug_arg(int, "Number train batches:"),
     action='store', default='50', metavar='RATIO',
     help="Determines which amount of time should be spent training the network, and which amount of time should be spent testing. The more time is spent testing, the better the plot will look."
     )
@@ -299,7 +289,6 @@ train_parser.add_argument(
 
 ## Read arguments once to get the verbosity level
 args = parser.parse_args()
-dataio.make_output_dir(args)
 _layer_number_dim = 0
 _layer_number_dropout = 1
 _layer_number_batch_norm = 1
@@ -311,6 +300,7 @@ ch = log.StreamHandler()
 ch.setLevel(level)
 formatter = log.Formatter(" " * 12 + '%(message)s\r' + '[\033[1m%(levelname)s\033[0m]')
 ch.setFormatter(formatter)
+dataio.make_output_dir(args)
 fh = log.FileHandler(args.output_path + "/summary.log")
 fh.setLevel(1)
 formatter = log.Formatter('[%(levelname)s] %(message)s\r')

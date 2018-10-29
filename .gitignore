@@ -22,6 +22,7 @@ var/
 wheels/
 doc/html/
 doc/latex/
+doc/*.tmp
 *.egg-info/
 .installed.cfg
 *.egg
