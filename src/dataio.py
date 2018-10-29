@@ -4,9 +4,26 @@
 #  It can in particular read and write matlab or python matrices.
 import numpy as np
 import logging as log
+import sys
+import os
 
 
 logger = log.getLogger("classifier")
+
+
+def make_output_dir(args):
+    path = args.output_path
+    if os.path.isdir(path):
+        logger.critical("Output path already exists. Please use an other path.")
+        raise FileExistsError("Output path already exists.")
+    else:
+        os.mkdir(path)
+
+
+def save_command_line(args):
+    cmd = " ".join(sys.argv[:])
+    with open(args.output_path + "/command_line.txt", 'w') as f:
+        f.write(cmd)
 
 
 def get_data(args):

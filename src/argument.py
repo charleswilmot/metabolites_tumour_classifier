@@ -3,6 +3,7 @@
 import argparse
 import logging as log
 import tensorflow as tf
+import dataio
 
 
 PADDING_SIZE = 35
@@ -187,7 +188,7 @@ parser.add_argument(
 parser.add_argument(
     '-s', '--seed',
     type=log_debug_arg(int, "Random seed:"),
-    action='store', default=-1,
+    action='store', default=None,
     help="Random seed initialization."
     )
 
@@ -298,6 +299,7 @@ train_parser.add_argument(
 
 ## Read arguments once to get the verbosity level
 args = parser.parse_args()
+dataio.make_output_dir(args)
 _layer_number_dim = 0
 _layer_number_dropout = 1
 _layer_number_batch_norm = 1
@@ -309,6 +311,11 @@ ch = log.StreamHandler()
 ch.setLevel(level)
 formatter = log.Formatter(" " * 12 + '%(message)s\r' + '[\033[1m%(levelname)s\033[0m]')
 ch.setFormatter(formatter)
+fh = log.FileHandler(args.output_path + "/summary.log")
+fh.setLevel(1)
+formatter = log.Formatter('[%(levelname)s] %(message)s\r')
+fh.setFormatter(formatter)
 logger.addHandler(ch)
+logger.addHandler(fh)
 ## Re-read the arguments after the verbosity has been set correctly
 args = parser.parse_args()

@@ -11,10 +11,15 @@ import argument
 import procedure
 import logging as log
 import tensorflow as tf
+import numpy as np
 
 
 logger = log.getLogger("classifier")
 args = argument.args
+dataio.save_command_line(args)
+if args.seed is not None:
+    np.random.seed(seed=args.seed)
+    tf.set_random_seed(args.seed)
 graph = graph.get_graph(args)
 input_data = dataio.get_data(args)
 with tf.Session() as sess:
