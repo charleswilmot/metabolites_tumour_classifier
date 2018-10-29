@@ -265,7 +265,7 @@ train_parser.add_argument(
 train_parser.add_argument(
     '-L', '--loss-type',
     type=log_debug_arg(str, "Loss type:"),
-    action='store', default='mse', choices=['mse', 'rmse', 'softmax_ce'],
+    action='store', default='softmax_ce', choices=['mse', 'rmse', 'softmax_ce'],
     help="Choses a loss type. Can be any of 'mse', 'rmse', 'softmax_ce'"
     )
 

@@ -13,7 +13,7 @@ import procedure
 import logging as log
 import tensorflow as tf
 import numpy as np
-
+import ipdb
 
 logger = log.getLogger("classifier")
 args = argument.args
@@ -24,9 +24,10 @@ if args.seed is not None:
 data_tensors = dataio.get_data_tensors(args)
 graph = graph.get_graph(args, data_tensors)
 with tf.Session() as sess:
-    for key in iters.keys(): # init the iterator for the dataset
+    for key in graph.keys(): # init the iterator for the dataset
         if "iter" in key:
             sess.run(graph[key].initializer)
+    ipdb.set_trace()
     output_data = procedure.run(sess, args, graph)
     dataio.save(sess, args, output_data, graph)
 logger.info("Success")

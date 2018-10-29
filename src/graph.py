@@ -70,9 +70,9 @@ class MLP:
         logger.debug(string.format(*_to_format))
         W = self.weights[layer_number]
         B = self.biases[layer_number]
-        ipdb.set_trace()
+
         out = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
-        out = tf.layers.batch_normalization(out, training=training, reuse=layer_name)
+        out = tf.layers.batch_normalization(out, training=training) #, reuse=layer_namelayer_name
         out = out if activation is None else activation(out)
         out = tf.layers.dropout(out, rate=dropout, training=training) if dropout != 0 else out
         return out
@@ -85,7 +85,7 @@ class MLP:
 def get_loss_sum(args, out, out_true):
     logger.debug("Defining loss")
     loss_type = args.loss_type
-    ipdb.set_trace()
+
     if loss_type == "mse":
         loss = tf.reduce_sum(tf.reduce_mean((out - out_true) ** 2, axis=1))
     if loss_type == "rmse":
@@ -132,7 +132,7 @@ def get_graph(args, data_tensors):
     graph = {}
     graph["train_iter"] = data_tensors["train_iter"]
     graph["test_iter"] = data_tensors["test_iter"]
-    ipdb.set_trace()
+
     net = MLP(args)
     graph["test_out"] = net(data_tensors["test_features"])
     graph["test_batch_size"] = tf.shape(graph["test_out"])[0]

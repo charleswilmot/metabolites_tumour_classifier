@@ -111,7 +111,7 @@ def condition(end, output_data):
 # @param graph the graph (cf See also)
 # @param input_data training and testing data
 # @return output_data the loss and accuracy of training and testing
-def training(sess, args, graph, input_data):
+def training(sess, args, graph):
     logger.info("Starting training procedure")
     if args.resume_training:
         raise(NotImplementedError("Restore weights here"))
@@ -146,8 +146,8 @@ def training(sess, args, graph, input_data):
 # @param args the arguments passed to the software
 # @param graph the graph (cf See also)
 # @param input_data training and testing data
-def run(sess, args, graph, input_data):
+def run(sess, args, graph):
     if args.test_or_train == 'train':
-        return training(sess, graph)
+        return training(sess, args, graph)
     else:
-        return testing(sess, graph)
+        return testing(sess, args, graph)
