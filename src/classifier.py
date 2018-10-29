@@ -18,10 +18,11 @@ logger = log.getLogger("classifier")
 args = argument.args
 data_tensors = dataio.get_data_tensors(args)
 
-graph, iters = graph.get_graph(args, data_tensors)
+graph = graph.get_graph(args, data_tensors)
 with tf.Session() as sess:
     for key in iters.keys(): # init the iterator for the dataset
-        sess.run(iters[key].initializer)
+        if "iter" in key:
+            sess.run(graph[key].initializer)
     output_data = procedure.run(sess, args, graph)
     dataio.save(sess, args, output_data, graph)
 logger.info("Success")

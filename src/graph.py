@@ -127,7 +127,6 @@ def get_train_op(args, loss):
 def get_graph(args, data_tensors):
     logger.info("Defining graph")
     graph = {}
-    iters = {}
     # train_features = data_tensors["train_features"]
     # train_labels = data_tensors["train_labels"]
     # train_iter = data_tensors["train_iter"]
@@ -135,8 +134,8 @@ def get_graph(args, data_tensors):
     # test_features = data_tensors["test_features"]
     # test_labels = data_tensors["test_labels"]
     # test_iter = data_tensors["test_iter"]
-    iters["train"] = data_tensors["train_iter"]
-    iters["test"] = data_tensors["test_iter"]
+    graph["train_iter"] = data_tensors["train_iter"]
+    graph["test_iter"] = data_tensors["test_iter"]
 
     net = MLP(args)
     graph["test_out"] = net(data_tensors["test_features"])
@@ -150,4 +149,4 @@ def get_graph(args, data_tensors):
         graph["train_ncorrect"] = get_ncorrect(graph["train_out"], data_tensors["train_labels"])
         graph["train_op"] = get_train_op(args, graph["train_loss_sum"])
     logger.info("Graph defined")
-    return graph, iters
+    return graph
