@@ -163,7 +163,7 @@ parser.add_argument(
 
 parser.add_argument(
     '-d', '--layers-dims',
-    type=layer_dim, action='store', nargs='+', default=[293, 293, 3],
+    type=layer_dim, action='store', nargs='+', default=[288, 293, 3],
     help="Dimension of the layers. Must start with the dimension of the input data and end with the number of classes."
     )
 

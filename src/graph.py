@@ -6,7 +6,7 @@
 import tensorflow as tf
 import numpy as np
 import logging as log
-
+import ipdb
 
 logger = log.getLogger("classifier")
 
@@ -26,10 +26,11 @@ class MLP:
         self.batch_norm = np.array(args.batch_norms)
         self.activations = np.array(args.activations)
         self.dropout_probs = np.array(args.dropout_probs)
+        #ipdb.set_trace()
         assert(len(self.batch_norm) ==
                len(self.activations) ==
                len(self.dropout_probs) ==
-               self.layers_dims - 1)
+               len(self.layers_dims) - 1)
         self.n_layers = len(self.batch_norm)
         self._net_constructed_once = False
         self._define_variables()
@@ -69,7 +70,8 @@ class MLP:
         logger.debug(string.format(*_to_format))
         W = self.weights[layer_number]
         B = self.biases[layer_number]
-        out = tf.matmul(inp, W) if B is None else tf.matmul(inp, W) + B
+        ipdb.set_trace()
+        out = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
         out = tf.layers.batch_normalization(out, training=training, reuse=layer_name)
         out = out if activation is None else activation(out)
         out = tf.layers.dropout(out, rate=dropout, training=training) if dropout != 0 else out
@@ -83,6 +85,7 @@ class MLP:
 def get_loss_sum(args, out, out_true):
     logger.debug("Defining loss")
     loss_type = args.loss_type
+    ipdb.set_trace()
     if loss_type == "mse":
         loss = tf.reduce_sum(tf.reduce_mean((out - out_true) ** 2, axis=1))
     if loss_type == "rmse":
@@ -127,6 +130,9 @@ def get_train_op(args, loss):
 def get_graph(args, data_tensors):
     logger.info("Defining graph")
     graph = {}
+    graph["train_iter"] = data_tensors["train_iter"]
+    graph["test_iter"] = data_tensors["test_iter"]
+    ipdb.set_trace()
     net = MLP(args)
     graph["test_out"] = net(data_tensors["test_features"])
     graph["test_batch_size"] = tf.shape(graph["test_out"])[0]

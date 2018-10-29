@@ -51,8 +51,7 @@ def decode_csv(line):
 # @key data_dim int the number of features + 1 for label
 def get_data_tensors(args, pattern='rand*.csv', itemsize=8, data_dim=289):
     data = {}
-    ipdb.set_trace()
-    filenames, total_bytes= find_files(args.input_dir, pattern=pattern)
+    filenames, total_bytes= find_files(args.input_data, pattern=pattern)
     dataset = tf.data.Dataset.from_tensor_slices(filenames)
     dataset = dataset.flat_map(lambda filename: tf.data.TextLineDataset(filename).skip(0).map(decode_csv))   ## skip the header, depend on wheather there is any
 
@@ -64,23 +63,24 @@ def get_data_tensors(args, pattern='rand*.csv', itemsize=8, data_dim=289):
     train_ds = train_ds.prefetch(1)
     iter_train = train_ds.make_initializable_iterator()
     batch_train = iter_train.get_next()
-    # ipdb.set_trace()
-    data["train_features"], data["train_labels"] = batch_train[0], batch_train[1:]
+
+    data["train_labels"], data["train_features"] = tf.one_hot(batch_train[0], args.layers_dims[-1]), batch_train[1:]
     data["train_iter"] = iter_train
 
     test_ds = test_ds.prefetch(1)
     iter_test = test_ds.make_initializable_iterator()
     batch_test = iter_test.get_next()
-    data["test_features"], data["test_labels"] = batch_test[0], batch_test[1:]
+    data["test_labels"], data["test_features"] = tf.one_hot(batch_test[0], args.layers_dims[-1]), batch_test[1:] # one hot encod the label
     data["test_iter"] = iter_test
     logger.info("Input data read")
+    # ipdb.set_trace()
 
     return data
 
 def get_data(args):
     data = {}   # train and test are already keywords. iftrain?
     logger.info("Reading input data")
-    values = np.loadtxt(args.input_dir, delimiter=',')   # original shape (288, 77), is 77 samples each with 288 dimensions
+    values = np.loadtxt(args.input_data, delimiter=',')   # original shape (288, 77), is 77 samples each with 288 dimensions
     values = values.T  #
     train_v, test_v = train_test_split(values, test_size=0.1)   # 0.1 args.test_ratio: test / whole
     data["train_data"], data["train_lb"] = np.int(train_v[:, 0]), train_v[:, 1:]  # first col is label
@@ -91,10 +91,10 @@ def get_data(args):
 
 ## Make the output dir
 # name after the current datetime to avoid conflict
-# 
+#
 def make_output_dir(args):
-    datetime = '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now())
-    path = args.output_path + datetime
+    time_str = '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now())
+    path = args.output_path + time_str
     if os.path.isdir(path):
         logger.critical("Output path already exists. Please use an other path.")
         raise FileExistsError("Output path already exists.")
