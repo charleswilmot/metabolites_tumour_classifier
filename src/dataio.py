@@ -10,6 +10,7 @@ import tensorflow as tf
 import fnmatch
 import random
 import ipdb
+import datetime
 
 logger = log.getLogger("classifier")
 
@@ -50,6 +51,7 @@ def decode_csv(line):
 # @key data_dim int the number of features + 1 for label
 def get_data_tensors(args, pattern='rand*.csv', itemsize=8, data_dim=289):
     data = {}
+    ipdb.set_trace()
     filenames, total_bytes= find_files(args.input_dir, pattern=pattern)
     dataset = tf.data.Dataset.from_tensor_slices(filenames)
     dataset = dataset.flat_map(lambda filename: tf.data.TextLineDataset(filename).skip(0).map(decode_csv))   ## skip the header, depend on wheather there is any
@@ -87,9 +89,12 @@ def get_data(args):
     logger.info("Input data read")
     return data
 
-
+## Make the output dir
+# name after the current datetime to avoid conflict
+# 
 def make_output_dir(args):
-    path = args.output_path
+    datetime = '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now())
+    path = args.output_path + datetime
     if os.path.isdir(path):
         logger.critical("Output path already exists. Please use an other path.")
         raise FileExistsError("Output path already exists.")

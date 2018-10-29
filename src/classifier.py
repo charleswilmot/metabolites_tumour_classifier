@@ -5,6 +5,7 @@
 #  python3 classifier.py -h\n
 #  python3 classifier.py train -h\n
 #  python3 classifier.py test -h\n
+#  example: python3 classifier.py -b 20 -s 17845 train ../data/ ../results/ -e 100
 import graph
 import dataio
 import argument
