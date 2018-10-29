@@ -17,14 +17,7 @@ import tensorflow as tf
 logger = log.getLogger("classifier")
 args = argument.args
 data_tensors = dataio.get_data_tensors(args)
-# data_tensors = {
-#     "train_features": wlvnfkjvn,
-#     "train_labels": wlvnfkjvn,
-#     "test_features": wlvnfkjvn,
-#     "test_labels": wlvnfkjvn
-#     "iter_train": jlkjpoi
-#     "iter_test": jlkjpoi
-# }
+
 graph, iters = graph.get_graph(args, data_tensors)
 with tf.Session() as sess:
     for key in iters.keys(): # init the iterator for the dataset

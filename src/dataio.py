@@ -98,9 +98,6 @@ def get_data(args):
     data["train_data"], data["train_lb"] = np.int(train_v[:, 0]), train_v[:, 1:]  # first col is label
     data["test_data"], data["test_lb"] = np.int(test_v[:, 0]), test_v[:, 1:]   # 0.1 args.test_ratio: test / whole
 
-    # if args.test_or_train == "train":
-    #     data["train"] = data["train"]
-
     logger.info("Input data read")
     return data
 
