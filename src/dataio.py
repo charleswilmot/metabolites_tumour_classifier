@@ -6,6 +6,7 @@ import numpy as np
 import logging as log
 import sys
 import os
+import plot
 
 
 logger = log.getLogger("classifier")
@@ -18,6 +19,9 @@ def make_output_dir(args):
         raise FileExistsError("Output path already exists.")
     else:
         os.mkdir(path)
+        if args.test_or_train == 'train':
+            os.mkdir(path + "/network")
+
 
 
 def save_command_line(args):
@@ -38,6 +42,7 @@ def get_data(args):
 
 def save(sess, args, output_data, graph):
     logger.info("Saving output data")
+    plot.all_figures(args, output_data)
     logger.info("Output data saved to {}".format("TODO"))
 
 

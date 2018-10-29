@@ -125,6 +125,7 @@ def training(sess, args, graph, input_data):
     output_data["test_loss"] = []
     output_data["test_accuracy"] = []
     end = False
+    savet = tf.train.Saver()
     while condition(end, output_data):
         # train phase
         ret = train_phase(sess, graph)
@@ -132,6 +133,8 @@ def training(sess, args, graph, input_data):
         output_data["train_accuracy"].append(ret["accuracy"])
         end = ret["end"]
         logger.debug("Training phase done")
+        saver.save(sess, args.output_path + "/network/model.ckpt")
+        logger.debug("Model saved")
         # test phase
         ret = test_phase(sess, graph)
         output_data["test_loss"].append(ret["loss"])
