@@ -20,9 +20,12 @@ dataio.save_command_line(args)
 if args.seed is not None:
     np.random.seed(seed=args.seed)
     tf.set_random_seed(args.seed)
-graph = graph.get_graph(args)
-input_data = dataio.get_data(args)
+data_tensors = dataio.get_data_tensors(args)
+graph = graph.get_graph(args, data_tensors)
 with tf.Session() as sess:
-    output_data = procedure.run(sess, args, graph, input_data)
+    for key in iters.keys(): # init the iterator for the dataset
+        if "iter" in key:
+            sess.run(graph[key].initializer)
+    output_data = procedure.run(sess, args, graph)
     dataio.save(sess, args, output_data, graph)
 logger.info("Success")
