@@ -56,7 +56,7 @@ def get_data_tensors(args, pattern='rand*.csv', itemsize=8, data_dim=289):
     dataset = dataset.flat_map(lambda filename: tf.data.TextLineDataset(filename).skip(0).map(decode_csv))   ## skip the header, depend on wheather there is any
 
     # train and test split
-    num_train = tf.cast(0.01 * 80 * total_bytes / itemsize*data_dim, tf.int64) # args train_portion
+    num_train = tf.cast(0.01 * 80 * total_bytes / (itemsize*data_dim), tf.int64) # args train_portion
     train_ds = dataset.take(num_train).repeat(np.int(args.number_of_epochs)).shuffle(buffer_size=10000).batch(args.maximum_batch_size)
     test_ds = dataset.skip(num_train).repeat(np.int(args.number_of_epochs)).shuffle(buffer_size=10000).batch(args.maximum_batch_size)
 
@@ -69,6 +69,7 @@ def get_data_tensors(args, pattern='rand*.csv', itemsize=8, data_dim=289):
 
     test_ds = test_ds.prefetch(1)
     iter_test = test_ds.make_initializable_iterator()
+    ipdb.set_trace()
     batch_test = iter_test.get_next()
     data["test_labels"], data["test_features"] = tf.one_hot(batch_test[0], args.layers_dims[-1]), batch_test[1:] # one hot encod the label
     data["test_iter"] = iter_test

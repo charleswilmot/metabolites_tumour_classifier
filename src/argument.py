@@ -157,7 +157,7 @@ parser.add_argument(
 parser.add_argument(
     '-b', '--maximum-batch-size',
     type=log_debug_arg(int, "Batch size:"),
-    action='store', default='2048',
+    action='store', default='10',
     help="Number of datapoints to be processed at once during training and testing."
     )
 
@@ -293,7 +293,7 @@ train_parser.add_argument(
 train_parser.add_argument(
     '-r', '--resume-training',
     type=log_debug_arg(str, "Model path:"),
-    action='store', metavar='PATH',
+    action='store', default=None, metavar='PATH',
     help="Path to a pretrained model. Resumes the training from the last checkpoint."
     )
 

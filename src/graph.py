@@ -131,18 +131,22 @@ def get_graph(args, data_tensors):
     logger.info("Defining graph")
     graph = {}
     graph["train_iter"] = data_tensors["train_iter"]
+    graph["train_features"] = data_tensors["train_features"]
+    graph["train_labels"] = data_tensors["train_labels"]
     graph["test_iter"] = data_tensors["test_iter"]
+    graph["test_features"] = data_tensors["test_features"]
+    graph["test_labels"] = data_tensors["test_labels"]
 
     net = MLP(args)
-    graph["test_out"] = net(data_tensors["test_features"])
+    graph["test_out"] = net(graph["test_features"])
     graph["test_batch_size"] = tf.shape(graph["test_out"])[0]
-    graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], data_tensors["test_labels"])
-    graph["test_ncorrect"] = get_ncorrect(graph["test_out"], data_tensors["test_labels"])
+    graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], graph["test_labels"])
+    graph["test_ncorrect"] = get_ncorrect(graph["test_out"], graph["test_labels"])
     if args.test_or_train == "train":
-        graph["train_out"] = net(data_tensors["train_features"])
+        graph["train_out"] = net(graph["train_features"])
         graph["train_batch_size"] = tf.shape(graph["train_out"])[0]
-        graph["train_loss_sum"] = get_loss_sum(args, graph["train_out"], data_tensors["train_labels"])
-        graph["train_ncorrect"] = get_ncorrect(graph["train_out"], data_tensors["train_labels"])
+        graph["train_loss_sum"] = get_loss_sum(args, graph["train_out"], graph["train_labels"])
+        graph["train_ncorrect"] = get_ncorrect(graph["train_out"], graph["train_labels"])
         graph["train_op"] = get_train_op(args, graph["train_loss_sum"])
     logger.info("Graph defined")
     return graph

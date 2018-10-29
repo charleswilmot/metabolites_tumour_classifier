@@ -4,7 +4,7 @@ import dataio
 import numpy as np
 import logging as log
 import tensorflow as tf
-
+import ipdb
 
 logger = log.getLogger("classifier")
 
@@ -54,8 +54,9 @@ def testing(sess, graph):
         "loss_sum": graph["test_loss_sum"],
         "batch_size": graph["test_batch_size"]
     }
-    logger.critical("TODO: initialize testing iterator here...")
-    raise(NotImplementedError("Please implement me  !!!"))
+    # logger.critical("TODO: initialize testing iterator here...")
+    # raise(NotImplementedError("Please implement me  !!!"))
+    graph["test_features"], graph["test_labels"] = sess.run([graph["test_features"], graph["test_labels"]])
     ret, tape_end = compute(sess, graph, fetches)
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     return {"accuracy": accuracy, "loss": loss}
@@ -63,14 +64,17 @@ def testing(sess, graph):
 
 test_phase = testing
 
-
-def train_phase(sess, graph, nbatches):
+##
+#
+def train_phase(sess, graph, nbatches=20):
     fetches = {
         "ncorrect": graph["train_ncorrect"],
         "loss_sum": graph["train_loss_sum"],
         "batch_size": graph["train_batch_size"],
         "train_op": graph["train_op"]
     }
+
+    graph["train_features"], graph["train_labels"] = sess.run([graph["test_features"], graph["test_labels"]])
     ret, tape_end = compute(sess, graph, fetches, max_batches=nbatches)
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     return {"accuracy": accuracy, "loss": loss, "end": tape_end}
@@ -116,7 +120,7 @@ def training(sess, args, graph):
     if args.resume_training:
         raise(NotImplementedError("Restore weights here"))
     else:
-        raise(NotImplementedError("Initialize train iterator here..."))
+        # raise(NotImplementedError("Initialize train iterator here..."))
         logger.info("Initializing network with random weights")
         sess.run(tf.global_variables_initializer())
     output_data = {}
