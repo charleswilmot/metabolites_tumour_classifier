@@ -69,7 +69,6 @@ def get_data_tensors(args, pattern='rand*.csv', itemsize=8, data_dim=289):
 
     test_ds = test_ds.prefetch(1)
     iter_test = test_ds.make_initializable_iterator()
-    ipdb.set_trace()
     batch_test = iter_test.get_next()
     data["test_labels"], data["test_features"] = tf.one_hot(batch_test[0], args.layers_dims[-1]), batch_test[1:] # one hot encod the label
     data["test_iter"] = iter_test
@@ -101,6 +100,7 @@ def make_output_dir(args):
         raise FileExistsError("Output path already exists.")
     else:
         os.mkdir(path)
+    print("result dir: ", path)
 
 
 def save_command_line(args):

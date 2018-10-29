@@ -54,11 +54,14 @@ def testing(sess, graph):
         "loss_sum": graph["test_loss_sum"],
         "batch_size": graph["test_batch_size"]
     }
-    # logger.critical("TODO: initialize testing iterator here...")
-    # raise(NotImplementedError("Please implement me  !!!"))
+    # logger.critical("TODO: initialize testing iterator here...") # change
+    # raise(NotImplementedError("Please implement me  !!!")) # change
+    # ipdb.set_trace()
     graph["test_features"], graph["test_labels"] = sess.run([graph["test_features"], graph["test_labels"]])
     ret, tape_end = compute(sess, graph, fetches)
     loss, accuracy = reduce_mean_loss_accuracy(ret)
+    print("test accuracy:", accuracy, "test loss:", loss)
+
     return {"accuracy": accuracy, "loss": loss}
 
 
@@ -66,17 +69,18 @@ test_phase = testing
 
 ##
 #
-def train_phase(sess, graph, nbatches=20):
+def train_phase(sess, graph, nbatches=50): # change
     fetches = {
         "ncorrect": graph["train_ncorrect"],
         "loss_sum": graph["train_loss_sum"],
         "batch_size": graph["train_batch_size"],
         "train_op": graph["train_op"]
     }
-
-    graph["train_features"], graph["train_labels"] = sess.run([graph["test_features"], graph["test_labels"]])
+    # ipdb.set_trace()
+    graph["train_features"], graph["train_labels"] = sess.run([graph["train_features"], graph["train_labels"]])
     ret, tape_end = compute(sess, graph, fetches, max_batches=nbatches)
     loss, accuracy = reduce_mean_loss_accuracy(ret)
+
     return {"accuracy": accuracy, "loss": loss, "end": tape_end}
 
 
@@ -129,18 +133,28 @@ def training(sess, args, graph):
     output_data["test_loss"] = []
     output_data["test_accuracy"] = []
     end = False
+    batch = 0
+    print_every = 5 # print training process every 50 batches
+    test_every = 20  # test every 20 batches
     while condition(end, output_data):
         # train phase
         ret = train_phase(sess, graph)
+        batch += 1
         output_data["train_loss"].append(ret["loss"])
         output_data["train_accuracy"].append(ret["accuracy"])
         end = ret["end"]
+        if batch % print_every == 0:
+            print("train batch:", batch, "accuracy:", ret["accuracy"], "loss:", ret["loss"])
+        if batch == 31:
+            ipdb.set_trace()
         logger.debug("Training phase done")
         # test phase
-        ret = test_phase(sess, graph)
-        output_data["test_loss"].append(ret["loss"])
-        output_data["test_accuracy"].append(ret["accuracy"])
-        logger.debug("Testing phase done")
+        # if batch % test_every == 0:
+        #     ret = test_phase(sess, graph)
+        #     output_data["test_loss"].append(ret["loss"])
+        #     output_data["test_accuracy"].append(ret["accuracy"])
+        #     print("test batch:", batch, "accuracy:", ret["accuracy"], "loss:", ret["loss"])
+        #     logger.debug("Testing phase done")
     logger.info("Training procedure done")
     return output_data
 

@@ -27,7 +27,6 @@ with tf.Session() as sess:
     for key in graph.keys(): # init the iterator for the dataset
         if "iter" in key:
             sess.run(graph[key].initializer)
-    ipdb.set_trace()
     output_data = procedure.run(sess, args, graph)
     dataio.save(sess, args, output_data, graph)
 logger.info("Success")
