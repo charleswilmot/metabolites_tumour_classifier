@@ -68,4 +68,4 @@ def save_command_line(args):
 def save(sess, args, output_data):
     logger.info("Saving output data")
     plot.all_figures(args, output_data)
-    logger.info("Output data saved to {}".format("TODO"))
+    logger.info("Output data saved to {}".format(args.output_path))
