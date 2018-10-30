@@ -14,19 +14,20 @@ import scipy.io
 logger = log.getLogger("classifier")
 
 
-## Get batches of data in tf.dataset
-# @param args the arguments passed to the software
-def get_data_tensors(args):
-    data = {}
+def get_data(args):
     spectrums = scipy.io.loadmat(args.input_data + '/BIGDATA.mat')["BIGDATA"]
     labels = scipy.io.loadmat(args.input_data + '/data.mat')['data'][:, 1]
+    return spectrums.astype(np.float32), labels.astype(np.int32)
+
+
+## Get batches of data in tf.dataset
+# @param args the arguments passed to the software
+def get_data_tensors(args, spectrums, labels):
+    data = {}
     spectrums_phd = tf.placeholder(shape=spectrums.shape, dtype=tf.float32)
     labels_phd = tf.placeholder(shape=labels.shape, dtype=tf.int32)
-    dataset = tf.data.Dataset.from_tensor_slices((spectrums_phd, labels_phd))
-    data["features"] = spectrums
-    data["labels"] = labels
-    data["features_phd"] = spectrums_phd
-    data["labels_phd"] = labels_phd
+    spectrums, labels = tf.constant(spectrums), tf.constant(labels)
+    dataset = tf.data.Dataset.from_tensor_slices((spectrums, labels))
     # train and test split
     num_train = int(((100 - args.train_test_split_ratio) * spectrums.shape[0]) // 100)
     train_ds = dataset.take(num_train).repeat(args.number_of_epochs).shuffle(buffer_size=num_train // 2).batch(args.maximum_batch_size)
@@ -34,12 +35,12 @@ def get_data_tensors(args):
     iter_test = test_ds.make_initializable_iterator()
     data["test_initializer"] = iter_test.initializer
     batch_test = iter_test.get_next()
-    data["test_labels"] = tf.one_hot(batch_test[1], args.layers_dims[-1])
+    data["test_labels"] = tf.one_hot(batch_test[1] - 1, args.layers_dims[-1])
     data["test_features"] = batch_test[0]
     if args.test_or_train == 'train':
         iter_train = train_ds.make_initializable_iterator()
         batch_train = iter_train.get_next()
-        data["train_labels"] = tf.one_hot(batch_train[1], args.layers_dims[-1])
+        data["train_labels"] = tf.one_hot(batch_train[1] - 1, args.layers_dims[-1])
         data["train_features"] = batch_train[0]
         data["train_initializer"] = iter_train.initializer
     return data

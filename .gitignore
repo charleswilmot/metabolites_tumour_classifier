@@ -23,6 +23,7 @@ wheels/
 doc/html/
 doc/latex/
 doc/*.tmp
+tmp/
 *.egg-info/
 .installed.cfg
 *.egg

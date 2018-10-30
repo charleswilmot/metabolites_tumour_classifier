@@ -85,7 +85,6 @@ class MLP:
 def get_loss_sum(args, out, out_true):
     logger.debug("Defining loss")
     loss_type = args.loss_type
-
     if loss_type == "mse":
         loss = tf.reduce_sum(tf.reduce_mean((out - out_true) ** 2, axis=1))
     if loss_type == "rmse":
@@ -129,19 +128,19 @@ def get_train_op(args, loss):
 # @see get_ncorrect function to generate a tensor containing number of correct classification in a batch
 # @see get_optimizer function to generate an optimizer object
 # @see MLP example of a network object
-def get_graph(args):
+def get_graph(args, data_tensors):
     logger.info("Defining graph")
-    graph = dataio.get_data_tensors(args)
+    graph = data_tensors
     net = MLP(args)
-    graph["test_out"] = net(graph["test_features"])
+    graph["test_out"] = net(data_tensors["test_features"])
     graph["test_batch_size"] = tf.shape(graph["test_out"])[0]
-    graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], graph["test_labels"])
-    graph["test_ncorrect"] = get_ncorrect(graph["test_out"], graph["test_labels"])
+    graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], data_tensors["test_labels"])
+    graph["test_ncorrect"] = get_ncorrect(graph["test_out"], data_tensors["test_labels"])
     if args.test_or_train == "train":
-        graph["train_out"] = net(graph["train_features"])
+        graph["train_out"] = net(data_tensors["train_features"])
         graph["train_batch_size"] = tf.shape(graph["train_out"])[0]
-        graph["train_loss_sum"] = get_loss_sum(args, graph["train_out"], graph["train_labels"])
-        graph["train_ncorrect"] = get_ncorrect(graph["train_out"], graph["train_labels"])
+        graph["train_loss_sum"] = get_loss_sum(args, graph["train_out"], data_tensors["train_labels"])
+        graph["train_ncorrect"] = get_ncorrect(graph["train_out"], data_tensors["train_labels"])
         graph["train_op"] = get_train_op(args, graph["train_loss_sum"])
     logger.info("Graph defined")
     return graph

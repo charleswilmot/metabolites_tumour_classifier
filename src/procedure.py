@@ -49,11 +49,7 @@ def initialize(sess, graph, test_only=False):
         fetches = graph["test_initializer"]
     else:
         fetches = [graph["test_initializer"], graph["train_initializer"]]
-    feed_dict = {
-        graph["features_phd"]: graph["features"],
-        graph["labels_phd"]: graph["labels"]
-    }
-    sess.run(fetches, feed_dict=feed_dict)
+    sess.run(fetches)
 
 
 ## Testing phase
@@ -105,13 +101,14 @@ def train_phase(sess, graph, nbatches): # change
 def condition(end, output_data, number_of_epochs):
     if end:
         return False
-    if len(output_data["test_accuracy"]) < 2 or number_of_epochs != -1:
+    if len(output_data["test_accuracy"]) < 5 or number_of_epochs != -1:
         return True
     else:
-        c = output_data["test_accuracy"][-2] <= output_data["test_accuracy"][-1]
-        if not c:
-            logger.info("Termination condition fulfilled: accuracy t-1 {} > {} accuracy t0".format(output_data["test_accuracy"][-2], output_data["test_accuracy"][-1]))
-        return c
+        best_accuracy = max(output_data["test_accuracy"])
+        c = (np.array(output_data["test_accuracy"])[-5:] < best_accuracy).all()
+        if c:
+            logger.info("Termination condition fulfilled")
+        return not c
 
 
 ## Complete training procedure
@@ -142,6 +139,7 @@ def training(sess, args, graph):
     output_data["test_accuracy"] = []
     end = False
     batch = 0
+    best_accuracy = 0
     saver = tf.train.Saver()
     while condition(end, output_data, args.number_of_epochs):
         # train phase
@@ -152,13 +150,16 @@ def training(sess, args, graph):
         else:
             end = True
         logger.debug("Training phase done")
-        saver.save(sess, args.output_path + "/network/model.ckpt")
-        logger.debug("Model saved")
         # test phase
         ret = test_phase(sess, graph)
         output_data["test_loss"].append(ret["loss"])
         output_data["test_accuracy"].append(ret["accuracy"])
         logger.debug("Testing phase done")
+        # save model
+        if output_data["test_accuracy"][-1] > best_accuracy:
+            best_accuracy = output_data["test_accuracy"][-1]
+            saver.save(sess, args.output_path + "/network/model.ckpt")
+            logger.debug("Model saved")
     logger.info("Training procedure done")
     return output_data
 
