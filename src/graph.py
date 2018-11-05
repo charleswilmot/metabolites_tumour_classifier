@@ -38,9 +38,10 @@ class MLP:
     def _define_variables(self):
         self.weights = []
         self.biases = []
+        initializer = tf.contrib.layers.xavier_initializer()
         for in_size, out_size, batch_norm in zip(self.layers_dims, self.layers_dims[1:], self.batch_norm):
-            random = tf.truncated_normal(stddev=0.01, shape=(in_size, out_size))
-            W = tf.Variable(random)
+            # random = tf.truncated_normal(stddev=0.01, shape=(in_size, out_size))
+            W = tf.Variable(initializer((in_size, out_size)))
             B = None if batch_norm else tf.Variable(tf.zeros(shape=(1, out_size)))
             self.weights.append(W)
             self.biases.append(B)
@@ -63,16 +64,20 @@ class MLP:
         batch_norm = self.batch_norm[layer_number]
         dropout = self.dropout_probs[layer_number]
         activation = self.activations[layer_number]
-        _to_format = [out_size, batch_norm, dropout, activation]
+        _to_format = [out_size, batch_norm, dropout, activation, training]
         layer_name = "layer_{}".format(layer_number + 1)
         logger.debug("Creating new layer:")
-        string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {}"
+        string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
         W = self.weights[layer_number]
         B = self.biases[layer_number]
         with tf.variable_scope(layer_name):
             out = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
-            out = tf.layers.batch_normalization(out, training=training, reuse=self._net_constructed_once)
+            out = tf.layers.batch_normalization(
+                out,
+                training=training,
+                reuse=self._net_constructed_once,
+                name=layer_name) if batch_norm else out
             out = out if activation is None else activation(out)
             out = tf.layers.dropout(out, rate=dropout, training=training) if dropout != 0 else out
             return out
@@ -85,7 +90,6 @@ class MLP:
 def get_loss_sum(args, out, out_true):
     logger.debug("Defining loss")
     loss_type = args.loss_type
-
     if loss_type == "mse":
         loss = tf.reduce_sum(tf.reduce_mean((out - out_true) ** 2, axis=1))
     if loss_type == "rmse":
@@ -129,19 +133,19 @@ def get_train_op(args, loss):
 # @see get_ncorrect function to generate a tensor containing number of correct classification in a batch
 # @see get_optimizer function to generate an optimizer object
 # @see MLP example of a network object
-def get_graph(args):
+def get_graph(args, data_tensors):
     logger.info("Defining graph")
-    graph = dataio.get_data_tensors(args)
+    graph = data_tensors
     net = MLP(args)
-    graph["test_out"] = net(graph["test_features"])
+    graph["test_out"] = net(data_tensors["test_features"])
     graph["test_batch_size"] = tf.shape(graph["test_out"])[0]
-    graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], graph["test_labels"])
-    graph["test_ncorrect"] = get_ncorrect(graph["test_out"], graph["test_labels"])
+    graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], data_tensors["test_labels"])
+    graph["test_ncorrect"] = get_ncorrect(graph["test_out"], data_tensors["test_labels"])
     if args.test_or_train == "train":
-        graph["train_out"] = net(graph["train_features"])
+        graph["train_out"] = net(data_tensors["train_features"], training=True)
         graph["train_batch_size"] = tf.shape(graph["train_out"])[0]
-        graph["train_loss_sum"] = get_loss_sum(args, graph["train_out"], graph["train_labels"])
-        graph["train_ncorrect"] = get_ncorrect(graph["train_out"], graph["train_labels"])
+        graph["train_loss_sum"] = get_loss_sum(args, graph["train_out"], data_tensors["train_labels"])
+        graph["train_ncorrect"] = get_ncorrect(graph["train_out"], data_tensors["train_labels"])
         graph["train_op"] = get_train_op(args, graph["train_loss_sum"])
     logger.info("Graph defined")
     return graph

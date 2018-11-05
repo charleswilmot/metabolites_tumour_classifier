@@ -13,6 +13,7 @@ def loss_plot(ax, data):
     ax.plot(range(1, len(train_loss) + 1), train_loss, '--bo', label='Train')
     test_loss = data["test_loss"]
     ax.plot(range(1, len(test_loss) + 1), test_loss, '--ro', label='Test')
+    ax.set_title("Loss")
     ax.legend()
 
 
@@ -21,7 +22,8 @@ def accuracy_plot(ax, data):
     ax.plot(range(1, len(train_accuracy) + 1), train_accuracy, '--bo', label='Train')
     test_accuracy = data["test_accuracy"]
     ax.plot(range(1, len(test_accuracy) + 1), test_accuracy, '--ro', label='Test')
-    ax.plot([np.argmin(test_accuracy), len(test_accuracy)], [min(test_accuracy), min(test_accuracy)], '-.k')
+    ax.plot([np.argmax(test_accuracy) + 1, 0], [max(test_accuracy), max(test_accuracy)], '-.k')
+    ax.set_title("Accuracy")
     ax.legend()
 
 

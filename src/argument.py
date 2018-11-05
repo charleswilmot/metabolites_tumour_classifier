@@ -94,6 +94,8 @@ def activation(s):
         return tf.tanh
     elif s == 'sigmoid':
         return tf.nn.sigmoid
+    elif s == 'None':
+        return None
     else:
         logger.critical("Activation function not recognized: {}".format(s))
         raise argparse.ArgumentTypeError("Activation function not recognized: {}".format(s))
@@ -147,7 +149,7 @@ parser.add_argument(
 parser.add_argument(
     '-b', '--maximum-batch-size',
     type=log_debug_arg(int, "Batch size:"),
-    action='store', default='10',
+    action='store', default='512',
     help="Number of datapoints to be processed at once during training and testing."
     )
 
@@ -184,7 +186,7 @@ parser.add_argument(
 
 parser.add_argument(
     '-v', '--verbose', action='count', default=1,
-    help="Verbosity level. Use -v, -vv, -vvv."
+    help="Verbosity level. Use -v, -vv, -vvv -vvvv."
     )
 
 parser.add_argument(
@@ -276,7 +278,7 @@ train_parser.add_argument(
 train_parser.add_argument(
     '-t', '--test-every',
     type=log_debug_arg(int, "Number train batches:"),
-    action='store', default='50', metavar='RATIO',
+    action='store', default=50, metavar='N_BATCHES',
     help="Determines which amount of time should be spent training the network, and which amount of time should be spent testing. The more time is spent testing, the better the plot will look."
     )
 

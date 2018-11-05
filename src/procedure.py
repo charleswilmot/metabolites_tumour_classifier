@@ -42,6 +42,17 @@ def compute(sess, graph, fetches, max_batches=None):
     return ret, tape_end
 
 
+<<<<<<< HEAD
+=======
+def initialize(sess, graph, test_only=False):
+    if test_only:
+        fetches = graph["test_initializer"]
+    else:
+        fetches = [graph["test_initializer"], graph["train_initializer"]]
+    sess.run(fetches)
+
+
+>>>>>>> fe8ad148517663911cb9dddfa25f3388f329bb4f
 ## Testing phase
 # @param sess a tensorflow Session object
 # @param graph the graph (cf See also)
@@ -97,6 +108,7 @@ def train_phase(sess, graph, nbatches=50): # change
 def condition(end, output_data):
     if end:
         return False
+<<<<<<< HEAD
     if len(output_data["test_accuracy"]) < 2:
         return True
     else:
@@ -104,6 +116,16 @@ def condition(end, output_data):
         if not c:
             logger.info("Termination condition fulfilled: accuracy t-1 {} < {} accuracy t0".format(output_data["test_accuracy"][-2], output_data["test_accuracy"][-1]))
         return c
+=======
+    if len(output_data["test_accuracy"]) < 5 or number_of_epochs != -1:
+        return True
+    else:
+        best_accuracy = max(output_data["test_accuracy"])
+        c = (np.array(output_data["test_accuracy"])[-5:] < best_accuracy).all()
+        if c:
+            logger.info("Termination condition fulfilled")
+        return not c
+>>>>>>> fe8ad148517663911cb9dddfa25f3388f329bb4f
 
 
 ## Complete training procedure
@@ -135,9 +157,15 @@ def training(sess, args, graph):
     output_data["test_accuracy"] = []
     end = False
     batch = 0
+<<<<<<< HEAD
     print_every = 5 # print training process every 50 batches
     test_every = 20  # test every 20 batches
     while condition(end, output_data):
+=======
+    best_accuracy = 0
+    saver = tf.train.Saver()
+    while condition(end, output_data, args.number_of_epochs):
+>>>>>>> fe8ad148517663911cb9dddfa25f3388f329bb4f
         # train phase
         ret = train_phase(sess, graph)
         batch += 1
@@ -150,12 +178,24 @@ def training(sess, args, graph):
             ipdb.set_trace()
         logger.debug("Training phase done")
         # test phase
+<<<<<<< HEAD
         # if batch % test_every == 0:
         #     ret = test_phase(sess, graph)
         #     output_data["test_loss"].append(ret["loss"])
         #     output_data["test_accuracy"].append(ret["accuracy"])
         #     print("test batch:", batch, "accuracy:", ret["accuracy"], "loss:", ret["loss"])
         #     logger.debug("Testing phase done")
+=======
+        ret = test_phase(sess, graph)
+        output_data["test_loss"].append(ret["loss"])
+        output_data["test_accuracy"].append(ret["accuracy"])
+        logger.debug("Testing phase done")
+        # save model
+        if output_data["test_accuracy"][-1] > best_accuracy:
+            best_accuracy = output_data["test_accuracy"][-1]
+            saver.save(sess, args.output_path + "/network/model.ckpt")
+            logger.debug("Model saved")
+>>>>>>> fe8ad148517663911cb9dddfa25f3388f329bb4f
     logger.info("Training procedure done")
     return output_data
 

@@ -44,8 +44,15 @@ def decode_csv(line):
 
     return label, features
 
+def get_data(args):
+    spectrums = scipy.io.loadmat(args.input_data + '/BIGDATA.mat')["BIGDATA"]
+    labels = scipy.io.loadmat(args.input_data + '/data.mat')['data'][:, 1]
+    return spectrums.astype(np.float32), labels.astype(np.int32)
+
+
 ## Get batches of data in tf.dataset
 # @param args the arguments passed to the software
+<<<<<<< HEAD
 # @key pattern str the file name pattern to match
 # @key itemsize 8 the bytesize of the element
 # @key data_dim int the number of features + 1 for label
@@ -55,6 +62,14 @@ def get_data_tensors(args, pattern='rand*.csv', itemsize=8, data_dim=289):
     dataset = tf.data.Dataset.from_tensor_slices(filenames)
     dataset = dataset.flat_map(lambda filename: tf.data.TextLineDataset(filename).skip(0).map(decode_csv))   ## skip the header, depend on wheather there is any
 
+=======
+def get_data_tensors(args, spectrums, labels):
+    data = {}
+    spectrums_phd = tf.placeholder(shape=spectrums.shape, dtype=tf.float32)
+    labels_phd = tf.placeholder(shape=labels.shape, dtype=tf.int32)
+    spectrums, labels = tf.constant(spectrums), tf.constant(labels)
+    dataset = tf.data.Dataset.from_tensor_slices((spectrums, labels))
+>>>>>>> fe8ad148517663911cb9dddfa25f3388f329bb4f
     # train and test split
     num_train = tf.cast(0.01 * 80 * total_bytes / (itemsize*data_dim), tf.int64) # args train_portion
     train_ds = dataset.take(num_train).repeat(np.int(args.number_of_epochs)).shuffle(buffer_size=10000).batch(args.maximum_batch_size)
@@ -70,11 +85,22 @@ def get_data_tensors(args, pattern='rand*.csv', itemsize=8, data_dim=289):
     test_ds = test_ds.prefetch(1)
     iter_test = test_ds.make_initializable_iterator()
     batch_test = iter_test.get_next()
+<<<<<<< HEAD
     data["test_labels"], data["test_features"] = tf.one_hot(batch_test[0], args.layers_dims[-1]), batch_test[1:] # one hot encod the label
     data["test_iter"] = iter_test
     logger.info("Input data read")
     # ipdb.set_trace()
 
+=======
+    data["test_labels"] = tf.one_hot(batch_test[1] - 1, args.layers_dims[-1])
+    data["test_features"] = batch_test[0]
+    if args.test_or_train == 'train':
+        iter_train = train_ds.make_initializable_iterator()
+        batch_train = iter_train.get_next()
+        data["train_labels"] = tf.one_hot(batch_train[1] - 1, args.layers_dims[-1])
+        data["train_features"] = batch_train[0]
+        data["train_initializer"] = iter_train.initializer
+>>>>>>> fe8ad148517663911cb9dddfa25f3388f329bb4f
     return data
 
 def get_data(args):
@@ -121,6 +147,7 @@ def get_data(args):
 
 def save(sess, args, output_data, graph):
     logger.info("Saving output data")
+<<<<<<< HEAD
     logger.info("Output data saved to {}".format("TODO"))
 
 
@@ -131,3 +158,7 @@ def split(data):
 def shuffle(data):
     logger.debug("Shuffling data")
     return data
+=======
+    plot.all_figures(args, output_data)
+    logger.info("Output data saved to {}".format(args.output_path))
+>>>>>>> fe8ad148517663911cb9dddfa25f3388f329bb4f
