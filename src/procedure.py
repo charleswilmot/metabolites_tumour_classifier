@@ -154,7 +154,7 @@ def training(sess, args, graph):
         ret = test_phase(sess, graph)
         output_data["test_loss"].append(ret["loss"])
         output_data["test_accuracy"].append(ret["accuracy"])
-        logger.debug("Testing phase done")
+        logger.debug("Testing phase done\t({})".format(ret["accuracy"]))
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:
             best_accuracy = output_data["test_accuracy"][-1]

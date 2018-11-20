@@ -14,9 +14,16 @@ import scipy.io
 logger = log.getLogger("classifier")
 
 
+# def get_data(args):
+#     spectrums = scipy.io.loadmat(args.input_data + '/BIGDATA.mat')["BIGDATA"]
+#     labels = scipy.io.loadmat(args.input_data + '/data.mat')['data'][:, 1]
+#     return spectrums.astype(np.float32), labels.astype(np.int32)
+
+
 def get_data(args):
-    spectrums = scipy.io.loadmat(args.input_data + '/BIGDATA.mat')["BIGDATA"]
-    labels = scipy.io.loadmat(args.input_data + '/data.mat')['data'][:, 1]
+    mat = scipy.io.loadmat(args.input_data + '/data.mat')["DATA"]
+    spectrums = mat[:, 2:]
+    labels = mat[:, 1]
     return spectrums.astype(np.float32), labels.astype(np.int32)
 
 

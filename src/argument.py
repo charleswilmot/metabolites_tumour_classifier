@@ -19,11 +19,11 @@ def padding(message):
 def split_ratio(s):
     f = float(s)
     if f < 5:
-        logger.critical("At least 5%% of the data must be used for testing (asked {})".format(v))
-        raise argparse.ArgumentTypeError("At least 5%% of the data must be used for testing (asked {})".format(v))
+        logger.critical("At least 5%% of the data must be used for testing (asked {})".format(f))
+        raise argparse.ArgumentTypeError("At least 5%% of the data must be used for testing (asked {})".format(f))
     if f > 95:
-        logger.critical("At most 95%% of the data can be used for testing (asked {})".format(v))
-        raise argparse.ArgumentTypeError("At most 95%% of the data can be used for testing (asked {})".format(v))
+        logger.critical("At most 95%% of the data can be used for testing (asked {})".format(f))
+        raise argparse.ArgumentTypeError("At most 95%% of the data can be used for testing (asked {})".format(f))
     return f
 
 
