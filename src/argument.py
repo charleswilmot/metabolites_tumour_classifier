@@ -76,12 +76,6 @@ def batch_norm(v):
     _layer_number_batch_norm += 1
 
 
-## custom activation function
-def lrelu(x):
-    a = 1 / 3
-    return tf.nn.relu(x) * (1 - a) + a * x
-
-
 _layer_number_activation = 1
 ## Interprets the string passed as an argument to the option --activations
 # @param s the string
@@ -89,7 +83,7 @@ def activation(s):
     if s == 'relu':
         return tf.nn.relu
     elif s == 'lrelu':
-        return lrelu
+        return tf.nn.leaky_relu
     elif s == 'tanh':
         return tf.tanh
     elif s == 'sigmoid':
