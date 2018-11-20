@@ -1,10 +1,8 @@
 ## @package procedure
 #  Testing and training procedures.
-import dataio
 import numpy as np
 import logging as log
 import tensorflow as tf
-import plot as plot
 
 logger = log.getLogger("classifier")
 
@@ -151,9 +149,10 @@ def training(sess, args, graph):
     output_data = {}
     output_data["train_loss"] = []
     output_data["train_accuracy"] = []
+    output_data["train_confusion"] = []
     output_data["test_loss"] = []
     output_data["test_accuracy"] = []
-    output_data["train_confusion"] = []
+    output_data["test_confusion"] = 0
     end = False
     batch = 0
     best_accuracy = 0
@@ -164,17 +163,16 @@ def training(sess, args, graph):
         if ret is not None:
             output_data["train_loss"].append(ret["loss"])
             output_data["train_accuracy"].append(ret["accuracy"])
-            output_data["train_confusion"].append(ret["confusion"])
         else:
             end = True
-        plot.plot_confusion_matrix(ret["confusion"], args.layers_dims[-1], args.output_path)
         logger.debug("Training phase done")
         # test phase
         ret = test_phase(sess, graph)
         output_data["test_loss"].append(ret["loss"])
         output_data["test_accuracy"].append(ret["accuracy"])
-        output_data["test_confusion"].append(ret["confusion"])
+        output_data["test_confusion"] += ret["confusion"] / len(output_data["test_accuracy"])
         logger.debug("Testing phase done\t({})".format(ret["accuracy"]))
+
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:
             best_accuracy = output_data["test_accuracy"][-1]

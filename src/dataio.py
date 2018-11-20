@@ -21,7 +21,7 @@ logger = log.getLogger("classifier")
 
 
 def get_data(args):
-    mat = scipy.io.loadmat(args.input_data + '/data.mat')["DATA"]
+    mat = scipy.io.loadmat(args.input_data + '/new_data.mat')["DATA"]
     spectrums = mat[:, 2:]
     labels = mat[:, 1]
     return spectrums.astype(np.float32), labels.astype(np.int32)
@@ -42,12 +42,12 @@ def get_data_tensors(args, spectrums, labels):
     iter_test = test_ds.make_initializable_iterator()
     data["test_initializer"] = iter_test.initializer
     batch_test = iter_test.get_next()
-    data["test_labels"] = tf.one_hot(batch_test[1] - 1, args.layers_dims[-1])
+    data["test_labels"] = tf.one_hot(batch_test[1], args.layers_dims[-1])
     data["test_features"] = batch_test[0]
     if args.test_or_train == 'train':
         iter_train = train_ds.make_initializable_iterator()
         batch_train = iter_train.get_next()
-        data["train_labels"] = tf.one_hot(batch_train[1] - 1, args.layers_dims[-1])
+        data["train_labels"] = tf.one_hot(batch_train[1], args.layers_dims[-1])
         data["train_features"] = batch_train[0]
         data["train_initializer"] = iter_train.initializer
     return data

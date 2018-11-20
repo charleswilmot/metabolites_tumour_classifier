@@ -42,6 +42,7 @@ def loss_figure(args, data):
     ax = f.add_subplot(111)
     loss_plot(ax, data)
     f.savefig(args.output_path + '/loss.png')
+    plt.close()
     logger.info("Loss plot saved")
 
 
@@ -50,6 +51,7 @@ def accuracy_figure(args, data):
     ax = f.add_subplot(111)
     accuracy_plot(ax, data)
     f.savefig(args.output_path + '/accuracy.png')
+    plt.close()
     logger.info("Accuracy plot saved")
 
 
@@ -60,6 +62,7 @@ def accuracy_loss_figure(args, data):
     ax = f.add_subplot(122)
     loss_plot(ax, data)
     f.savefig(args.output_path + '/accuracy_loss.png')
+    plt.close()
     logger.info("Accuracy + Loss plot saved")
 
 
@@ -67,9 +70,10 @@ def all_figures(args, data):
     loss_figure(args, data)
     accuracy_figure(args, data)
     accuracy_loss_figure(args, data)
+    plot_confusion_matrix(args, data, ifnormalize=True)
 
 
-def plot_confusion_matrix(confm, num_classes, save_dir, ifnormalize=False):
+def plot_confusion_matrix(args, data, ifnormalize=False):
     """
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
@@ -79,15 +83,14 @@ def plot_confusion_matrix(confm, num_classes, save_dir, ifnormalize=False):
     :return:
     """
     if ifnormalize:
-        cm = (confm * 1.0 / confm.sum(axis=1)[:, np.newaxis])*1.0
-        # cm = cm.astype('float16') / cm.sum(axis=1)[:, np.newaxis]
+        cm = (data["test_confusion"] * 1.0 / data["test_confusion"].sum(axis=1)[:, np.newaxis])*1.0
         logger.info("Normalized confusion matrix")
     else:
-        cm = confm
+        cm = data["test_confusion"]
         logger.info('Confusion matrix, without normalization')
     f = plt.figure()
     plt.imshow(cm, interpolation='nearest', cmap='Blues', aspect='auto')
-    tick_marks = np.arange(num_classes)
+    tick_marks = np.arange(args.layers_dims[-1])
     plt.xticks(tick_marks)
     plt.yticks(tick_marks)
     plt.colorbar()
@@ -97,6 +100,6 @@ def plot_confusion_matrix(confm, num_classes, save_dir, ifnormalize=False):
             plt.text(j, i, np.int(cm[i, j]*100)/100.0, horizontalalignment="center")
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    f.savefig(save_dir + '/confusion_matrix.png')
-    f.close()
+    f.savefig(args.output_path + '/confusion_matrix.png')
+    plt.close()
     logger.info("Confusion matrix saved")
