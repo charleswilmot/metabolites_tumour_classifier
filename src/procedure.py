@@ -94,7 +94,6 @@ def train_phase(sess, graph, nbatches): # change
         "train_op": graph["train_op"]
     }
     ret, tape_end = compute(sess, graph, fetches, max_batches=nbatches)
-
     if tape_end:
         return None
     loss, accuracy = reduce_mean_loss_accuracy(ret)
@@ -149,7 +148,7 @@ def training(sess, args, graph):
     output_data = {}
     output_data["train_loss"] = []
     output_data["train_accuracy"] = []
-    output_data["train_confusion"] = []
+    output_data["train_confusion"] = 0
     output_data["test_loss"] = []
     output_data["test_accuracy"] = []
     output_data["test_confusion"] = 0
