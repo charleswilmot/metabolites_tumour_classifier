@@ -83,6 +83,64 @@ class MLP:
             return out
 
 
+    
+class CNN:
+    ## Constructor
+    # construct a CNN: cnn--cnn--cnn--fnn--softmax
+    #  @param args arguments passed to the command line
+    def __init__(self, args):
+        logger.debug("Defining CNN")
+        self.out_channels = np.array(args.out_channels)
+        self.kernels = np.array(args.kernels)
+        self.batch_norm = np.array(args.batch_norms)
+        self.activations = np.array(args.activations)
+        self.dropout_probs = np.array(args.dropout_probs)
+        assert(len(self.batch_norm) ==
+               len(self.activations) ==
+               len(self.dropout_probs) ==
+               len(self.layers_dims) - 1)
+        self.n_layers = len(self.batch_norm)
+        self._net_constructed_once = False
+        self._define_variables()
+
+    
+
+    def __call__(self, features, training=False):
+        out = tf.reshape(features, [-1, 288, 1, 1])
+        for i in range(self.n_layers):
+            out = self._make_layer(out, i, training)
+        self._net_constructed_once = True
+        return out
+
+    ## Private function for adding layers to the network
+    # @param inp input tensor
+    # @param out_size size of the new layer
+    # @param batch_norm bool stating if batch normalization should be used
+    # @param dropout droupout probability. Set to 0 to disable
+    # @param activation activation function
+    def _make_layer(self, inp, layer_number, training):
+        out_size = self.layers_dims[layer_number + 1]
+        batch_norm = self.batch_norm[layer_number]
+        dropout = self.dropout_probs[layer_number]
+        activation = self.activations[layer_number]
+        _to_format = [out_size, batch_norm, dropout, activation, training]
+        layer_name = "layer_{}".format(layer_number + 1)
+        logger.debug("Creating new layer:")
+        string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
+        logger.debug(string.format(*_to_format))
+        W = self.weights[layer_number]
+        B = self.biases[layer_number]
+        with tf.variable_scope(layer_name):
+            out = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
+            out = tf.layers.batch_normalization(
+                out,
+                training=training,
+                reuse=self._net_constructed_once,
+                name=layer_name) if batch_norm else out
+            out = out if activation is None else activation(out)
+            out = tf.layers.dropout(out, rate=dropout, training=training) if dropout != 0 else out
+            return out
+
 ## Computes the loss tensor according to the arguments passed to the software
 # @param args arguments passed to the command line
 # @param net the network object
