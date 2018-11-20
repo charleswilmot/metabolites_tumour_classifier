@@ -95,7 +95,7 @@ def get_loss_sum(args, out, out_true):
     if loss_type == "rmse":
         loss = tf.reduce_sum(tf.reduce_mean(tf.abs(out - out_true), axis=1))
     if loss_type == "softmax_ce":
-        loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits_v2(logits=out, labels=out_true))
+        loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=out, labels=out_true))
     return loss
 
 
@@ -106,6 +106,13 @@ def get_ncorrect(out, out_true):
     correct_prediction = tf.equal(tf.argmax(out, 1), tf.argmax(out_true, 1))
     ncorrect = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
     return ncorrect
+
+## Compute the confusion matrix
+# @param net the network object
+# @see MLP example of a network object
+def get_confusion_matrix(out, out_true, num_classes):
+    conf_matrix = tf.confusion_matrix(tf.argmax(out_true, 1), tf.argmax(out, 1), num_classes=num_classes)
+    return conf_matrix
 
 
 ## Defines an training operation according to the arguments passed to the software
@@ -141,11 +148,14 @@ def get_graph(args, data_tensors):
     graph["test_batch_size"] = tf.shape(graph["test_out"])[0]
     graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], data_tensors["test_labels"])
     graph["test_ncorrect"] = get_ncorrect(graph["test_out"], data_tensors["test_labels"])
+    graph["test_confusion"] = get_confusion_matrix(graph["test_out"], data_tensors["test_labels"], args.layers_dims[-1])
     if args.test_or_train == "train":
         graph["train_out"] = net(data_tensors["train_features"], training=True)
+        graph["train_labels"] = data_tensors["train_labels"]
         graph["train_batch_size"] = tf.shape(graph["train_out"])[0]
         graph["train_loss_sum"] = get_loss_sum(args, graph["train_out"], data_tensors["train_labels"])
         graph["train_ncorrect"] = get_ncorrect(graph["train_out"], data_tensors["train_labels"])
+        graph["train_confusion"] = get_confusion_matrix(graph["train_out"], data_tensors["train_labels"], args.layers_dims[-1])
         graph["train_op"] = get_train_op(args, graph["train_loss_sum"])
     logger.info("Graph defined")
     return graph

@@ -4,7 +4,7 @@ import dataio
 import numpy as np
 import logging as log
 import tensorflow as tf
-
+import plot as plot
 
 logger = log.getLogger("classifier")
 
@@ -18,6 +18,17 @@ def reduce_mean_loss_accuracy(ret):
     loss = sum([b["loss_sum"] for b in ret]) / N
     accuracy = sum([b["ncorrect"] for b in ret]) / N
     return loss, accuracy
+
+
+
+## Processes the output of compute (cf See also) to calculate the sum of confusion matrices
+# @param ret dictionary containing the keys "ncorrect", "loss_sum" and "batch_size"
+# @param N number of examples computed by compute
+# @see compute
+def sum_confusion(ret):
+    N = sum([b["batch_size"] for b in ret])
+    confusion = sum([b["confusion"] for b in ret])
+    return confusion
 
 
 def limit(max_batches):
@@ -62,12 +73,14 @@ def testing(sess, graph):
     fetches = {
         "ncorrect": graph["test_ncorrect"],
         "loss_sum": graph["test_loss_sum"],
+        "confusion": graph["test_confusion"],
         "batch_size": graph["test_batch_size"]
     }
     initialize(sess, graph, test_only=True)
     ret, tape_end = compute(sess, graph, fetches)
     loss, accuracy = reduce_mean_loss_accuracy(ret)
-    return {"accuracy": accuracy, "loss": loss}
+    confusion = sum_confusion(ret)
+    return {"accuracy": accuracy, "loss": loss, "confusion": confusion}
 
 
 test_phase = testing
@@ -78,14 +91,17 @@ def train_phase(sess, graph, nbatches): # change
     fetches = {
         "ncorrect": graph["train_ncorrect"],
         "loss_sum": graph["train_loss_sum"],
+        "confusion": graph["train_confusion"],
         "batch_size": graph["train_batch_size"],
         "train_op": graph["train_op"]
     }
     ret, tape_end = compute(sess, graph, fetches, max_batches=nbatches)
+
     if tape_end:
         return None
     loss, accuracy = reduce_mean_loss_accuracy(ret)
-    return {"accuracy": accuracy, "loss": loss}
+    confusion = sum_confusion(ret)
+    return {"accuracy": accuracy, "loss": loss, "confusion": confusion}
 
 
 ## Termination contition of the training
@@ -137,6 +153,7 @@ def training(sess, args, graph):
     output_data["train_accuracy"] = []
     output_data["test_loss"] = []
     output_data["test_accuracy"] = []
+    output_data["train_confusion"] = []
     end = False
     batch = 0
     best_accuracy = 0
@@ -147,13 +164,16 @@ def training(sess, args, graph):
         if ret is not None:
             output_data["train_loss"].append(ret["loss"])
             output_data["train_accuracy"].append(ret["accuracy"])
+            output_data["train_confusion"].append(ret["confusion"])
         else:
             end = True
+        plot.plot_confusion_matrix(ret["confusion"], args.layers_dims[-1], args.output_path)
         logger.debug("Training phase done")
         # test phase
         ret = test_phase(sess, graph)
         output_data["test_loss"].append(ret["loss"])
         output_data["test_accuracy"].append(ret["accuracy"])
+        output_data["test_confusion"].append(ret["confusion"])
         logger.debug("Testing phase done\t({})".format(ret["accuracy"]))
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:

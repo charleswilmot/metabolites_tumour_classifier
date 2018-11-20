@@ -36,7 +36,7 @@ def get_data_tensors(args, spectrums, labels):
     spectrums, labels = tf.constant(spectrums), tf.constant(labels)
     dataset = tf.data.Dataset.from_tensor_slices((spectrums, labels))
     # train and test split
-    num_train = int(((100 - args.train_test_split_ratio) * spectrums.shape[0]) // 100)
+    num_train = int(((100 - args.train_test_split_ratio) * spectrums.get_shape().as_list()[0]) // 100)
     train_ds = dataset.take(num_train).repeat(args.number_of_epochs).shuffle(buffer_size=num_train // 2).batch(args.maximum_batch_size)
     test_ds = dataset.skip(num_train).batch(args.maximum_batch_size)
     iter_test = test_ds.make_initializable_iterator()

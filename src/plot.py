@@ -1,9 +1,19 @@
 ## @package plot
 #  This package contains the code for producing plots about the training procedure.
+import itertools
 import matplotlib.pyplot as plt
 import logging as log
 import numpy as np
-
+import matplotlib.pylab as pylab
+base = 22
+params = {'legend.fontsize': base-4,
+          'figure.figsize': (10, 8),
+         'axes.labelsize': base-4,
+         #'weight' : 'bold',
+         'axes.titlesize':base,
+         'xtick.labelsize':base-6,
+         'ytick.labelsize':base-6}
+pylab.rcParams.update(params)
 
 logger = log.getLogger("classifier")
 
@@ -57,3 +67,36 @@ def all_figures(args, data):
     loss_figure(args, data)
     accuracy_figure(args, data)
     accuracy_loss_figure(args, data)
+
+
+def plot_confusion_matrix(confm, num_classes, save_dir, ifnormalize=False):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    :param confm: confusion matrix
+    :param num_classes: int, the number of classes
+    :param normalize: boolean, whether normalize to (0,1)
+    :return:
+    """
+    if ifnormalize:
+        cm = (confm * 1.0 / confm.sum(axis=1)[:, np.newaxis])*1.0
+        # cm = cm.astype('float16') / cm.sum(axis=1)[:, np.newaxis]
+        logger.info("Normalized confusion matrix")
+    else:
+        cm = confm
+        logger.info('Confusion matrix, without normalization')
+    f = plt.figure()
+    plt.imshow(cm, interpolation='nearest', cmap='Blues', aspect='auto')
+    tick_marks = np.arange(num_classes)
+    plt.xticks(tick_marks)
+    plt.yticks(tick_marks)
+    plt.colorbar()
+
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        if cm[i, j] != 0:
+            plt.text(j, i, np.int(cm[i, j]*100)/100.0, horizontalalignment="center")
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    f.savefig(save_dir + '/confusion_matrix.png')
+    f.close()
+    logger.info("Confusion matrix saved")
