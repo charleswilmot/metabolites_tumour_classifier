@@ -86,24 +86,29 @@ class MLP:
     
 class CNN:
     ## Constructor
-    # construct a CNN: cnn--cnn--cnn--fnn--softmax
+    # construct a CNN: cnn 8*3*1-pool2*1-cnn 16*3*1-pool2*1-cnn 32 3*1-pool2*1-fnn--softmax(class)
     #  @param args arguments passed to the command line
     def __init__(self, args):
         logger.debug("Defining CNN")
         self.out_channels = np.array(args.out_channels)
         self.kernels = np.array(args.kernels)
-        self.batch_norm = np.array(args.batch_norms)
-        self.activations = np.array(args.activations)
-        self.dropout_probs = np.array(args.dropout_probs)
-        assert(len(self.batch_norm) ==
-               len(self.activations) ==
-               len(self.dropout_probs) ==
-               len(self.layers_dims) - 1)
+        self.poolings = np.array(args.poolings)
+        self.bn_cnn = np.array(args.batch_norms)[0:len(self.kernels)]
+        self.bn_fnn= np.array(args.batch_norms)[len(self.kernels):]
+        self.cnn_activations = np.array(args.activations)[0:len(self.kernels)]
+        self.fnn_activations = np.array(args.activations)[len(self.kernels):]
+        self.drop_cnn = np.array(args.dropout_probs)[0:len(self.kernels)]
+        self.drop_fnn = np.array(args.dropout_probs)[len(self.kernels):]
+        assert(len(self.out_channels) ==        # check CNN part
+               len(self.kernels) ==
+               len(self.poolings))
+        assert (len(self.batch_norm) ==            # check total including FNN part
+               len(self.activations - 1) ==
+               len(self.dropout_probs))
         self.n_layers = len(self.batch_norm)
         self._net_constructed_once = False
-        self._define_variables()
+        # self._define_variables()
 
-    
 
     def __call__(self, features, training=False):
         out = tf.reshape(features, [-1, 288, 1, 1])
@@ -112,34 +117,37 @@ class CNN:
         self._net_constructed_once = True
         return out
 
+
+    def construct_cnn_layers(self, inp, training):
+        layer_number = 1
+        out = inp
+        for (ch, k, p, bn, activation, dp) in zip(self.out_channels, self.kernels, self.poolings, self.bn_cnn,
+                                                  self.cnn_activations, self.drop_cnn):
+            out = _make_cnn_layer(out, training)
     ## Private function for adding layers to the network
     # @param inp input tensor
     # @param out_size size of the new layer
     # @param batch_norm bool stating if batch normalization should be used
     # @param dropout droupout probability. Set to 0 to disable
     # @param activation activation function
-    def _make_layer(self, inp, layer_number, training):
-        out_size = self.layers_dims[layer_number + 1]
-        batch_norm = self.batch_norm[layer_number]
-        dropout = self.dropout_probs[layer_number]
-        activation = self.activations[layer_number]
-        _to_format = [out_size, batch_norm, dropout, activation, training]
-        layer_name = "layer_{}".format(layer_number + 1)
-        logger.debug("Creating new layer:")
-        string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
-        logger.debug(string.format(*_to_format))
-        W = self.weights[layer_number]
-        B = self.biases[layer_number]
-        with tf.variable_scope(layer_name):
-            out = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
-            out = tf.layers.batch_normalization(
-                out,
-                training=training,
-                reuse=self._net_constructed_once,
-                name=layer_name) if batch_norm else out
-            out = out if activation is None else activation(out)
-            out = tf.layers.dropout(out, rate=dropout, training=training) if dropout != 0 else out
+    def _make_cnn_layer(self, inp, training):
+            _to_format = [out_size, batch_norm, dropout, activation, training]
+            layer_name = "layer_{}".format(layer_number + 1)
+            logger.debug("Creating new layer:")
+            string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
+            logger.debug(string.format(*_to_format))
+            with tf.variable_scope(layer_name):
+                out = tf.nn.conv1d(inp, ch, 1, 'SAME')
+                out = tf.nn.max_pool(out, p, p, 'SAME')
+                out = tf.layers.batch_normalization(
+                    out,
+                    training=training,
+                    reuse=self._net_constructed_once,
+                    name=layer_name) if bn else out
+                out = out if activation is None else activation(out)
+                out = tf.layers.dropout(out, rate=dp, training=training) if dp != 0 else out
             return out
+
 
 ## Computes the loss tensor according to the arguments passed to the software
 # @param args arguments passed to the command line

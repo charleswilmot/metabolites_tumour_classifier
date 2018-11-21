@@ -1,13 +1,52 @@
 ## @package argument
 #  This package processes the argument passed to the main program.
 import argparse
+import json
+import os
+
 import logging as log
 import tensorflow as tf
-import dataio
 
+import dataio
 
 PADDING_SIZE = 35
 logger = log.getLogger("classifier")
+
+
+class Params():
+    """Class that loads hyperparameters from a json file.
+    https://github.com/cs230-stanford/cs230-code-examples/blob/master/tensorflow/vision/model/utils.py
+    Example:
+    ```
+    params = Params(json_path)
+    print(params.learning_rate)
+    params.learning_rate = 0.5  # change the value of learning_rate in params
+    ```
+    """
+
+    def __init__(self, json_path):
+        # type: (object) -> object
+        self.update(json_path)
+
+    def save(self, json_path):
+        """Saves parameters to json file"""
+        with open(json_path, 'w') as f:
+            json.dump(self.__dict__, f, indent=4)
+
+    def update(self, json_path, model_key=None):
+        """Loads parameters from json file. if specify a modelkey, only load the params under thta modelkey"""
+        with open(json_path) as f:
+            params = json.load(f)
+            if not model_key:
+                self.__dict__.update(params)
+            else:
+                model_params = params["model"][model_key]
+                self.__dict__.update(model_params)
+
+    @property
+    def dict(self):
+        """Gives dict-like access to Params instance by `params.dict['learning_rate']`"""
+        return self.__dict__
 
 
 def padding(message):
@@ -133,50 +172,6 @@ def log_debug_arg(type_constructor, message):
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument(
-    '-f', '--output-matrix-fileformat',
-    type=log_debug_arg(str, "Output matrix file format:"),
-    action='store', default='npz', choices=['npz', 'm', 'both'],
-    help="Desiered output file format, one of 'npz', 'm' or 'both'."
-    )
-
-parser.add_argument(
-    '-b', '--maximum-batch-size',
-    type=log_debug_arg(int, "Batch size:"),
-    action='store', default='512',
-    help="Number of datapoints to be processed at once during training and testing."
-    )
-
-parser.add_argument(
-    '-d', '--layers-dims',
-    type=layer_dim, action='store', nargs='+', default=[288, 293, 2],
-    help="Dimension of the layers. Must start with the dimension of the input data and end with the number of classes."
-    )
-
-parser.add_argument(
-    '-n', '--batch-norms',
-    type=batch_norm, action='store', nargs='+', default=[True, True],
-    help="Boolean stating if batch norm should be used in each layer."
-    )
-
-parser.add_argument(
-    '-p', '--dropout-probs',
-    type=dropout_prob, action='store', nargs='+', default=[0, 0],
-    help="Dropout probability in every layer. Set all to 0 to disable. Disabled by default."
-    )
-
-parser.add_argument(
-    '-A', '--activations',
-    type=activation, action='store', nargs='+', default=[lrelu, lrelu],
-    help="Activation functions for every layer. Taken in 'relu', 'lrelu', 'sigmoid', 'tanh'"
-    )
-
-parser.add_argument(
-    '-s', '--seed',
-    type=log_debug_arg(int, "Random seed:"),
-    action='store', default=None,
-    help="Random seed initialization."
-    )
 
 parser.add_argument(
     '-v', '--verbose', action='count', default=1,
@@ -188,6 +183,20 @@ parser.add_argument(
     help="Separator in case the option before train/test is a list. See https://bugs.python.org/issue9338 ."
     )
 
+parser.add_argument(
+    '-exp_config', default='./exp_parameters.json',
+    help="The jason file storing parameters for experiment."
+    )
+
+parser.add_argument(
+    '-model_config', default='./model_parameters.json',
+    help="The jason file storing parameters for network structure."
+    )
+
+parser.add_argument(
+    '-model_name', default='MLP',
+    help="The jason file storing parameters for network structure."
+    )
 
 subparsers = parser.add_subparsers(dest="test_or_train")
 test_parser = subparsers.add_parser('test')
@@ -289,6 +298,16 @@ _layer_number_dim = 0
 _layer_number_dropout = 1
 _layer_number_batch_norm = 1
 _layer_number_activation = 1
+
+## Load experiment parameters and model parameters
+json_path = args.exp_config  # exp_param stores general training params
+assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
+params = Params(json_path)
+
+# specify some params
+params.model_path = args.model_path
+params.model_name = args.model_name
+
 ## Verbosity level:
 level = 50 - (args.verbose * 10) + 1
 logger.setLevel(level)

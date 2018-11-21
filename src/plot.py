@@ -97,7 +97,7 @@ def plot_confusion_matrix(args, data, ifnormalize=False):
 
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         if cm[i, j] != 0:
-            plt.text(j, i, np.int(cm[i, j]*100)/100.0, horizontalalignment="center")
+            plt.text(j, i, np.int(cm[i, j]*100)/100.0, horizontalalignment="center", color="royalblue", size=20)
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     f.savefig(args.output_path + '/confusion_matrix.png')

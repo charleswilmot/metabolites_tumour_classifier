@@ -21,7 +21,7 @@ logger = log.getLogger("classifier")
 
 
 def get_data(args):
-    mat = scipy.io.loadmat(args.input_data + '/new_data.mat')["DATA"]
+    mat = scipy.io.loadmat(args.input_data + '/new2class.mat')["DATA"]
     spectrums = mat[:, 2:]
     labels = mat[:, 1]
     return spectrums.astype(np.float32), labels.astype(np.int32)
