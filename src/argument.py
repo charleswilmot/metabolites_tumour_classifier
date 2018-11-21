@@ -26,21 +26,26 @@ class Params():
 
     def __init__(self, json_path):
         # type: (object) -> object
-        self.update(json_path)
-
+        # self.update(json_path)
+        pass
     def save(self, json_path):
         """Saves parameters to json file"""
         with open(json_path, 'w') as f:
             json.dump(self.__dict__, f, indent=4)
 
-    def update(self, json_path, model_key=None):
+    def update(self, json_path, mode=None):
         """Loads parameters from json file. if specify a modelkey, only load the params under thta modelkey"""
         with open(json_path) as f:
-            params = json.load(f)
-            if not model_key:
-                self.__dict__.update(params)
+            dicts = json.load(f)
+            if not mode:
+                self.__dict__.update(dicts)
+            elif mode == "train" or mode == "test":
+                general_params = dicts["train_or_test"]["general"]
+                exp_params = dicts["train_or_test"][mode]
+                self.__dict__.update(general_params)
+                self.__dict__.update(exp_params)
             else:
-                model_params = params["model"][model_key]
+                model_params = dicts["model"][mode]
                 self.__dict__.update(model_params)
 
     @property
@@ -171,126 +176,69 @@ def log_debug_arg(type_constructor, message):
 
 
 parser = argparse.ArgumentParser()
-
-
 parser.add_argument(
     '-v', '--verbose', action='count', default=1,
-    help="Verbosity level. Use -v, -vv, -vvv -vvvv."
-    )
-
+    help="Verbosity level. Use -v, -vv, -vvv -vvvv.")
 parser.add_argument(
     '-T', dest='separator', action='store_true',
-    help="Separator in case the option before train/test is a list. See https://bugs.python.org/issue9338 ."
-    )
-
+    help="Separator in case the option before train/test is a list. See https://bugs.python.org/issue9338 .")
 parser.add_argument(
-    '-exp_config', default='./exp_parameters.json',
-    help="The jason file storing parameters for experiment."
-    )
-
+    '-exp_config', default="./exp_parameters.json",
+    help="Json file path for experiment parameters")
 parser.add_argument(
-    '-model_config', default='./model_parameters.json',
-    help="The jason file storing parameters for network structure."
-    )
-
+    '-model_config', default="./model_parameters.json",
+    help="Json file path for model parameters")
 parser.add_argument(
-    '-model_name', default='MLP',
-    help="The jason file storing parameters for network structure."
-    )
+    '-model_name', default="CNN",
+    help="Name of the model.")
 
 subparsers = parser.add_subparsers(dest="test_or_train")
-test_parser = subparsers.add_parser('test')
+train_parser = subparsers.add_parser("train")
+
+train_parser.add_argument(
+    'output_path', metavar='OUTPUT',
+    type=log_debug_arg(str, "Output path:"),
+    nargs='?', default='./',
+    help="Path to the output data."
+)
+
+train_parser.add_argument(
+    '-model_path', type=log_debug_arg(str, "Model path:"),
+    nargs='?', default='./',
+    help="Path to a previously trained model."
+)
+
+train_parser.add_argument(
+    '-a', '--data-augmentation', action='store_true',
+    help="Set this flag if the algorithm should perform data augmentation."
+)
+
+
+test_parser = subparsers.add_parser("test")
 test_parser.add_argument(
     'model_path', metavar='MODEL',
     type=log_debug_arg(str, "Model path:"),
     help="Path to a previously trained model."
-    )
+)
 
 test_parser.add_argument(
     'input_data', metavar='INPUT',
     type=log_debug_arg(str, "Data path:"),
     help="Path to the input data file."
-    )
+)
 
 test_parser.add_argument(
     'output_path', metavar='OUTPUT',
     type=log_debug_arg(str, "Output path:"),
     nargs='?', default='./',
     help="Path to the output data."
-    )
+)
 
 test_parser.add_argument(
     '-x', '--data-not-labeled', action='store_true',
     help="Set this flag if the data you want to classify is not labeled."
-    )
+)
 
-train_parser = subparsers.add_parser('train')
-train_parser.add_argument(
-    'input_data', metavar='INPUT',
-    type=log_debug_arg(str, "Data path:"),
-    help="Path to the input data file."
-    )
-
-train_parser.add_argument(
-    'output_path', metavar='OUTPUT',
-    type=log_debug_arg(str, "Output path:"),
-    default='./',
-    help="Path to the output data."
-    )
-
-train_parser.add_argument(
-    '-a', '--data-augmentation', action='store_true',
-    help="Set this flag if the algorithm should perform data augmentation."
-    )
-
-train_parser.add_argument(
-    '-S', '--train-test-split-ratio',
-    type=log_debug_arg(split_ratio, "Train/Test split ratio:"),
-    action='store', default='10', metavar='RATIO',
-    help="Determines which percentage of the training data should be used for testing. It can be set to 0 percent, in which case the software does not produce any plot of the training."
-    )
-
-train_parser.add_argument(
-    '-l', '--learning-rate',
-    type=log_debug_arg(float, "Learning rate:"),
-    action='store', default=1e-3,
-    help="Set the learning rate."
-    )
-
-train_parser.add_argument(
-    '-L', '--loss-type',
-    type=log_debug_arg(str, "Loss type:"),
-    action='store', default='softmax_ce', choices=['mse', 'rmse', 'softmax_ce'],
-    help="Choses a loss type. Can be any of 'mse', 'rmse', 'softmax_ce'"
-    )
-
-train_parser.add_argument(
-    '-O', '--optimizer-type',
-    type=log_debug_arg(str, "Optimizer type:"),
-    action='store', default='adam', choices=['adam', 'rmsprop', 'gradient_descent'],
-    help="Choses an optimizer type. Can be any of 'adam', 'rmsprop', 'gradient_descent'"
-    )
-
-train_parser.add_argument(
-    '-e', '--number-of-epochs',
-    type=log_debug_arg(int, "Number of epoch:"),
-    action='store', default='-1', metavar='N',
-    help="Determines the amount of times the algorithm will see each of the training examples. If this flag is not set, the algorithm trains until convergence."
-    )
-
-train_parser.add_argument(
-    '-t', '--test-every',
-    type=log_debug_arg(int, "Number train batches:"),
-    action='store', default=50, metavar='N_BATCHES',
-    help="Determines which amount of time should be spent training the network, and which amount of time should be spent testing. The more time is spent testing, the better the plot will look."
-    )
-
-train_parser.add_argument(
-    '-r', '--resume-training',
-    type=log_debug_arg(str, "Model path:"),
-    action='store', default=None, metavar='PATH',
-    help="Path to a pretrained model. Resumes the training from the last checkpoint."
-    )
 
 ## Read arguments once to get the verbosity level
 args = parser.parse_args()
@@ -299,28 +247,38 @@ _layer_number_dropout = 1
 _layer_number_batch_norm = 1
 _layer_number_activation = 1
 
-## Load experiment parameters and model parameters
-json_path = args.exp_config  # exp_param stores general training params
-assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
-params = Params(json_path)
-
-# specify some params
-params.model_path = args.model_path
-params.model_name = args.model_name
-
-## Verbosity level:
+# Verbosity level:
 level = 50 - (args.verbose * 10) + 1
 logger.setLevel(level)
 ch = log.StreamHandler()
 ch.setLevel(level)
 formatter = log.Formatter(" " * 12 + '%(message)s\r' + '[\033[1m%(levelname)s\033[0m]')
 ch.setFormatter(formatter)
-dataio.make_output_dir(args)
 fh = log.FileHandler(args.output_path + "/summary.log")
 fh.setLevel(1)
 formatter = log.Formatter('[%(levelname)s] %(message)s\r')
 fh.setFormatter(formatter)
 logger.addHandler(ch)
 logger.addHandler(fh)
-## Re-read the arguments after the verbosity has been set correctly
+
+# Make the output directory
+# dataio.make_output_dir(args)
+
+# Re-read the arguments after the verbosity has been set correctly
 args = parser.parse_args()
+
+## Load experiment parameters and model parameters
+json_path = args.exp_config  # exp_param stores general training params
+assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
+params = Params(json_path)
+params.update(json_path, mode=args.test_or_train)
+
+# specify some params
+params.output_path = args.output_path
+params.model_path = args.model_path
+params.model_name = args.model_name
+
+# load model specific parameters
+json_path = args.model_config
+assert os.path.isfile(json_path), "No json file found at {}, run build_vocab.py".format(json_path)
+params.update(json_path, mode=args.model_name) # update params with the model configuration
