@@ -36,18 +36,18 @@ def get_data_tensors(args, spectrums, labels):
     spectrums, labels = tf.constant(spectrums), tf.constant(labels)
     dataset = tf.data.Dataset.from_tensor_slices((spectrums, labels))
     # train and test split
-    num_train = int(((100 - args.train_test_split_ratio) * spectrums.get_shape().as_list()[0]) // 100)
-    train_ds = dataset.take(num_train).repeat(args.number_of_epochs).shuffle(buffer_size=num_train // 2).batch(args.maximum_batch_size)
-    test_ds = dataset.skip(num_train).batch(args.maximum_batch_size)
+    num_train = int(((100 - args.test_ratio) * spectrums.get_shape().as_list()[0]) // 100)
+    train_ds = dataset.take(num_train).repeat(args.number_of_epochs).shuffle(buffer_size=num_train // 2).batch(args.batch_size)
+    test_ds = dataset.skip(num_train).batch(args.batch_size)
     iter_test = test_ds.make_initializable_iterator()
     data["test_initializer"] = iter_test.initializer
     batch_test = iter_test.get_next()
-    data["test_labels"] = tf.one_hot(batch_test[1], args.layers_dims[-1])
+    data["test_labels"] = tf.one_hot(batch_test[1], args.num_classes)
     data["test_features"] = batch_test[0]
     if args.test_or_train == 'train':
         iter_train = train_ds.make_initializable_iterator()
         batch_train = iter_train.get_next()
-        data["train_labels"] = tf.one_hot(batch_train[1], args.layers_dims[-1])
+        data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
         data["train_features"] = batch_train[0]
         data["train_initializer"] = iter_train.initializer
     return data

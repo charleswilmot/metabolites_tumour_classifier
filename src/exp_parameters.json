@@ -1,26 +1,27 @@
 {
     "train_or_test": {
         "general":{
-                "exp_config": "./exp_parameters.json",
-                "model_config": "./model_parameters.json",
-                "num_classes": 2,
-                "batch_size": 20,
-                "seed": 2594,
+            "test_or_train": "train",
+            "exp_config": "./exp_parameters.json",
+            "model_config": "./model_parameters.json",
+            "num_classes": 2,
+            "batch_size": 20,
+            "seed": 2594,
 
-                "out_format": "m",
-                "data_len": 288,
+            "out_format": "m",
+            "data_len": 288,
 
-                "output_path": "results/",
-                "model_path": null,
+            "output_path": "results/",
+            "model_path": null,
 
-                "model_name": "CNN",
-                "optimizer_name": "Adam",
-                "loss": "softmax_ce",
-                "learning_rate": 0.0005
+            "model_name": "CNN",
+            "optimizer_name": "Adam",
+            "loss": "softmax_ce",
+            "learning_rate": 0.0005
         },
 
         "train": {
-            "epochs": 551,
+            "number_of_epochs": 551,
             "test_every": 100,
             "input_data": "../data/new2class.mat",
             "test_ratio": 0.25,

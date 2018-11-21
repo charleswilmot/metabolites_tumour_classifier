@@ -7,8 +7,6 @@ import os
 import logging as log
 import tensorflow as tf
 
-import dataio
-
 PADDING_SIZE = 35
 logger = log.getLogger("classifier")
 
@@ -277,6 +275,7 @@ params.update(json_path, mode=args.test_or_train)
 params.output_path = args.output_path
 params.model_path = args.model_path
 params.model_name = args.model_name
+params.test_or_train = args.test_or_train
 
 # load model specific parameters
 json_path = args.model_config
