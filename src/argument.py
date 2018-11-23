@@ -282,7 +282,7 @@ params.resume_training = (args.restore_from != None)
 params.model_save_dir = os.path.join(params.output_path, 'network')
 
 # Make the output directory
-dataio.make_output_dir(params)
+# dataio.make_output_dir(params)
 
 # Verbosity level:
 level = 50 - (args.verbose * 10) + 1

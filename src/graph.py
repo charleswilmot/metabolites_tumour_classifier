@@ -231,7 +231,9 @@ def get_loss_sum(args, out, out_true):
 def get_ncorrect(out, out_true):
     correct_prediction = tf.equal(tf.argmax(out, 1), tf.argmax(out_true, 1))
     ncorrect = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
-    return ncorrect
+    wrong_inds = correct_prediction
+    # wrong_inds = tf.reshape(tf.where(tf.argmax(out, 1) != tf.argmax(out_true, 1)), [-1,])
+    return ncorrect, wrong_inds
 
 ## Compute the confusion matrix
 # @param net the network object
@@ -277,14 +279,14 @@ def get_graph(args, data_tensors):
     graph["test_out"] = net(data_tensors["test_features"])
     graph["test_batch_size"] = tf.shape(graph["test_out"])[0]
     graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], data_tensors["test_labels"])
-    graph["test_ncorrect"] = get_ncorrect(graph["test_out"], data_tensors["test_labels"])
+    graph["test_ncorrect"], graph["test_wrong_inds"] = get_ncorrect(graph["test_out"], data_tensors["test_labels"])
     graph["test_confusion"] = get_confusion_matrix(graph["test_out"], data_tensors["test_labels"], args.num_classes)
     if args.test_or_train == "train":
         graph["train_out"] = net(data_tensors["train_features"], training=True)
         graph["train_labels"] = data_tensors["train_labels"]
         graph["train_batch_size"] = tf.shape(graph["train_out"])[0]
         graph["train_loss_sum"] = get_loss_sum(args, graph["train_out"], data_tensors["train_labels"])
-        graph["train_ncorrect"] = get_ncorrect(graph["train_out"], data_tensors["train_labels"])
+        graph["train_ncorrect"], graph["train_wrong_inds"] = get_ncorrect(graph["train_out"], data_tensors["train_labels"])
         graph["train_confusion"] = get_confusion_matrix(graph["train_out"], data_tensors["train_labels"], args.num_classes)
         graph["train_op"] = get_train_op(args, graph["train_loss_sum"])
     logger.info("Graph defined")

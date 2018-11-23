@@ -24,7 +24,7 @@
         },
 
         "train": {
-            "number_of_epochs": 551,
+            "number_of_epochs": 1000,
             "test_every": 100,
             "input_data": "../data/new2class.mat",
             "test_ratio": 25,

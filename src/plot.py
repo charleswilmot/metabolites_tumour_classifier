@@ -72,6 +72,7 @@ def all_figures(args, data):
     accuracy_figure(args, data)
     accuracy_loss_figure(args, data)
     plot_confusion_matrix(args, data, ifnormalize=False)
+    plot_wrong_examples(args, data)
 
 
 def plot_confusion_matrix(args, data, ifnormalize=False):
@@ -104,3 +105,23 @@ def plot_confusion_matrix(args, data, ifnormalize=False):
     f.savefig(args.output_path + '/confusion_matrix_step_{}.png'.format(data["current_step"]))
     plt.close()
     logger.info("Confusion matrix saved")
+
+def plot_wrong_examples(args, data):
+    """
+    Plot the wrongly classified examples
+    :param args:
+    :param data:
+    :return:
+    """
+    colors = ["darkorchid", "royalblue"]
+    f = plt.figure()
+    ax1 = f.add_subplot(211)
+    ax1.plot(data["test_wrong_features"][data["test_wrong_labels"]==0, :].T, color=colors[0])
+    ax1.plot(data["test_wrong_features"][data["test_wrong_labels"]==0, :][0], color=colors[0], label="label 0")
+    ax2 = f.add_subplot(212)
+    ax2.plot(data["test_wrong_features"][data["test_wrong_labels"]==1, :].T, color=colors[1])
+    ax2.plot(data["test_wrong_features"][data["test_wrong_labels"]==1, :][0], color=colors[1], label="label 1")
+    plt.legend(loc="best")
+    f.savefig(args.output_path + '/wrong_examples_{}.png'.format(data["current_step"]))
+    plt.close()
+    logger.info("Accuracy plot saved")

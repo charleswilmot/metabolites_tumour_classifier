@@ -64,6 +64,21 @@ def initialize(sess, graph, test_only=False):
     sess.run(fetches)
 
 
+def get_wrong_examples(fetches):
+    """
+    Get the wrongly classified examples with features and label
+    :param sess:
+    :param fetches:
+    :return: wrong examples with features and their labels
+    """
+    total_num = sum([sum(b["test_wrong_inds"] == 0) for b in fetches])  # get the total wrong number
+    features = np.empty((0, 288))
+    labels = np.empty((0, 2))
+    for i in range(len(fetches)):
+        features = np.vstack((features, fetches[i]["test_features"][np.where(fetches[i]["test_wrong_inds"] == 0)[0]]))
+        labels = np.vstack((labels, fetches[i]["test_labels"][np.where(fetches[i]["test_wrong_inds"] == 0)[0]]))
+    return features, np.argmax(labels, axis=1)
+
 ## Testing phase
 # @param sess a tensorflow Session object
 # @param graph the graph (cf See also)
@@ -73,15 +88,21 @@ def testing(sess, graph):
     # return loss / accuracy for the complete set
     fetches = {
         "ncorrect": graph["test_ncorrect"],
+        # "wrong_inds": graph["test_wrong_inds"],
         "loss_sum": graph["test_loss_sum"],
         "confusion": graph["test_confusion"],
-        "batch_size": graph["test_batch_size"]
+        "batch_size": graph["test_batch_size"],
+        "test_labels":graph["test_labels"],
+        "test_features":graph["test_features"],
+        "test_out":graph["test_out"],
+        "test_wrong_inds": graph["test_wrong_inds"]
     }
     initialize(sess, graph, test_only=True)
     ret, tape_end = compute(sess, graph, fetches)
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     confusion = sum_confusion(ret)
-    return {"accuracy": accuracy, "loss": loss, "confusion": confusion}
+    wrong_features, wrong_labels = get_wrong_examples(ret)
+    return {"accuracy": accuracy, "loss": loss, "confusion": confusion, "wrong_features": wrong_features, "wrong_labels": wrong_labels}
 
 
 test_phase = testing
@@ -95,7 +116,11 @@ def train_phase(sess, graph, nbatches): # change
         "confusion": graph["train_confusion"],
         "batch_size": graph["train_batch_size"],
         "train_op": graph["train_op"]
+        # "train_labels":graph["train_labels"],
+        # "train_out":graph["train_out"],
+        # "train_wrong": graph["train_wrong_inds"]
     }
+
     ret, tape_end = compute(sess, graph, fetches, max_batches=nbatches)
     if tape_end:
         return None
@@ -177,6 +202,9 @@ def training(sess, args, graph):
         output_data["test_accuracy"].append(ret["accuracy"])
         output_data["current_step"] += 1
         output_data["test_confusion"] = ret["confusion"]
+        output_data["test_wrong_features"] = ret["wrong_features"]
+        output_data["test_wrong_labels"] = ret["wrong_labels"]
+
 
         logger.debug("Testing phase done\t({})".format(ret["accuracy"]))
 
