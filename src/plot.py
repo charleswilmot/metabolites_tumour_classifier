@@ -6,7 +6,7 @@ import logging as log
 import numpy as np
 import matplotlib.pylab as pylab
 base = 22
-params = {'legend.fontsize': base-4,
+params = {'legend.fontsize': base-8,
           'figure.figsize': (10, 8),
          'axes.labelsize': base-4,
          #'weight' : 'bold',
@@ -20,19 +20,20 @@ logger = log.getLogger("classifier")
 
 def loss_plot(ax, data):
     train_loss = data["train_loss"]
-    ax.plot(range(1, len(train_loss) + 1), train_loss, color='darkviolet', linestyle='--', marker='o', label='Train')
+    ax.plot(range(1, len(train_loss) + 1), train_loss, color='darkviolet', linestyle='--', marker='o', label='Train', alpha=0.8)
     test_loss = data["test_loss"]
-    ax.plot(range(1, len(test_loss) + 1), test_loss, color='g', linestyle='--', marker='o', label='Test')
+    ax.plot(range(1, len(test_loss) + 1), test_loss, color='g', linestyle='--', marker='o', label='Test', alpha=0.8)
     ax.set_title("Loss")
     ax.legend()
 
 
 def accuracy_plot(ax, data):
     train_accuracy = data["train_accuracy"]
-    ax.plot(range(1, len(train_accuracy) + 1), train_accuracy, color='darkviolet', linestyle='--', marker='o', label='Train')
+    ax.plot(range(1, len(train_accuracy) + 1), train_accuracy, color='darkviolet', linestyle='--', marker='o', label='Train', alpha=0.8)
     test_accuracy = data["test_accuracy"]
-    ax.plot(range(1, len(test_accuracy) + 1), test_accuracy, color='g', linestyle='--', marker='o',label='Test')
+    ax.plot(range(1, len(test_accuracy) + 1), test_accuracy, color='g', linestyle='--', marker='o',label='Test', alpha=0.8)
     ax.plot([np.argmax(test_accuracy) + 1, 0], [max(test_accuracy), max(test_accuracy)], '-.k')
+    plt.text(np.argmax(test_accuracy) + 1, max(test_accuracy), "%.3f" % (max(test_accuracy)), horizontalalignment="center", color="k", size=18)
     ax.set_title("Accuracy")
     ax.legend()
 
@@ -71,11 +72,11 @@ def all_figures(args, data):
     loss_figure(args, data)
     accuracy_figure(args, data)
     accuracy_loss_figure(args, data)
-    plot_confusion_matrix(args, data, ifnormalize=False)
+    plot_confusion_matrix(args, data, ifnormalize=True)
     plot_wrong_examples(args, data)
 
 
-def plot_confusion_matrix(args, data, ifnormalize=False):
+def plot_confusion_matrix(args, data, ifnormalize=True):
     """
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
@@ -113,16 +114,18 @@ def plot_wrong_examples(args, data):
     :param data:
     :return:
     """
-    colors = ["darkorchid", "royalblue"]
     f = plt.figure()
-    ax1 = f.add_subplot(211)
-    ax1.plot(data["test_wrong_features"][data["test_wrong_labels"]==0, :].T, color=colors[0])
-    ax1.plot(data["test_wrong_features"][data["test_wrong_labels"]==0, :][0], color=colors[0], label="label 0")
-    plt.legend(loc="best")
-    ax2 = f.add_subplot(212)
-    ax2.plot(data["test_wrong_features"][data["test_wrong_labels"]==1, :].T, color=colors[1])
-    ax2.plot(data["test_wrong_features"][data["test_wrong_labels"]==1, :][0], color=colors[1], label="label 1")
-    plt.legend(loc="best")
-    f.savefig(args.output_path + '/wrong_examples_{}.png'.format(data["current_step"]))
+    # f.title("Wrongly classified examples")
+    labels = np.argmax(data["test_wrong_labels"], axis=1)
+    colors = ["darkorchid", "royalblue", "slateblue", "darkorange", "mediumseagreen", "plum"]
+    num_classes = data["test_wrong_labels"].shape[-1]
+    for i in range(num_classes):
+        ax = f.add_subplot(num_classes, 1, i+1)
+        ax.plot(data["test_wrong_features"][labels==i, :].T, color=colors[i])
+        ax.plot(data["test_wrong_features"][labels==i, :][0], color=colors[i], label="label {}".format(i))
+        plt.setp(ax.get_xticklabels(), visible=False)
+        plt.legend(loc="best")
+        f.subplots_adjust(hspace=0)
+    f.savefig(args.output_path + '/{}-class_wrong_examples_{}.png'.format(num_classes, data["current_step"]))
     plt.close()
-    logger.info("Accuracy plot saved")
+    logger.info("Mistakes plot saved")

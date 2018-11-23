@@ -71,13 +71,14 @@ def get_wrong_examples(fetches):
     :param fetches:
     :return: wrong examples with features and their labels
     """
-    total_num = sum([sum(b["test_wrong_inds"] == 0) for b in fetches])  # get the total wrong number
-    features = np.empty((0, 288))
-    labels = np.empty((0, 2))
+    num_classes = fetches[0]["test_labels"].shape[-1]
+    data_len = fetches[0]["test_features"].shape[-1]
+    features = np.empty((0, data_len))
+    labels = np.empty((0, num_classes))
     for i in range(len(fetches)):
         features = np.vstack((features, fetches[i]["test_features"][np.where(fetches[i]["test_wrong_inds"] == 0)[0]]))
         labels = np.vstack((labels, fetches[i]["test_labels"][np.where(fetches[i]["test_wrong_inds"] == 0)[0]]))
-    return features, np.argmax(labels, axis=1)
+    return features, labels
 
 ## Testing phase
 # @param sess a tensorflow Session object
@@ -88,7 +89,6 @@ def testing(sess, graph):
     # return loss / accuracy for the complete set
     fetches = {
         "ncorrect": graph["test_ncorrect"],
-        # "wrong_inds": graph["test_wrong_inds"],
         "loss_sum": graph["test_loss_sum"],
         "confusion": graph["test_confusion"],
         "batch_size": graph["test_batch_size"],
@@ -169,8 +169,8 @@ def training(sess, args, graph):
     logger.info("Starting training procedure")
     saver = tf.train.Saver()
     best_saver = tf.train.Saver(max_to_keep=3)   # keep the top 3 best models
-    if args.resume_training:
-        global_step = load_model(saver, sess, args.model_path)
+    if args.resume_training or args.test_or_train == "test":
+        global_step = load_model(saver, sess, args.restore_from)
         logger.info("Restore model Done! Global step is {}".format(global_step))
     else:
         # raise(NotImplementedError("Initialize train iterator here..."))
@@ -228,4 +228,4 @@ def run(sess, args, graph):
     if args.test_or_train == 'train':
         return training(sess, args, graph)
     else:
-        return testing(sess, args, graph)
+        return testing(sess, graph)

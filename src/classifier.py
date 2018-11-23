@@ -23,6 +23,9 @@ if args.seed is not None:
     np.random.seed(seed=args.seed)
     tf.set_random_seed(args.seed)
 
+if args.seed != 2594:   # every time change the random seed should save the data again
+    dataio.split_data_for_val(args)
+
 spectra, labels = dataio.get_data(args)
 data_tensors = dataio.get_data_tensors(args, spectra, labels)
 graph = graph.get_graph(args, data_tensors)

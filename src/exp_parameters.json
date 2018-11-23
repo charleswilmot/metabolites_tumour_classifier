@@ -4,8 +4,8 @@
             "test_or_train": "train",
             "exp_config": "./exp_parameters.json",
             "model_config": "./model_parameters.json",
-            "num_classes": 2,
-            "batch_size": 128,
+            "num_classes": 6,
+            "batch_size": 64,
             "test_batch_size": 128,
             "seed": 2594,
 
@@ -24,9 +24,9 @@
         },
 
         "train": {
-            "number_of_epochs": 1000,
+            "number_of_epochs": 2000,
             "test_every": 100,
-            "input_data": "../data/new2class.mat",
+            "input_data": "../data/train_test_data.mat",
             "test_ratio": 25,
             "learning_rate": 0.0005,
             "restore_from": null
@@ -34,7 +34,9 @@
         },
 
         "test":{
-            "input_data": "../data/new2class.mat"
+            "input_data": "../data/val_data.mat",
+            "test_ratio": 100,
+            "number_of_epochs": 2
 
         }
     }

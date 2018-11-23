@@ -9,31 +9,50 @@ import os
 import plot
 import tensorflow as tf
 import scipy.io
-
+import random
 
 logger = log.getLogger("classifier")
 
 
-# def get_data(args):
-#     spectrums = scipy.io.loadmat(args.input_data + '/BIGDATA.mat')["BIGDATA"]
-#     labels = scipy.io.loadmat(args.input_data + '/data.mat')['data'][:, 1]
-#     return spectrums.astype(np.float32), labels.astype(np.int32)
-
-
-def get_data(args):
+def split_data_for_val(args):
+    """
+    Split the original data into train_test set and validate set
+    :param args:
+    :return: save two .mat files
+    """
     mat = scipy.io.loadmat(args.input_data)["DATA"]
     spectra = mat[:, 2:]
     labels = mat[:, 1]
-    # num_samples = {}
-    # for i in range(args.num_classes):
-    #     num_samples[np.str(i)] = np.sum(labels == i)
-    # choice_ind = np.random.choice(np.where(labels == 1)[0], num_samples['0'])
-    # subset_feature1 = spectra[choice_ind, :]
-    # subset_label1 = labels[choice_ind]
-    # new_features = np.vstack((subset_feature1, spectra[np.where(labels == 0)[0], :]))
-    # new_labels = np.hstack((subset_label1, labels[np.where(labels == 0)[0]]))
+    val_data = {}
+    validate_features = np.empty((0, 288))
+    validate_labels = np.empty((0))
+    train_test_data = {}
+    train_test_features = np.empty((0, 288))
+    train_test_labels = np.empty((0))
+    for id in range(args.num_classes):
+        # pick 10% of each class for validating
+        indices = np.where(labels == id)[0]
+        random.shuffle(indices)
+        val_inds = indices[0: np.int(0.1 * len(indices))]
+        train_test_inds = indices[np.int(0.1 * len(indices)): ]
+        train_test_features = np.vstack((train_test_features, spectra[train_test_inds, :]))
+        validate_features = np.vstack((validate_features, spectra[val_inds, :]))
+        train_test_labels = np.append(train_test_labels, labels[train_test_inds])
+        validate_labels = np.append(validate_labels, labels[val_inds])
 
-    return spectra.astype(np.float32), labels.astype(np.int32)
+    val_data["features"] = validate_features
+    val_data["labels"] = validate_labels
+    train_test_data["features"] = train_test_features
+    train_test_data["labels"] = train_test_labels
+    scipy.io.savemat(os.path.dirname(args.input_data) + '/val_data.mat', val_data)
+    scipy.io.savemat(os.path.dirname(args.input_data) + '/train_test_data.mat', train_test_data)
+
+
+def get_data(args):
+    spectra = scipy.io.loadmat(args.input_data)["features"]
+    labels = scipy.io.loadmat(args.input_data)["labels"]
+
+    return spectra.astype(np.float32), np.squeeze(labels).astype(np.int32)
 
 
 ## Get batches of data in tf.dataset
