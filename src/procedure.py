@@ -4,6 +4,9 @@ import numpy as np
 import logging as log
 import tensorflow as tf
 
+from dataio import save_my_model, load_model, save_plots
+
+
 logger = log.getLogger("classifier")
 
 
@@ -114,7 +117,7 @@ def train_phase(sess, graph, nbatches): # change
 def condition(end, output_data, number_of_epochs):
     if end:
         return False
-    if len(output_data["test_accuracy"]) < 5 or number_of_epochs != -1:
+    if len(output_data["test_accuracy"]) < 1 or number_of_epochs != -1:
         return True
     else:
         best_accuracy = max(output_data["test_accuracy"])
@@ -139,8 +142,11 @@ def condition(end, output_data, number_of_epochs):
 # @return output_data the loss and accuracy of training and testing
 def training(sess, args, graph):
     logger.info("Starting training procedure")
+    saver = tf.train.Saver()
+    best_saver = tf.train.Saver(max_to_keep=3)   # keep the top 3 best models
     if args.resume_training:
-        raise(NotImplementedError("Restore weights here"))
+        global_step = load_model(saver, sess, args.model_path)
+        logger.info("Restore model Done! Global step is {}".format(global_step))
     else:
         # raise(NotImplementedError("Initialize train iterator here..."))
         logger.info("Initializing network with random weights")
@@ -152,10 +158,10 @@ def training(sess, args, graph):
     output_data["test_loss"] = []
     output_data["test_accuracy"] = []
     output_data["test_confusion"] = 0
+    output_data["current_step"] = 0
     end = False
-    batch = 0
     best_accuracy = 0
-    saver = tf.train.Saver()
+
     while condition(end, output_data, args.number_of_epochs):
         # train phase
         ret = train_phase(sess, graph, args.test_every)
@@ -169,14 +175,18 @@ def training(sess, args, graph):
         ret = test_phase(sess, graph)
         output_data["test_loss"].append(ret["loss"])
         output_data["test_accuracy"].append(ret["accuracy"])
-        output_data["test_confusion"] += ret["confusion"] / len(output_data["test_accuracy"])
+        output_data["current_step"] += 1
+        output_data["test_confusion"] = ret["confusion"]
+
         logger.debug("Testing phase done\t({})".format(ret["accuracy"]))
 
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:
+            print("Best accuracy {}".format(output_data["test_accuracy"][-1]))
             best_accuracy = output_data["test_accuracy"][-1]
-            saver.save(sess, args.output_path + "/network/model.ckpt")
-            logger.debug("Model saved")
+            save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
+            save_plots(sess, args, output_data)
+
     logger.info("Training procedure done")
     return output_data
 

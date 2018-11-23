@@ -3,9 +3,13 @@
 import argparse
 import json
 import os
+import sys
+# sys.path.insert(0, "../")
 
 import logging as log
 import tensorflow as tf
+import dataio
+
 
 PADDING_SIZE = 35
 logger = log.getLogger("classifier")
@@ -176,33 +180,43 @@ def log_debug_arg(type_constructor, message):
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '-v', '--verbose', action='count', default=1,
-    help="Verbosity level. Use -v, -vv, -vvv -vvvv.")
+    help="Verbosity level. Use -v, -vv, -vvv -vvvv."
+)
 parser.add_argument(
     '-T', dest='separator', action='store_true',
-    help="Separator in case the option before train/test is a list. See https://bugs.python.org/issue9338 .")
+    help="Separator in case the option before train/test is a list. See https://bugs.python.org/issue9338 ."
+)
 parser.add_argument(
     '-exp_config', default="./exp_parameters.json",
-    help="Json file path for experiment parameters")
+    help="Json file path for experiment parameters"
+)
 parser.add_argument(
-    '-model_config', default="./model_parameters.json",
-    help="Json file path for model parameters")
+    '--model_config', default="./model_parameters.json",
+    help="Json file path for model parameters"
+)
 parser.add_argument(
-    '-model_name', default="CNN",
-    help="Name of the model.")
+    '-model_name', default="MLP",
+    help="Name of the model."
+)
+parser.add_argument(
+    '-A', '--activations', type=activation, action='store', nargs='+',
+    default=['lrelu', 'lrelu', 'lrelu', 'lrelu', 'sigmoid'],
+    help="Activation functions for every layer. Taken in 'lrelu', 'relu', 'sigmoid', 'tanh'"
+)
 
 subparsers = parser.add_subparsers(dest="test_or_train")
-train_parser = subparsers.add_parser("train")
 
+train_parser = subparsers.add_parser("train")
 train_parser.add_argument(
     'output_path', metavar='OUTPUT',
     type=log_debug_arg(str, "Output path:"),
-    nargs='?', default='./',
+    nargs='?', default='../results',
     help="Path to the output data."
 )
 
 train_parser.add_argument(
-    '-model_path', type=log_debug_arg(str, "Model path:"),
-    nargs='?', default='./',
+    '-restore_from', type=log_debug_arg(str, "Restore model from:"),
+    nargs='?', default= None,
     help="Path to a previously trained model."
 )
 
@@ -214,8 +228,8 @@ train_parser.add_argument(
 
 test_parser = subparsers.add_parser("test")
 test_parser.add_argument(
-    'model_path', metavar='MODEL',
-    type=log_debug_arg(str, "Model path:"),
+    'restore_from', metavar='MODEL',
+    type=log_debug_arg(str, "Restore model from:"),
     help="Path to a previously trained model."
 )
 
@@ -245,6 +259,31 @@ _layer_number_dropout = 1
 _layer_number_batch_norm = 1
 _layer_number_activation = 1
 
+# Re-read the arguments after the verbosity has been set correctly
+args = parser.parse_args()
+
+## Load experiment parameters and model parameters
+json_path = args.exp_config  # exp_param stores general training params
+assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
+params = Params(json_path)
+params.update(json_path, mode=args.test_or_train)
+
+# load model specific parameters
+json_path = args.model_config
+assert os.path.isfile(json_path), "No json file found at {}, run build_vocab.py".format(json_path)
+params.update(json_path, mode=args.model_name) # update params with the model configuration
+
+# specify some params
+params.output_path = args.output_path
+params.restore_from = args.restore_from
+params.model_name = args.model_name
+params.test_or_train = args.test_or_train
+params.resume_training = (args.restore_from != None)
+params.model_save_dir = os.path.join(params.output_path, 'network')
+
+# Make the output directory
+dataio.make_output_dir(params)
+
 # Verbosity level:
 level = 50 - (args.verbose * 10) + 1
 logger.setLevel(level)
@@ -258,26 +297,3 @@ formatter = log.Formatter('[%(levelname)s] %(message)s\r')
 fh.setFormatter(formatter)
 logger.addHandler(ch)
 logger.addHandler(fh)
-
-# Make the output directory
-# dataio.make_output_dir(args)
-
-# Re-read the arguments after the verbosity has been set correctly
-args = parser.parse_args()
-
-## Load experiment parameters and model parameters
-json_path = args.exp_config  # exp_param stores general training params
-assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
-params = Params(json_path)
-params.update(json_path, mode=args.test_or_train)
-
-# specify some params
-params.output_path = args.output_path
-params.model_path = args.model_path
-params.model_name = args.model_name
-params.test_or_train = args.test_or_train
-
-# load model specific parameters
-json_path = args.model_config
-assert os.path.isfile(json_path), "No json file found at {}, run build_vocab.py".format(json_path)
-params.update(json_path, mode=args.model_name) # update params with the model configuration

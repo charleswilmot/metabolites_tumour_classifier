@@ -5,18 +5,21 @@
             "exp_config": "./exp_parameters.json",
             "model_config": "./model_parameters.json",
             "num_classes": 2,
-            "batch_size": 20,
+            "batch_size": 128,
+            "test_batch_size": 128,
             "seed": 2594,
 
             "out_format": "m",
             "data_len": 288,
 
             "output_path": "results/",
-            "model_path": null,
+            "model_save_dir": "results/",
+            "restore_from": null,
+            "resume_training": null,
 
-            "model_name": "CNN",
-            "optimizer_name": "Adam",
-            "loss": "softmax_ce",
+            "model_name": "MLP",
+            "optimizer_type": "adam",
+            "loss_type": "mse",
             "learning_rate": 0.0005
         },
 
@@ -24,8 +27,8 @@
             "number_of_epochs": 551,
             "test_every": 100,
             "input_data": "../data/new2class.mat",
-            "test_ratio": 0.25,
-            "learning_rate": 0.001,
+            "test_ratio": 25,
+            "learning_rate": 0.0005,
             "restore_from": null
 
         },

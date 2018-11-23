@@ -29,5 +29,5 @@ graph = graph.get_graph(args, data_tensors)
 with tf.Session() as sess:
     procedure.initialize(sess, graph, args.test_or_train == 'test')
     output_data = procedure.run(sess, args, graph)
-    dataio.save(sess, args, output_data)
+    dataio.save_plots(sess, args, output_data)
 logger.info("Success")
