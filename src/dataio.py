@@ -24,16 +24,16 @@ def get_data(args):
     mat = scipy.io.loadmat(args.input_data)["DATA"]
     spectra = mat[:, 2:]
     labels = mat[:, 1]
-    num_samples = {}
-    for i in range(args.num_classes):
-        num_samples[np.str(i)] = np.sum(labels == i)
-    choice_ind = np.random.choice(np.where(labels == 1)[0], num_samples['0'])
-    subset_feature1 = spectra[choice_ind, :]
-    subset_label1 = labels[choice_ind]
-    new_features = np.vstack((subset_feature1, spectra[np.where(labels == 0)[0], :]))
-    new_labels = np.hstack((subset_label1, labels[np.where(labels == 0)[0]]))
+    # num_samples = {}
+    # for i in range(args.num_classes):
+    #     num_samples[np.str(i)] = np.sum(labels == i)
+    # choice_ind = np.random.choice(np.where(labels == 1)[0], num_samples['0'])
+    # subset_feature1 = spectra[choice_ind, :]
+    # subset_label1 = labels[choice_ind]
+    # new_features = np.vstack((subset_feature1, spectra[np.where(labels == 0)[0], :]))
+    # new_labels = np.hstack((subset_label1, labels[np.where(labels == 0)[0]]))
 
-    return new_features.astype(np.float32), new_labels.astype(np.int32)
+    return spectra.astype(np.float32), labels.astype(np.int32)
 
 
 ## Get batches of data in tf.dataset
