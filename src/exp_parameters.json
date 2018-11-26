@@ -15,7 +15,6 @@
             "output_path": "results/",
             "model_save_dir": "results/",
             "restore_from": null,
-            "resume_training": null,
 
             "model_name": "MLP",
             "optimizer_type": "adam",

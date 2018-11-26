@@ -18,20 +18,29 @@ pylab.rcParams.update(params)
 logger = log.getLogger("classifier")
 
 
-def loss_plot(ax, data):
-    train_loss = data["train_loss"]
-    ax.plot(range(1, len(train_loss) + 1), train_loss, color='darkviolet', linestyle='--', marker='o', label='Train', alpha=0.8)
-    test_loss = data["test_loss"]
-    ax.plot(range(1, len(test_loss) + 1), test_loss, color='g', linestyle='--', marker='o', label='Test', alpha=0.8)
+def loss_plot(ax, data, training=False):
+    if training:
+        train_loss = data["train_loss"]
+        ax.plot(range(1, len(train_loss) + 1), train_loss, color='darkviolet', linestyle='--', marker='o', label='Train', alpha=0.8)
+        test_loss = data["test_loss"]
+        ax.plot(range(1, len(test_loss) + 1), test_loss, color='g', linestyle='--', marker='o', label='Test', alpha=0.8)
+    else:
+        test_loss = [data["loss"]]
+        ax.plot(range(1, len(test_loss) + 1), test_loss, color='g', linestyle='--', marker='o', label='Test', alpha=0.8)
     ax.set_title("Loss")
     ax.legend()
 
 
-def accuracy_plot(ax, data):
-    train_accuracy = data["train_accuracy"]
-    ax.plot(range(1, len(train_accuracy) + 1), train_accuracy, color='darkviolet', linestyle='--', marker='o', label='Train', alpha=0.8)
-    test_accuracy = data["test_accuracy"]
-    ax.plot(range(1, len(test_accuracy) + 1), test_accuracy, color='g', linestyle='--', marker='o',label='Test', alpha=0.8)
+def accuracy_plot(ax, data, training=False):
+    if training:
+        train_accuracy = data["train_accuracy"]
+        ax.plot(range(1, len(train_accuracy) + 1), train_accuracy, color='darkviolet', linestyle='--', marker='o', label='Train', alpha=0.8)
+        test_accuracy = data["test_accuracy"]
+        ax.plot(range(1, len(test_accuracy) + 1), test_accuracy, color='g', linestyle='--', marker='o',label='Test', alpha=0.8)
+    else:
+        test_accuracy = [data["accuracy"]]
+        ax.plot(range(1, len(test_accuracy) + 1), test_accuracy, color='g', linestyle='--', marker='o', label='Test',
+                alpha=0.8)
     ax.plot([np.argmax(test_accuracy) + 1, 0], [max(test_accuracy), max(test_accuracy)], '-.k')
     plt.text(np.argmax(test_accuracy) + 1, max(test_accuracy), "%.3f" % (max(test_accuracy)), horizontalalignment="center", color="k", size=18)
     ax.set_title("Accuracy")
@@ -43,7 +52,6 @@ def loss_figure(args, data):
     ax = f.add_subplot(111)
     loss_plot(ax, data)
     f.savefig(args.output_path + '/loss_step_{}.png'.format(data["current_step"]))
-    plt.close()
     logger.info("Loss plot saved")
 
 
@@ -52,7 +60,6 @@ def accuracy_figure(args, data):
     ax = f.add_subplot(111)
     accuracy_plot(ax, data)
     f.savefig(args.output_path + '/accuracy_step_{}.png'.format(data["current_step"]))
-    plt.close()
     logger.info("Accuracy plot saved")
 
 
@@ -72,11 +79,11 @@ def all_figures(args, data):
     loss_figure(args, data)
     accuracy_figure(args, data)
     accuracy_loss_figure(args, data)
-    plot_confusion_matrix(args, data, ifnormalize=True)
+    plot_confusion_matrix(args, data, ifnormalize=False)
     plot_wrong_examples(args, data)
 
 
-def plot_confusion_matrix(args, data, ifnormalize=True):
+def plot_confusion_matrix(args, data, ifnormalize=False, training=False):
     """
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
@@ -85,11 +92,15 @@ def plot_confusion_matrix(args, data, ifnormalize=True):
     :param normalize: boolean, whether normalize to (0,1)
     :return:
     """
+    if training:
+        cm = data["test_confusion"]
+    else:
+        cm = data["confusion"]
+
     if ifnormalize:
-        cm = (data["test_confusion"] * 1.0 / data["test_confusion"].sum(axis=1)[:, np.newaxis])*1.0
+        cm = (cm * 1.0 / cm.sum(axis=1)[:, np.newaxis])*1.0
         logger.info("Normalized confusion matrix")
     else:
-        cm = data["test_confusion"]
         logger.info('Confusion matrix, without normalization')
     f = plt.figure()
     plt.imshow(cm, interpolation='nearest', cmap='Blues', aspect='auto')

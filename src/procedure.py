@@ -71,6 +71,7 @@ def get_wrong_examples(fetches):
     :param fetches:
     :return: wrong examples with features and their labels
     """
+
     num_classes = fetches[0]["test_labels"].shape[-1]
     data_len = fetches[0]["test_features"].shape[-1]
     features = np.empty((0, data_len))
@@ -102,7 +103,7 @@ def testing(sess, graph):
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     confusion = sum_confusion(ret)
     wrong_features, wrong_labels = get_wrong_examples(ret)
-    return {"accuracy": accuracy, "loss": loss, "confusion": confusion, "wrong_features": wrong_features, "wrong_labels": wrong_labels}
+    return {"accuracy": accuracy, "loss": loss, "confusion": confusion, "test_wrong_features": wrong_features, "test_wrong_labels": wrong_labels, "current_step": "test"}
 
 
 test_phase = testing
@@ -116,9 +117,6 @@ def train_phase(sess, graph, nbatches): # change
         "confusion": graph["train_confusion"],
         "batch_size": graph["train_batch_size"],
         "train_op": graph["train_op"]
-        # "train_labels":graph["train_labels"],
-        # "train_out":graph["train_out"],
-        # "train_wrong": graph["train_wrong_inds"]
     }
 
     ret, tape_end = compute(sess, graph, fetches, max_batches=nbatches)
@@ -165,17 +163,10 @@ def condition(end, output_data, number_of_epochs):
 # @param graph the graph (cf See also)
 # @param input_data training and testing data
 # @return output_data the loss and accuracy of training and testing
-def training(sess, args, graph):
+def training(sess, args, graph, saver):
     logger.info("Starting training procedure")
-    saver = tf.train.Saver()
     best_saver = tf.train.Saver(max_to_keep=3)   # keep the top 3 best models
-    if args.resume_training or args.test_or_train == "test":
-        global_step = load_model(saver, sess, args.restore_from)
-        logger.info("Restore model Done! Global step is {}".format(global_step))
-    else:
-        # raise(NotImplementedError("Initialize train iterator here..."))
-        logger.info("Initializing network with random weights")
-        sess.run(tf.global_variables_initializer())
+
     output_data = {}
     output_data["train_loss"] = []
     output_data["train_accuracy"] = []
@@ -225,7 +216,15 @@ def training(sess, args, graph):
 # @param graph the graph (cf See also)
 # @param input_data training and testing data
 def run(sess, args, graph):
+    saver = tf.train.Saver()
+    if args.restore_from:
+        global_step = load_model(saver, sess, args.restore_from)
+        logger.info("Restore model Done! Global step is {}".format(global_step))
+    else:
+        # raise(NotImplementedError("Initialize train iterator here..."))
+        logger.info("Initializing network with random weights")
+        sess.run(tf.global_variables_initializer())
     if args.test_or_train == 'train':
-        return training(sess, args, graph)
+        return training(sess, args, graph, saver)
     else:
         return testing(sess, graph)
