@@ -44,8 +44,8 @@ def split_data_for_val(args):
     val_data["labels"] = validate_labels
     train_test_data["features"] = train_test_features
     train_test_data["labels"] = train_test_labels
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/val_data.mat', val_data)
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/train_test_data.mat', train_test_data)
+    scipy.io.savemat(os.path.dirname(args.input_data) + '/2class_val_data.mat', val_data)
+    scipy.io.savemat(os.path.dirname(args.input_data) + '/2class_train_test_data.mat', train_test_data)
 
 
 def get_data(args):
