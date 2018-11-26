@@ -25,7 +25,7 @@
         "train": {
             "number_of_epochs": 2000,
             "test_every": 100,
-            "input_data": "../data/6class_train_test_data.mat",
+            "input_data": "../data/6class_train_test_data_50_each.mat",
             "test_ratio": 25,
             "learning_rate": 0.0005,
             "restore_from": null
@@ -33,7 +33,7 @@
         },
 
         "test":{
-            "input_data": "../data/6class_val_data.mat",
+            "input_data": "../data/6class_val_data_50_each.mat",
             "test_ratio": 100,
             "number_of_epochs": 2
 

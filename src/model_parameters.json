@@ -15,7 +15,7 @@
                 "MLP":{
                     "model_name": "MLP",
                     "layer_dims": [288, 500, 200, 6],
-                    "dropout_probs": [0.3, 0.3, 0.0],
+                    "dropout_probs": [0.25, 0.25, 0.0],
                     "batch_norms": [true, true, true],
                     "activations": ["lrelu", "lrelu", "sigmoid"]
 

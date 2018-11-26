@@ -29,12 +29,13 @@ def split_data_for_val(args):
     train_test_data = {}
     train_test_features = np.empty((0, 288))
     train_test_labels = np.empty((0))
+    num_val = 250 if args.num_classes == 2 else 50
     for id in range(args.num_classes):
-        # pick 10% of each class for validating
+        # pick 10% of each class for validating or pick same amount of samples for testing?
         indices = np.where(labels == id)[0]
         random.shuffle(indices)
-        val_inds = indices[0: np.int(0.1 * len(indices))]
-        train_test_inds = indices[np.int(0.1 * len(indices)): ]
+        val_inds = indices[0: np.int(num_val)]
+        train_test_inds = indices[np.int(num_val): ]
         train_test_features = np.vstack((train_test_features, spectra[train_test_inds, :]))
         validate_features = np.vstack((validate_features, spectra[val_inds, :]))
         train_test_labels = np.append(train_test_labels, labels[train_test_inds])
@@ -44,8 +45,8 @@ def split_data_for_val(args):
     val_data["labels"] = validate_labels
     train_test_data["features"] = train_test_features
     train_test_data["labels"] = train_test_labels
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/2class_val_data.mat', val_data)
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/2class_train_test_data.mat', train_test_data)
+    scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_val_data_{}_each.mat'.format(args.num_classes, num_val), val_data)
+    scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_train_test_data_{}_each.mat'.format(args.num_classes, num_val), train_test_data)
 
 
 def get_data(args):
