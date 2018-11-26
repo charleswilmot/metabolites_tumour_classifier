@@ -103,7 +103,7 @@ def testing(sess, graph):
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     confusion = sum_confusion(ret)
     wrong_features, wrong_labels = get_wrong_examples(ret)
-    return {"accuracy": accuracy, "loss": loss, "confusion": confusion, "test_wrong_features": wrong_features, "test_wrong_labels": wrong_labels, "current_step": "test"}
+    return {"test_accuracy": accuracy, "test_loss": loss, "test_confusion": confusion, "test_wrong_features": wrong_features, "test_wrong_labels": wrong_labels, "current_step": "validation"}
 
 
 test_phase = testing
@@ -189,22 +189,23 @@ def training(sess, args, graph, saver):
         logger.debug("Training phase done")
         # test phase
         ret = test_phase(sess, graph)
-        output_data["test_loss"].append(ret["loss"])
-        output_data["test_accuracy"].append(ret["accuracy"])
+        output_data["test_loss"].append(ret["test_loss"])
+        output_data["test_accuracy"].append(ret["test_accuracy"])
+
+        output_data["test_confusion"] = ret["test_confusion"]
+        output_data["test_wrong_features"] = ret["test_wrong_features"]
+        output_data["test_wrong_labels"] = ret["test_wrong_labels"]
         output_data["current_step"] += 1
-        output_data["test_confusion"] = ret["confusion"]
-        output_data["test_wrong_features"] = ret["wrong_features"]
-        output_data["test_wrong_labels"] = ret["wrong_labels"]
 
 
-        logger.debug("Testing phase done\t({})".format(ret["accuracy"]))
+        logger.debug("Testing phase done\t({})".format(ret["test_accuracy"]))
 
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:
             print("Best accuracy {}".format(output_data["test_accuracy"][-1]))
             best_accuracy = output_data["test_accuracy"][-1]
             save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
-            save_plots(sess, args, output_data)
+            save_plots(sess, args, output_data, training=True)
 
     logger.info("Training procedure done")
     return output_data

@@ -32,5 +32,8 @@ graph = graph.get_graph(args, data_tensors)
 with tf.Session() as sess:
     procedure.initialize(sess, graph, args.test_or_train == 'test')
     output_data = procedure.run(sess, args, graph)
-    dataio.save_plots(sess, args, output_data)
+    if args.test_or_train == "train":
+        dataio.save_plots(sess, args, output_data, training=True)
+    else:
+        dataio.save_plots(sess, args, output_data, training=False)
 logger.info("Success")

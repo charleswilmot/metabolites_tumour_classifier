@@ -47,32 +47,31 @@ class MLP:
         self.activations = convert_activation(args.activations)
         self.dropout_probs = np.array(args.dropout_probs)
         assert(self.layer_dims[-1] == args.num_classes), "Softmax output does not match number of classes"
+        assert(self.layer_dims[0] == args.data_len), "Dim of first layer should be the same as the data length"
         assert(len(self.batch_norms) ==
                len(self.activations) ==
                len(self.dropout_probs) ==
-               len(self.layer_dims)), "Passed in batch norms or activations or drop do not match"
+               len(self.layer_dims) - 1), "Passed in dims of batch norms or activations or drop do not match"
         self.n_layers = len(self.batch_norms)
-        self.reuse = False
+        self._net_constructed_once = False
+        self._define_variables()
+
+    def _define_variables(self):
+        self.weights = []
+        self.biases = []
+        initializer = tf.contrib.layers.xavier_initializer()
+        for in_size, out_size, batch_norm in zip(self.layer_dims[0:-1], self.layer_dims[1:], self.batch_norms):
+            # random = tf.truncated_normal(stddev=0.01, shape=(in_size, out_size))
+            W = tf.Variable(initializer((in_size, out_size)))
+            B = None if batch_norm else tf.Variable(tf.zeros(shape=(1, out_size)))
+            self.weights.append(W)
+            self.biases.append(B)
 
     def __call__(self, features, training=False):
         out = features
-        out = self.construct_layers(out, training)
-        self.reuse = not training
-        return out
-
-    def construct_layers(self, inp, training):
-        """
-        Construct the whole fully-connected layers
-        :param inp: input tensors
-        :param training: bool
-        :return: output tensors of the layers
-        """
-        layer_number = 1
-        out = inp
-        for (out_dim, bn, drop, activation) in zip(self.layer_dims, self.batch_norms, self.dropout_probs, self.activations):
-            out = self._make_fnn_layer(out, out_dim, bn, drop, activation, layer_number, training)
-            layer_number += 1
-
+        for i in range(self.n_layers):
+            out = self._make_layer(out, i, training)
+        self._net_constructed_once = True
         return out
 
     ## Private function for adding layers to the network
@@ -81,20 +80,27 @@ class MLP:
     # @param batch_norm bool stating if batch normalization should be used
     # @param dropout droupout probability. Set to 0 to disable
     # @param activation activation function
-    def _make_fnn_layer(self, inp, out_dim, batch_norm, drop, activation, layer_number, training):
-        _to_format = [out_dim, batch_norm, drop, activation, training]
+    def _make_layer(self, inp, layer_number, training):
+        out_size = self.layer_dims[layer_number + 1]
+        batch_norm = self.batch_norms[layer_number]
+        dropout = self.dropout_probs[layer_number]
+        activation = self.activations[layer_number]
+        _to_format = [out_size, batch_norm, dropout, activation, training]
         layer_name = "layer_{}".format(layer_number + 1)
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
+        W = self.weights[layer_number]
+        B = self.biases[layer_number]
         with tf.variable_scope(layer_name):
-            out = tf.layers.dense(inp, out_dim, reuse=self.reuse)
+            out = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
             out = tf.layers.batch_normalization(
                 out,
-                reuse=self.reuse,
+                training=training,
+                reuse=self._net_constructed_once,
                 name=layer_name) if batch_norm else out
             out = out if activation is None else activation(out)
-            out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
+            out = tf.layers.dropout(out, rate=dropout, training=training) if dropout != 0 else out
             return out
 
 
@@ -174,7 +180,7 @@ class CNN:
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
-        with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+        with tf.variable_scope(layer_name):
             out = tf.layers.conv1d(inp, out_ch, self.kernel_size, 1, padding='SAME')
             out = tf.layers.max_pooling1d(out, self.pool_size, self.pool_size, padding="SAME")
             out = tf.layers.batch_normalization(

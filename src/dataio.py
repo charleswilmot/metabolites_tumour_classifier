@@ -49,6 +49,11 @@ def split_data_for_val(args):
 
 
 def get_data(args):
+    """
+    Load self_saved data. A dict, data["features"], data["labels"]. See the save function in split_data_for_val()
+    :param args: Param object with path to the data
+    :return:
+    """
     spectra = scipy.io.loadmat(args.input_data)["features"]
     labels = scipy.io.loadmat(args.input_data)["labels"]
 
@@ -99,9 +104,9 @@ def save_command_line(args):
         f.write(cmd)
 
 
-def save_plots(sess, args, output_data):
+def save_plots(sess, args, output_data, training=False):
     logger.info("Saving output data")
-    plot.all_figures(args, output_data)
+    plot.all_figures(args, output_data, training=training)
     logger.info("Output data saved to {}".format("TODO"))
 
 
