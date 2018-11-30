@@ -10,7 +10,7 @@ import logging as log
 import tensorflow as tf
 import dataio
 
-
+#
 PADDING_SIZE = 35
 logger = log.getLogger("classifier")
 
@@ -183,6 +183,10 @@ parser.add_argument(
     help="Verbosity level. Use -v, -vv, -vvv -vvvv."
 )
 parser.add_argument(
+    '-resplit_data', default="../data",
+    help="Verbosity level. Use -v, -vv, -vvv -vvvv."
+)
+parser.add_argument(
     '-T', dest='separator', action='store_true',
     help="Separator in case the option before train/test is a list. See https://bugs.python.org/issue9338 ."
 )
@@ -234,12 +238,6 @@ test_parser.add_argument(
 )
 
 test_parser.add_argument(
-    'input_data', metavar='INPUT',
-    type=log_debug_arg(str, "Data path:"),
-    help="Path to the input data file."
-)
-
-test_parser.add_argument(
     'output_path', metavar='OUTPUT',
     type=log_debug_arg(str, "Output path:"),
     nargs='?', default='./',
@@ -275,6 +273,7 @@ params.update(json_path, mode=args.model_name) # update params with the model co
 
 # specify some params
 params.output_path = args.output_path
+params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from
 params.model_name = args.model_name
 params.test_or_train = args.test_or_train

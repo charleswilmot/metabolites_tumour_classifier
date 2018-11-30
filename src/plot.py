@@ -5,6 +5,11 @@ import matplotlib.pyplot as plt
 import logging as log
 import numpy as np
 import matplotlib.pylab as pylab
+import tsne
+import ipdb
+from scipy.spatial.distance import pdist, squareform
+from scipy.cluster.hierarchy import linkage, dendrogram
+
 base = 22
 params = {'legend.fontsize': base-8,
           'figure.figsize': (10, 8),
@@ -28,7 +33,7 @@ def loss_plot(ax, data, training=False):
         test_loss = [data["test_loss"]]
         ax.plot(range(1, len(test_loss) + 1), np.array(test_loss), color='g', linestyle='--', marker='*', label='Test', alpha=0.8)
     ax.set_title("Loss")
-    ax.legend()
+    ax.legend(loc="best")
 
 
 def accuracy_plot(ax, data, training=False):
@@ -46,7 +51,7 @@ def accuracy_plot(ax, data, training=False):
     ax.plot([np.argmax(test_accuracy) + 1, 0], [highest, highest], '-.k')
     plt.text(np.argmax(test_accuracy) + 1, highest, "%.3f" % (highest), horizontalalignment="center", color="k", size=18)
     ax.set_title("Accuracy")
-    ax.legend()
+    ax.legend(loc="best")
 
 
 def loss_figure(args, data, training=False):
@@ -81,8 +86,10 @@ def all_figures(args, data, training=False):
     # loss_figure(args, data, training=training)
     # accuracy_figure(args, data, training=training)
     accuracy_loss_figure(args, data, training=training)
-    plot_confusion_matrix(args, data, ifnormalize=False)
-    plot_wrong_examples(args, data)
+    # plot_confusion_matrix(args, data, ifnormalize=False)
+    # plot_wrong_examples(args, data)
+    # plot_tsne(args, data)
+    plot_hierarchy_cluster(args, data)
 
 
 def plot_confusion_matrix(args, data, ifnormalize=False):
@@ -119,14 +126,13 @@ def plot_confusion_matrix(args, data, ifnormalize=False):
 def plot_wrong_examples(args, data):
     """
     Plot the wrongly classified examples
-    :param args:
-    :param data:
+    :param args: contains hyperparams
+    :param data: dict,
     :return:
     """
     f = plt.figure()
-    # f.title("Wrongly classified examples")
     labels = np.argmax(data["test_wrong_labels"], axis=1)
-    colors = ["darkorchid", "royalblue", "slateblue", "darkorange", "mediumseagreen", "plum"]
+    colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
     num_classes = data["test_wrong_labels"].shape[-1]
     for i in range(num_classes):
         ax = f.add_subplot(num_classes, 1, i+1)
@@ -138,3 +144,55 @@ def plot_wrong_examples(args, data):
     f.savefig(args.output_path + '/{}-class_wrong_examples_{}.png'.format(num_classes, data["current_step"]))
     plt.close()
     logger.info("Mistakes plot saved")
+
+def plot_tsne(args, data):
+    """
+    Plot the wrongly classified examples
+    :param args: contains hyperparams
+    :param acti: dict,
+    :return:
+    """
+    f = plt.figure()
+    acti = data["test_activity"].astype(np.float64)
+    labels = np.argmax(data["test_labels"], axis=1).astype(np.int)
+    tsne_results = tsne.bh_sne(acti, d=2)
+    #
+    # colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
+    # markers = np.random.choice(['o', '*', '^', 'D', 's', 'p'], args.num_classes)
+    # target_names = ["label {}".format(i) for i in range(args.num_classes)]
+    colors = ["orchid", "deepskyblue"]
+    markers = ['o', '^']
+    target_names = ["label {}".format(i) for i in [1, 3]] # np.arange(args.num_classes)
+
+    ax = f.add_subplot(111)
+    for color, marker, i, target_name in zip(colors, markers, [1, 3], target_names):
+        ax.scatter(tsne_results[labels == i, 0], tsne_results[labels == i, 1], color=color, alpha=.8, linewidth=2, marker=marker, label=target_name)###lw=2,
+    plt.setp(ax.get_xticklabels(), visible = False)
+    plt.setp(ax.get_yticklabels(), visible = False)
+    plt.legend(loc='best', shadow=False, scatterpoints=3)
+    f.savefig(args.output_path + '/{}-tsne-on-activity-{}.png'.format(args.num_classes, data["current_step"]))
+    plt.close()
+    logger.info("TSNE saved")
+
+
+def plot_hierarchy_cluster(args, data):
+    """
+    Plot hierarchy tree cluster
+    :param args:
+    :param data:
+    :return:
+    """
+    f = plt.figure()
+    inds = 0
+    acti = data["test_activity"].astype(np.float64)
+    labels = np.argmax(data["test_labels"], axis=1).astype(np.int)
+    inds = np.append(inds, np.where(labels == 1)[0])
+    inds = np.append(inds, np.where(labels == 3)[0])
+
+    data_dist = pdist(acti[inds])
+    data_link = linkage(data_dist, method='ward')
+    dendrogram(data_link, labels=labels, leaf_font_size=8, leaf_rotation=90)  ##
+    plt.xlabel("samples")
+    plt.ylabel("distance")
+    f.savefig(args.output_path + '/{}-hierarchy-on-activity-{}.png'.format(args.num_classes, data["current_step"]))
+    plt.close()

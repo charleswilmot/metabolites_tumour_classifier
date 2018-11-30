@@ -68,11 +68,14 @@ class MLP:
             self.biases.append(B)
 
     def __call__(self, features, training=False):
-        out = features
-        for i in range(self.n_layers):
-            out = self._make_layer(out, i, training)
+        net = features
+        for i in range(self.n_layers - 1):
+            net = self._make_layer(net, i, training)
+        activity = net
+        net = self._make_layer(net, i+1, training)
+        out = net
         self._net_constructed_once = True
-        return out
+        return out, activity
 
     ## Private function for adding layers to the network
     # @param inp input tensor
@@ -93,15 +96,15 @@ class MLP:
         W = self.weights[layer_number]
         B = self.biases[layer_number]
         with tf.variable_scope(layer_name):
-            out = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
-            out = tf.layers.batch_normalization(
-                out,
+            net = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
+            net = tf.layers.batch_normalization(
+                net,
                 training=training,
                 reuse=self._net_constructed_once,
-                name=layer_name) if batch_norm else out
-            out = out if activation is None else activation(out)
-            out = tf.layers.dropout(out, rate=dropout, training=training) if dropout != 0 else out
-            return out
+                name=layer_name) if batch_norm else net
+            net = net if activation is None else activation(net)
+            net = tf.layers.dropout(net, rate=dropout, training=training) if dropout != 0 else net
+            return net
 
 
 class CNN:
@@ -282,13 +285,13 @@ def get_graph(args, data_tensors):
     elif args.model_name == "CNN":
         net = CNN(args)
 
-    graph["test_out"] = net(data_tensors["test_features"])
+    graph["test_out"], graph["test_activity"] = net(data_tensors["test_features"])
     graph["test_batch_size"] = tf.shape(graph["test_out"])[0]
     graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], data_tensors["test_labels"])
     graph["test_ncorrect"], graph["test_wrong_inds"] = get_ncorrect(graph["test_out"], data_tensors["test_labels"])
     graph["test_confusion"] = get_confusion_matrix(graph["test_out"], data_tensors["test_labels"], args.num_classes)
     if args.test_or_train == "train":
-        graph["train_out"] = net(data_tensors["train_features"], training=True)
+        graph["train_out"], graph["train_activity"] = net(data_tensors["train_features"], training=True)
         graph["train_labels"] = data_tensors["train_labels"]
         graph["train_batch_size"] = tf.shape(graph["train_out"])[0]
         graph["train_loss_sum"] = get_loss_sum(args, graph["train_out"], data_tensors["train_labels"])

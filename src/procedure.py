@@ -71,7 +71,6 @@ def get_wrong_examples(fetches):
     :param fetches:
     :return: wrong examples with features and their labels
     """
-
     num_classes = fetches[0]["test_labels"].shape[-1]
     data_len = fetches[0]["test_features"].shape[-1]
     features = np.empty((0, data_len))
@@ -80,6 +79,32 @@ def get_wrong_examples(fetches):
         features = np.vstack((features, fetches[i]["test_features"][np.where(fetches[i]["test_wrong_inds"] == 0)[0]]))
         labels = np.vstack((labels, fetches[i]["test_labels"][np.where(fetches[i]["test_wrong_inds"] == 0)[0]]))
     return features, labels
+
+
+## Processes the output of compute (cf See also) to calculate the sum of confusion matrices
+# @param ret dictionary containing the keys "ncorrect", "loss_sum" and "batch_size"
+# @param N number of examples computed by compute
+# @see compute
+def get_activity(ret):
+    activities = np.empty((0, 200))
+    for b in ret:
+        activities = np.vstack((activities, b["test_activity"]))
+
+    return activities
+
+
+## Concat data in one training/test set
+# @param ret dictionary containing the keys "ncorrect", "loss_sum" and "batch_size"
+# @param key, the key of the interested data in the dict that you want to extract and concat
+# @return array of con
+def concat_labels(ret, key="labels"):
+    interest = np.empty((0, ret[0][key].shape[1]))
+    for b in ret:
+        interest = np.vstack((interest, b["test_labels"]))
+
+    return np.array(interest)
+
+
 
 ## Testing phase
 # @param sess a tensorflow Session object
@@ -96,14 +121,18 @@ def testing(sess, graph):
         "test_labels":graph["test_labels"],
         "test_features":graph["test_features"],
         "test_out":graph["test_out"],
-        "test_wrong_inds": graph["test_wrong_inds"]
+        "test_wrong_inds": graph["test_wrong_inds"],
+        "test_activity": graph["test_activity"]
     }
     initialize(sess, graph, test_only=True)
     ret, tape_end = compute(sess, graph, fetches)
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     confusion = sum_confusion(ret)
     wrong_features, wrong_labels = get_wrong_examples(ret)
-    return {"test_accuracy": accuracy, "test_loss": loss, "test_confusion": confusion, "test_wrong_features": wrong_features, "test_wrong_labels": wrong_labels, "current_step": "validation"}
+    activity = get_activity(ret)
+    test_labels = concat_labels(ret, key="test_labels")
+
+    return {"test_accuracy": accuracy, "test_loss": loss, "test_confusion": confusion, "test_wrong_features": wrong_features, "test_wrong_labels": wrong_labels, "test_activity": activity, "test_labels": test_labels}
 
 
 test_phase = testing
@@ -195,6 +224,8 @@ def training(sess, args, graph, saver):
         output_data["test_confusion"] = ret["test_confusion"]
         output_data["test_wrong_features"] = ret["test_wrong_features"]
         output_data["test_wrong_labels"] = ret["test_wrong_labels"]
+        output_data["test_activity"] = ret["test_activity"]
+        output_data["test_labels"] = ret["test_labels"]
         output_data["current_step"] += 1
 
 

@@ -23,40 +23,65 @@ def split_data_for_val(args):
     mat = scipy.io.loadmat(args.input_data)["DATA"]
     spectra = mat[:, 2:]
     labels = mat[:, 1]
-    val_data = {}
+    ids = mat[:, 0]
     validate_features = np.empty((0, 288))
     validate_labels = np.empty((0))
-    train_test_data = {}
+    validate_ids = np.empty((0))
     train_test_features = np.empty((0, 288))
     train_test_labels = np.empty((0))
-    num_val = 250 if args.num_classes == 2 else 50
-    for id in range(args.num_classes):
-        # pick 10% of each class for validating or pick same amount of samples for testing?
-        indices = np.where(labels == id)[0]
-        random.shuffle(indices)
-        val_inds = indices[0: np.int(num_val)]
-        train_test_inds = indices[np.int(num_val): ]
-        train_test_features = np.vstack((train_test_features, spectra[train_test_inds, :]))
-        validate_features = np.vstack((validate_features, spectra[val_inds, :]))
-        train_test_labels = np.append(train_test_labels, labels[train_test_inds])
-        validate_labels = np.append(validate_labels, labels[val_inds])
+    train_test_ids = np.empty((0))
+    num_val = 50
+    if args.num_classes == 2:
+        for id in range(6):
+            indices = np.where(labels == id)[0]
+            random.shuffle(indices)
+            val_inds = indices[0: np.int(num_val)]
+            train_test_inds = indices[np.int(num_val):]
+            train_test_features = np.vstack((train_test_features, spectra[train_test_inds, :]))
+            train_test_labels = np.append(train_test_labels, np.zeros((len(train_test_inds))) + (id % 2))
+            train_test_ids = np.append(train_test_ids, ids[train_test_inds])
+            validate_features = np.vstack((validate_features, spectra[val_inds, :]))
+            validate_labels = np.append(validate_labels, np.zeros((len(val_inds))) + (id % 2))
+            validate_ids = np.append(validate_ids, ids[val_inds])
+    elif args.num_classes == 6:
+        for id in range(args.num_classes):
+            # pick same amount of samples for testing?
+            indices = np.where(labels == id)[0]
+            random.shuffle(indices)
+            val_inds = indices[0: np.int(num_val)]
+            train_test_inds = indices[np.int(num_val): ]
+            train_test_features = np.vstack((train_test_features, spectra[train_test_inds, :]))
+            train_test_labels = np.append(train_test_labels, labels[train_test_inds])
+            train_test_ids = np.append(train_test_ids, ids[train_test_inds])
+            validate_features = np.vstack((validate_features, spectra[val_inds, :]))
+            validate_labels = np.append(validate_labels, labels[val_inds])
+            validate_ids = np.append(validate_ids, ids[val_inds])
+    # -v - vv test.. / results / 6class_MLP_with_batchnorm0.25 / network.. / results / validation / 6class_MLP_with_batchnorm0.25_2
+    # ndData
+    val_mat = {}
+    train_test_mat = {}
+    val_mat["DATA"] = np.zeros((validate_labels.size, 290))
+    val_mat["DATA"][:, 0] = validate_ids
+    val_mat["DATA"][:, 1] = validate_labels
+    val_mat["DATA"][:, 2:] = validate_features
+    train_test_mat["DATA"] = np.zeros((train_test_labels.size, 290))
+    train_test_mat["DATA"][:, 0] = train_test_ids
+    train_test_mat["DATA"][:, 1] = train_test_labels
+    train_test_mat["DATA"][:, 2:] = train_test_features
+    scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_val_data.mat'.format(args.num_classes, num_val), val_mat)
+    scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_train_test_data.mat'.format(args.num_classes, num_val), train_test_mat)
 
-    val_data["features"] = validate_features
-    val_data["labels"] = validate_labels
-    train_test_data["features"] = train_test_features
-    train_test_data["labels"] = train_test_labels
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_val_data_{}_each.mat'.format(args.num_classes, num_val), val_data)
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_train_test_data_{}_each.mat'.format(args.num_classes, num_val), train_test_data)
 
-
-def get_data(args):
+def get_data(args, ifmydata=False):
     """
     Load self_saved data. A dict, data["features"], data["labels"]. See the save function in split_data_for_val()
     :param args: Param object with path to the data
     :return:
     """
-    spectra = scipy.io.loadmat(args.input_data)["features"]
-    labels = scipy.io.loadmat(args.input_data)["labels"]
+
+    mat = scipy.io.loadmat(args.input_data)["DATA"]
+    spectra = mat[:, 2:]
+    labels = mat[:, 1]
 
     return spectra.astype(np.float32), np.squeeze(labels).astype(np.int32)
 
