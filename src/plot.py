@@ -87,9 +87,9 @@ def all_figures(args, data, training=False):
     # accuracy_figure(args, data, training=training)
     accuracy_loss_figure(args, data, training=training)
     # plot_confusion_matrix(args, data, ifnormalize=False)
-    # plot_wrong_examples(args, data)
+    plot_wrong_examples(args, data)
     # plot_tsne(args, data)
-    plot_hierarchy_cluster(args, data)
+    # plot_hierarchy_cluster(args, data)
 
 
 def plot_confusion_matrix(args, data, ifnormalize=False):
@@ -136,11 +136,13 @@ def plot_wrong_examples(args, data):
     num_classes = data["test_wrong_labels"].shape[-1]
     for i in range(num_classes):
         ax = f.add_subplot(num_classes, 1, i+1)
-        ax.plot(data["test_wrong_features"][labels==i, :].T, color=colors[i])
-        ax.plot(data["test_wrong_features"][labels==i, :][0], color=colors[i], label="label {}".format(i))
+        if len(data["test_wrong_features"][labels==i, :]) != 0:
+            ax.plot(data["test_wrong_features"][labels==i, :].T, color=colors[i])
+            ax.plot(data["test_wrong_features"][labels==i, :][0], color=colors[i], label="label {}".format(i))
         plt.setp(ax.get_xticklabels(), visible=False)
         plt.legend(loc="best")
         f.subplots_adjust(hspace=0)
+    plt.title("Mistakes")
     f.savefig(args.output_path + '/{}-class_wrong_examples_{}.png'.format(num_classes, data["current_step"]))
     plt.close()
     logger.info("Mistakes plot saved")
@@ -177,7 +179,7 @@ def plot_tsne(args, data):
 
 def plot_hierarchy_cluster(args, data):
     """
-    Plot hierarchy tree cluster
+    Plot hierarchy tree cluster to see subclusters
     :param args:
     :param data:
     :return:

@@ -80,8 +80,16 @@ def get_data(args, ifmydata=False):
     """
 
     mat = scipy.io.loadmat(args.input_data)["DATA"]
-    spectra = mat[:, 2:]
-    labels = mat[:, 1]
+    inds = np.arange(len(mat))
+    np.random.shuffle(inds)
+    spectra = mat[inds, 2:]
+    labels = mat[inds, 1]
+    # num_val = len(spectra) *
+
+    assert args.num_classes != np.max(labels), "The number of class doesn't match the data!"
+
+    # Split into train, val, test.
+
 
     return spectra.astype(np.float32), np.squeeze(labels).astype(np.int32)
 
@@ -95,7 +103,7 @@ def get_data_tensors(args, spectra, labels):
     dataset = tf.data.Dataset.from_tensor_slices((spectra, labels)).shuffle(buffer_size=10000)
     # train and test split
     num_train = int(((100 - args.test_ratio) * spectra.get_shape().as_list()[0]) // 100)
-    train_ds = dataset.take(num_train).repeat(args.number_of_epochs).shuffle(buffer_size=num_train // 2).batch(args.batch_size)
+    train_ds = dataset.take(num_train).shuffle(buffer_size=num_train // 2).repeat(args.number_of_epochs).batch(args.batch_size)
     test_ds = dataset.skip(num_train).batch(args.batch_size)
     iter_test = test_ds.make_initializable_iterator()
     data["test_initializer"] = iter_test.initializer

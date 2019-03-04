@@ -160,7 +160,7 @@ def train_phase(sess, graph, nbatches): # change
 #
 # Training terminates after a fixed amount of epoches if the option
 # --number-of-epochs is set. Otherwise, it terminates when the test accuracy
-# starts increasing (early stoping)
+# starts decreasing (early stoping)
 # @param nepoch target number of epoch
 # @param epoch_number current epoch number
 # @param output_data output data of the training (contains the test accuracy)
@@ -227,6 +227,7 @@ def training(sess, args, graph, saver):
         output_data["test_activity"] = ret["test_activity"]
         output_data["test_labels"] = ret["test_labels"]
         output_data["current_step"] += 1
+        # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch
 
 
         logger.debug("Testing phase done\t({})".format(ret["test_accuracy"]))

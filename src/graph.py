@@ -240,9 +240,9 @@ def get_loss_sum(args, out, out_true):
 def get_ncorrect(out, out_true):
     correct_prediction = tf.equal(tf.argmax(out, 1), tf.argmax(out_true, 1))
     ncorrect = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
-    wrong_inds = correct_prediction
+    right_inds = correct_prediction
     # wrong_inds = tf.reshape(tf.where(tf.argmax(out, 1) != tf.argmax(out_true, 1)), [-1,])
-    return ncorrect, wrong_inds
+    return ncorrect, right_inds
 
 ## Compute the confusion matrix
 # @param net the network object
