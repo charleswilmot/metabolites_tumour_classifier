@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import logging as log
 import numpy as np
 import matplotlib.pylab as pylab
-import tsne
+# import tsne
 import ipdb
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
@@ -70,29 +70,32 @@ def accuracy_figure(args, data, training=False):
     logger.info("Accuracy plot saved")
 
 
-def accuracy_loss_figure(args, data, training=False):
+def accuracy_loss_figure(args, data, training=False, epoch=0):
     f = plt.figure()
     ax = f.add_subplot(121)
     accuracy_plot(ax, data, training=training)
     ax = f.add_subplot(122)
     loss_plot(ax, data, training=training)
     plt.tight_layout()
-    f.savefig(args.output_path + '/accuracy_loss_step_{}.png'.format(data["current_step"]))
+    if training:
+        f.savefig(args.output_path + '/accuracy_loss_step_{}-epoch-{}.png'.format(data["current_step"], epoch))
+    else:
+        f.savefig(args.output_path + '/accuracy_loss_step_{}.png'.format("VALID"))
     plt.close()
     logger.info("Accuracy + Loss plot saved")
 
 
-def all_figures(args, data, training=False):
+def all_figures(args, data, training=False, epoch=0):
     # loss_figure(args, data, training=training)
     # accuracy_figure(args, data, training=training)
-    accuracy_loss_figure(args, data, training=training)
-    # plot_confusion_matrix(args, data, ifnormalize=False)
-    plot_wrong_examples(args, data)
+    accuracy_loss_figure(args, data, training=training, epoch=epoch)
+    plot_confusion_matrix(args, data, ifnormalize=False, training=training)
+    plot_wrong_examples(args, data, training=training)
     # plot_tsne(args, data)
     # plot_hierarchy_cluster(args, data)
 
 
-def plot_confusion_matrix(args, data, ifnormalize=False):
+def plot_confusion_matrix(args, data, ifnormalize=False, training=False):
     """
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
@@ -119,11 +122,14 @@ def plot_confusion_matrix(args, data, ifnormalize=False):
             plt.text(j, i, np.int(cm[i, j]*100)/100.0, horizontalalignment="center", color="darkorange", size=20)
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    f.savefig(args.output_path + '/confusion_matrix_step_{}.png'.format(data["current_step"]))
+    if training:
+        f.savefig(args.output_path + '/confusion_matrix_step_{}.png'.format(data["current_step"]))
+    else:
+        f.savefig(args.output_path + '/confusion_matrix_step_{}.png'.format("VALID"))
     plt.close()
     logger.info("Confusion matrix saved")
 
-def plot_wrong_examples(args, data):
+def plot_wrong_examples(args, data, training=False):
     """
     Plot the wrongly classified examples
     :param args: contains hyperparams
@@ -134,6 +140,7 @@ def plot_wrong_examples(args, data):
     labels = np.argmax(data["test_wrong_labels"], axis=1)
     colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
     num_classes = data["test_wrong_labels"].shape[-1]
+    plt.title("Mistakes")
     for i in range(num_classes):
         ax = f.add_subplot(num_classes, 1, i+1)
         if len(data["test_wrong_features"][labels==i, :]) != 0:
@@ -142,8 +149,10 @@ def plot_wrong_examples(args, data):
         plt.setp(ax.get_xticklabels(), visible=False)
         plt.legend(loc="best")
         f.subplots_adjust(hspace=0)
-    plt.title("Mistakes")
-    f.savefig(args.output_path + '/{}-class_wrong_examples_{}.png'.format(num_classes, data["current_step"]))
+    if training:
+        f.savefig(args.output_path + '/{}-class_wrong_examples_{}.png'.format(num_classes, data["current_step"]))
+    else:
+        f.savefig(args.output_path + '/{}-class_wrong_examples_{}.png'.format(num_classes, "VALID"))
     plt.close()
     logger.info("Mistakes plot saved")
 

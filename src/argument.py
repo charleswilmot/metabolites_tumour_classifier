@@ -9,6 +9,7 @@ import sys
 import logging as log
 import tensorflow as tf
 import dataio
+import datetime
 
 #
 PADDING_SIZE = 35
@@ -211,12 +212,12 @@ parser.add_argument(
 subparsers = parser.add_subparsers(dest="test_or_train")
 
 train_parser = subparsers.add_parser("train")
-train_parser.add_argument(
-    'output_path', metavar='OUTPUT',
-    type=log_debug_arg(str, "Output path:"),
-    nargs='?', default='../results',
-    help="Path to the output data."
-)
+# train_parser.add_argument(
+#     'output_path', metavar='OUTPUT',
+#     type=log_debug_arg(str, "Output path:"),
+#     nargs='?', default='../results',
+#     help="Path to the output data."
+# )
 
 train_parser.add_argument(
     '--restore_from', type=log_debug_arg(str, "Restore model from:"),
@@ -237,12 +238,12 @@ test_parser.add_argument(
     help="Path to a previously trained model."
 )
 
-test_parser.add_argument(
-    'output_path', metavar='OUTPUT',
-    type=log_debug_arg(str, "Output path:"),
-    nargs='?', default='./',
-    help="Path to the output data."
-)
+# test_parser.add_argument(
+#     'output_path', metavar='OUTPUT',
+#     type=log_debug_arg(str, "Output path:"),
+#     nargs='?', default='./',
+#     help="Path to the output data."
+# )
 
 test_parser.add_argument(
     '-x', '--data-not-labeled', action='store_true',
@@ -272,16 +273,20 @@ assert os.path.isfile(json_path), "No json file found at {}, run build_vocab.py"
 params.update(json_path, mode=args.model_name) # update params with the model configuration
 
 # specify some params
-params.output_path = args.output_path
+time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
+params.output_path = os.path.join(params.output_path,
+                                time_str + "-class-{}-{}".format(params.num_classes, args.test_or_train))
+params.model_save_dir = os.path.join(params.output_path, "network")
 params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from
 params.model_name = args.model_name
 params.test_or_train = args.test_or_train
 params.resume_training = (args.restore_from != None)
-params.model_save_dir = os.path.join(params.output_path, 'network')
+
 
 # Make the output directory
 dataio.make_output_dir(params)
+
 
 # Verbosity level:
 level = 50 - (args.verbose * 10) + 1
@@ -290,7 +295,7 @@ ch = log.StreamHandler()
 ch.setLevel(level)
 formatter = log.Formatter(" " * 12 + '%(message)s\r' + '[\033[1m%(levelname)s\033[0m]')
 ch.setFormatter(formatter)
-fh = log.FileHandler(args.output_path + "/summary.log")
+fh = log.FileHandler(params.output_path + "/summary.log")
 fh.setLevel(1)
 formatter = log.Formatter('[%(levelname)s] %(message)s\r')
 fh.setFormatter(formatter)

@@ -30,7 +30,6 @@ spectra, labels = dataio.get_data(args)
 data_tensors = dataio.get_data_tensors(args, spectra, labels)
 graph = graph.get_graph(args, data_tensors)
 with tf.Session() as sess:
-    procedure.initialize(sess, graph, args.test_or_train == 'test')
     output_data = procedure.run(sess, args, graph)
     if args.test_or_train == "train":
         dataio.save_plots(sess, args, output_data, training=True)

@@ -12,8 +12,8 @@
             "out_format": "m",
             "data_len": 288,
 
-            "output_path": "results/",
-            "model_save_dir": "results/",
+            "output_path": "../results/",
+            "model_save_dir": null,
             "restore_from": null,
 
             "model_name": "MLP",
@@ -24,16 +24,17 @@
 
         "train": {
             "number_of_epochs": 2000,
-            "test_every": 100,
-            "input_data": "../data/data-20190301.mat",
+            "test_every": 3,
+            "input_data": "../data/20190301-3class_lout_train_test_data.mat",
             "test_ratio": 30,
             "learning_rate": 0.0005,
-            "restore_from": null
+            "restore_from": null,
+            "num_train": null
 
         },
 
         "test":{
-            "input_data": "../data/2nd_data.mat",
+            "input_data": "../data/20190301-3class_lout_val_data.mat",
             "test_ratio": 100,
             "number_of_epochs": 2
 

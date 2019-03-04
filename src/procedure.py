@@ -118,13 +118,13 @@ def testing(sess, graph):
         "loss_sum": graph["test_loss_sum"],
         "confusion": graph["test_confusion"],
         "batch_size": graph["test_batch_size"],
-        "test_labels":graph["test_labels"],
-        "test_features":graph["test_features"],
-        "test_out":graph["test_out"],
+        "test_labels": graph["test_labels"],
+        "test_features": graph["test_features"],
+        "test_out": graph["test_out"],
         "test_wrong_inds": graph["test_wrong_inds"],
         "test_activity": graph["test_activity"]
     }
-    initialize(sess, graph, test_only=True)
+    # initialize(sess, graph, test_only=True)
     ret, tape_end = compute(sess, graph, fetches)
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     confusion = sum_confusion(ret)
@@ -153,7 +153,8 @@ def train_phase(sess, graph, nbatches): # change
         return None
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     confusion = sum_confusion(ret)
-    return {"accuracy": accuracy, "loss": loss, "confusion": confusion}
+    num_trained = sum([b["batch_size"] for b in ret])
+    return {"accuracy": accuracy, "loss": loss, "confusion": confusion, "num_trained": num_trained}
 
 
 ## Termination contition of the training
@@ -206,15 +207,20 @@ def training(sess, args, graph, saver):
     output_data["current_step"] = 0
     end = False
     best_accuracy = 0
+    epoch = 0
+    num_trained = 0
 
     while condition(end, output_data, args.number_of_epochs):
         # train phase
         ret = train_phase(sess, graph, args.test_every)
+
         if ret is not None:
             output_data["train_loss"].append(ret["loss"])
             output_data["train_accuracy"].append(ret["accuracy"])
         else:
             end = True
+        num_trained += ret["num_trained"]
+        epoch = num_trained / args.num_train
         logger.debug("Training phase done")
         # test phase
         ret = test_phase(sess, graph)
@@ -230,14 +236,14 @@ def training(sess, args, graph, saver):
         # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch
 
 
-        logger.debug("Testing phase done\t({})".format(ret["test_accuracy"]))
+        logger.debug("Epoch {}, Testing phase done\t({})".format(epoch, ret["test_accuracy"]))
 
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:
             print("Best accuracy {}".format(output_data["test_accuracy"][-1]))
             best_accuracy = output_data["test_accuracy"][-1]
             save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
-            save_plots(sess, args, output_data, training=True)
+            save_plots(sess, args, output_data, training=True, epoch=epoch)
 
     logger.info("Training procedure done")
     return output_data
@@ -258,6 +264,8 @@ def run(sess, args, graph):
         logger.info("Initializing network with random weights")
         sess.run(tf.global_variables_initializer())
     if args.test_or_train == 'train':
+        initialize(sess, graph, test_only=False)
         return training(sess, args, graph, saver)
     else:
+        initialize(sess, graph, test_only=True)
         return testing(sess, graph)

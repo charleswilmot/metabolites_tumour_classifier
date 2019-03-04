@@ -14,6 +14,95 @@ import random
 logger = log.getLogger("classifier")
 
 
+def get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=0):
+    """
+    Get fixed ratio of val data from different numbers of each class
+    :param labels: array
+    :param ids: a
+    :param num_val: int
+    :param spectra: array
+    :param train_test: dict, "features", "labels", "ids"
+    :param validate: dict, with "features", "labels", "ids"
+    :param class_id: the id of the class
+    :return:
+    """
+
+    indices = np.where(labels == class_id)[0]
+    random.shuffle(indices)
+    val_inds = indices[0: np.int(num_val)]
+    train_test_inds = indices[np.int(num_val):]
+    train_test["features"] = np.vstack((train_test["features"], spectra[train_test_inds, :]))
+    train_test["labels"] = np.append(train_test["labels"], labels[train_test_inds])
+    train_test["ids"] = np.append(train_test["ids"], ids[train_test_inds])
+
+    validate["features"] = np.vstack((validate["features"], spectra[val_inds, :]))
+    validate["labels"] = np.append(validate["labels"],labels[val_inds])
+    validate["ids"] = np.append(validate["ids"], ids[val_inds])
+
+    return train_test, validate
+
+
+def pick_lout_ids(ids, num_lout=1):
+    """
+    Leave out several subjects for validation
+    :param labels:
+    :param ids:
+    :param leave_out_id:
+    :param spectra:
+    :param train_test:
+    :param validate:
+    :return:
+    """
+
+    from collections import Counter
+    count = dict(Counter(list(ids)))  # count the num of samples of each id
+    lout_ids = np.random.choice(list(count.keys()), num_lout)
+    return lout_ids
+
+
+def split_data_for_lout_val(args):
+    """
+    Split the original data in leave several subjects
+    :param args:
+    :return: save two .mat files
+    """
+    mat = scipy.io.loadmat(args.input_data)["DATA"]
+    spectra = mat[:, 2:]
+    labels = mat[:, 1]
+    ids = mat[:, 0]
+    train_test = {}
+    validate = {}
+    validate["features"] = np.empty((0, 288))
+    validate["labels"] = np.empty((0))
+    validate["ids"] = np.empty((0))
+
+    lout_ids = pick_lout_ids(ids, num_lout=20)  # leave 10 subjects out
+    all_inds = np.empty((0))
+    for id in lout_ids:
+        inds = np.where(ids == id)[0]
+        all_inds = np.append(all_inds, inds)
+        validate["features"] = np.vstack((validate["features"], spectra[inds, :]))
+        validate["labels"] = np.append(validate["labels"], labels[inds])
+        validate["ids"] = np.append(validate["ids"], ids[inds])
+    train_test_data = np.delete(mat, all_inds, axis=0)  # delete all leaved-out subjects
+    # ndData
+    val_mat = {}
+    train_test_mat = {}
+    val_mat["DATA"] = np.zeros((validate["labels"].size, 290))
+    val_mat["DATA"][:, 0] = validate["ids"]
+    val_mat["DATA"][:, 1] = validate["labels"]
+    val_mat["DATA"][:, 2:] = validate["features"]
+    train_test_mat["DATA"] = np.zeros((len(train_test_data), 290))
+    train_test_mat["DATA"][:, 0] = train_test_data[:, 0]
+    train_test_mat["DATA"][:, 1] = train_test_data[:, 1]
+    train_test_mat["DATA"][:, 2:] = train_test_data[:, 2:]
+    scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_lout_val_data.mat'.format(args.num_classes),
+                     val_mat)
+    scipy.io.savemat(
+        os.path.dirname(args.input_data) + '/{}class_lout_train_test_data.mat'.format(args.num_classes),
+        train_test_mat)
+
+
 def split_data_for_val(args):
     """
     Split the original data into train_test set and validate set
@@ -24,50 +113,37 @@ def split_data_for_val(args):
     spectra = mat[:, 2:]
     labels = mat[:, 1]
     ids = mat[:, 0]
-    validate_features = np.empty((0, 288))
-    validate_labels = np.empty((0))
-    validate_ids = np.empty((0))
-    train_test_features = np.empty((0, 288))
-    train_test_labels = np.empty((0))
-    train_test_ids = np.empty((0))
-    num_val = 50
+    train_test = {}
+    validate = {}
+    validate["features"] = np.empty((0, 288))
+    validate["labels"] = np.empty((0))
+    validate["ids"] = np.empty((0))
+    train_test["features"]= np.empty((0, 288))
+    train_test["labels"] = np.empty((0))
+    train_test["ids"] = np.empty((0))
+
+    num_val = 100   # leave 100 samples from each class out
     if args.num_classes == 2:
-        for id in range(6):
-            indices = np.where(labels == id)[0]
-            random.shuffle(indices)
-            val_inds = indices[0: np.int(num_val)]
-            train_test_inds = indices[np.int(num_val):]
-            train_test_features = np.vstack((train_test_features, spectra[train_test_inds, :]))
-            train_test_labels = np.append(train_test_labels, np.zeros((len(train_test_inds))) + (id % 2))
-            train_test_ids = np.append(train_test_ids, ids[train_test_inds])
-            validate_features = np.vstack((validate_features, spectra[val_inds, :]))
-            validate_labels = np.append(validate_labels, np.zeros((len(val_inds))) + (id % 2))
-            validate_ids = np.append(validate_ids, ids[val_inds])
+        for class_id in range(args.num_classes):
+            train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id)
+
     elif args.num_classes == 6:
-        for id in range(args.num_classes):
-            # pick same amount of samples for testing?
-            indices = np.where(labels == id)[0]
-            random.shuffle(indices)
-            val_inds = indices[0: np.int(num_val)]
-            train_test_inds = indices[np.int(num_val): ]
-            train_test_features = np.vstack((train_test_features, spectra[train_test_inds, :]))
-            train_test_labels = np.append(train_test_labels, labels[train_test_inds])
-            train_test_ids = np.append(train_test_ids, ids[train_test_inds])
-            validate_features = np.vstack((validate_features, spectra[val_inds, :]))
-            validate_labels = np.append(validate_labels, labels[val_inds])
-            validate_ids = np.append(validate_ids, ids[val_inds])
-    # -v - vv test.. / results / 6class_MLP_with_batchnorm0.25 / network.. / results / validation / 6class_MLP_with_batchnorm0.25_2
-    # ndData
+        for class_id in range(args.num_classes):
+            train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id)
+    elif args.num_classes == 3: # ()
+        for class_id in range(args.num_classes):
+            train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id)
+    ### ndData
     val_mat = {}
     train_test_mat = {}
-    val_mat["DATA"] = np.zeros((validate_labels.size, 290))
-    val_mat["DATA"][:, 0] = validate_ids
-    val_mat["DATA"][:, 1] = validate_labels
-    val_mat["DATA"][:, 2:] = validate_features
-    train_test_mat["DATA"] = np.zeros((train_test_labels.size, 290))
-    train_test_mat["DATA"][:, 0] = train_test_ids
-    train_test_mat["DATA"][:, 1] = train_test_labels
-    train_test_mat["DATA"][:, 2:] = train_test_features
+    val_mat["DATA"] = np.zeros((validate["labels"].size, 290))
+    val_mat["DATA"][:, 0] = validate["ids"]
+    val_mat["DATA"][:, 1] = validate["labels"]
+    val_mat["DATA"][:, 2:] = validate["features"]
+    train_test_mat["DATA"] = np.zeros((train_test["labels"].size, 290))
+    train_test_mat["DATA"][:, 0] = train_test["ids"]
+    train_test_mat["DATA"][:, 1] = train_test["labels"]
+    train_test_mat["DATA"][:, 2:] = train_test["features"]
     scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_val_data.mat'.format(args.num_classes, num_val), val_mat)
     scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_train_test_data.mat'.format(args.num_classes, num_val), train_test_mat)
 
@@ -84,12 +160,11 @@ def get_data(args, ifmydata=False):
     np.random.shuffle(inds)
     spectra = mat[inds, 2:]
     labels = mat[inds, 1]
-    # num_val = len(spectra) *
+    # Split the data into train-test-val and save into txt. Use this line when it is the first time to process data.
+    # split_data_for_val(args)
+    # split_data_for_lout_val(args)
 
     assert args.num_classes != np.max(labels), "The number of class doesn't match the data!"
-
-    # Split into train, val, test.
-
 
     return spectra.astype(np.float32), np.squeeze(labels).astype(np.int32)
 
@@ -100,16 +175,17 @@ def get_data_tensors(args, spectra, labels):
 
     data = {}
     spectra, labels = tf.constant(spectra), tf.constant(labels)
-    dataset = tf.data.Dataset.from_tensor_slices((spectra, labels)).shuffle(buffer_size=10000)
+    dataset = tf.data.Dataset.from_tensor_slices((spectra, labels))
     # train and test split
-    num_train = int(((100 - args.test_ratio) * spectra.get_shape().as_list()[0]) // 100)
-    train_ds = dataset.take(num_train).shuffle(buffer_size=num_train // 2).repeat(args.number_of_epochs).batch(args.batch_size)
-    test_ds = dataset.skip(num_train).batch(args.batch_size)
+    args.num_train = int(((100 - args.test_ratio) * spectra.get_shape().as_list()[0]) // 100)
+    train_ds = dataset.take(args.num_train).shuffle(buffer_size=args.num_train // 2).repeat(args.number_of_epochs).batch(args.batch_size)
+    test_ds = dataset.skip(args.num_train).batch(args.batch_size)
     iter_test = test_ds.make_initializable_iterator()
     data["test_initializer"] = iter_test.initializer
     batch_test = iter_test.get_next()
     data["test_labels"] = tf.one_hot(batch_test[1], args.num_classes)
     data["test_features"] = batch_test[0]
+
     if args.test_or_train == 'train':
         iter_train = train_ds.make_initializable_iterator()
         batch_train = iter_train.get_next()
@@ -122,12 +198,11 @@ def get_data_tensors(args, spectra, labels):
 ## Make the output dir
 # @param args the arguments passed to the software
 def make_output_dir(args):
-    path = args.output_path
-    if os.path.isdir(path):
+    if os.path.isdir(args.output_path):
         logger.critical("Output path already exists. Please use an other path.")
         raise FileExistsError("Output path already exists.")
     else:
-        os.makedirs(path)
+        os.makedirs(args.output_path)
         if args.test_or_train == 'train':
             os.makedirs(args.model_save_dir)
 
@@ -138,9 +213,9 @@ def save_command_line(args):
         f.write(cmd)
 
 
-def save_plots(sess, args, output_data, training=False):
+def save_plots(sess, args, output_data, training=False, epoch=0):
     logger.info("Saving output data")
-    plot.all_figures(args, output_data, training=training)
+    plot.all_figures(args, output_data, training=training, epoch=epoch)
     logger.info("Output data saved to {}".format("TODO"))
 
 
