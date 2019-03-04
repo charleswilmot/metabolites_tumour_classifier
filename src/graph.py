@@ -62,7 +62,7 @@ class MLP:
         initializer = tf.contrib.layers.xavier_initializer()
         for in_size, out_size, batch_norm in zip(self.layer_dims[0:-1], self.layer_dims[1:], self.batch_norms):
             # random = tf.truncated_normal(stddev=0.01, shape=(in_size, out_size))
-            W = tf.Variable(initializer((in_size, out_size)))
+            W = tf.Variable(initializer((in_size, out_size)), dtype=tf.float32)
             B = None if batch_norm else tf.Variable(tf.zeros(shape=(1, out_size)))
             self.weights.append(W)
             self.biases.append(B)
@@ -95,7 +95,9 @@ class MLP:
         logger.debug(string.format(*_to_format))
         W = self.weights[layer_number]
         B = self.biases[layer_number]
+        print("-------Building network-----------")
         with tf.variable_scope(layer_name):
+
             net = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
             net = tf.layers.batch_normalization(
                 net,
@@ -104,6 +106,7 @@ class MLP:
                 name=layer_name) if batch_norm else net
             net = net if activation is None else activation(net)
             net = tf.layers.dropout(net, rate=dropout, training=training) if dropout != 0 else net
+            print("layer: {}, in_size:{}, out_size:{}".format(layer_name, W.get_shape().as_list()[0], W.get_shape().as_list()[1]))
             return net
 
 

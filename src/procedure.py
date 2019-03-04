@@ -124,7 +124,7 @@ def testing(sess, graph):
         "test_wrong_inds": graph["test_wrong_inds"],
         "test_activity": graph["test_activity"]
     }
-    # initialize(sess, graph, test_only=True)
+    initialize(sess, graph, test_only=True)
     ret, tape_end = compute(sess, graph, fetches)
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     confusion = sum_confusion(ret)
@@ -220,7 +220,7 @@ def training(sess, args, graph, saver):
         else:
             end = True
         num_trained += ret["num_trained"]
-        epoch = num_trained / args.num_train
+        epoch = num_trained * 1.0 / args.num_train
         logger.debug("Training phase done")
         # test phase
         ret = test_phase(sess, graph)

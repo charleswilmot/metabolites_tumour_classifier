@@ -26,7 +26,7 @@
             "number_of_epochs": 2000,
             "test_every": 3,
             "input_data": "../data/20190301-3class_lout_train_test_data.mat",
-            "test_ratio": 30,
+            "test_ratio": 15,
             "learning_rate": 0.0005,
             "restore_from": null,
             "num_train": null

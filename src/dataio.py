@@ -10,6 +10,7 @@ import plot
 import tensorflow as tf
 import scipy.io
 import random
+from sklearn.model_selection import train_test_split
 
 logger = log.getLogger("classifier")
 
@@ -148,7 +149,7 @@ def split_data_for_val(args):
     scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_train_test_data.mat'.format(args.num_classes, num_val), train_test_mat)
 
 
-def get_data(args, ifmydata=False):
+def get_data(args):
     """
     Load self_saved data. A dict, data["features"], data["labels"]. See the save function in split_data_for_val()
     :param args: Param object with path to the data
@@ -160,9 +161,10 @@ def get_data(args, ifmydata=False):
     np.random.shuffle(inds)
     spectra = mat[inds, 2:]
     labels = mat[inds, 1]
-    # Split the data into train-test-val and save into txt. Use this line when it is the first time to process data.
-    # split_data_for_val(args)
-    # split_data_for_lout_val(args)
+    train_data = {}
+    test_data = {}
+    # First time preprocess data functions are needed: split_data_for_val(args),split_data_for_lout_val(args)
+    # train_data["features"], test_data["features"], train_data["labels"], test_data["labels"] = train_test_split(spectra, labels, test_size = args.test_ratio/100.0, random_state = 42)
 
     assert args.num_classes != np.max(labels), "The number of class doesn't match the data!"
 
@@ -171,21 +173,21 @@ def get_data(args, ifmydata=False):
 
 ## Get batches of data in tf.dataset
 # @param args the arguments passed to the software
+# @param train_data dict, "features", "labels"
+# @param test_data dict, "features", "labels"
 def get_data_tensors(args, spectra, labels):
-
     data = {}
     spectra, labels = tf.constant(spectra), tf.constant(labels)
     dataset = tf.data.Dataset.from_tensor_slices((spectra, labels))
     # train and test split
     args.num_train = int(((100 - args.test_ratio) * spectra.get_shape().as_list()[0]) // 100)
-    train_ds = dataset.take(args.num_train).shuffle(buffer_size=args.num_train // 2).repeat(args.number_of_epochs).batch(args.batch_size)
+    train_ds = dataset.take(args.num_train).shuffle(buffer_size=args.num_train).repeat(args.number_of_epochs).batch(args.batch_size)
     test_ds = dataset.skip(args.num_train).batch(args.batch_size)
     iter_test = test_ds.make_initializable_iterator()
     data["test_initializer"] = iter_test.initializer
     batch_test = iter_test.get_next()
     data["test_labels"] = tf.one_hot(batch_test[1], args.num_classes)
     data["test_features"] = batch_test[0]
-
     if args.test_or_train == 'train':
         iter_train = train_ds.make_initializable_iterator()
         batch_train = iter_train.get_next()
@@ -193,6 +195,33 @@ def get_data_tensors(args, spectra, labels):
         data["train_features"] = batch_train[0]
         data["train_initializer"] = iter_train.initializer
     return data
+
+
+# def get_data_tensors(args, train_data, test_data):
+
+    # data = {}
+    # train_spectra, train_labels = tf.constant(train_data["features"]), tf.constant(train_data["labels"])
+    # train_ds = tf.data.Dataset.from_tensor_slices((train_spectra, train_labels)).shuffle(buffer_size=10000).repeat().batch(args.batch_size)
+    #
+    # test_spectra, test_labels = tf.constant(test_data["features"]), tf.constant(test_data["labels"])
+    # test_ds = tf.data.Dataset.from_tensor_slices((test_spectra, test_labels)).shuffle(buffer_size=5000).repeat().batch(args.test_batch_size)
+    #
+    # # train and test split
+    # args.num_train = train_spectra.get_shape().as_list()[0]
+    #
+    # iter_test = test_ds.make_initializable_iterator()
+    # data["test_initializer"] = iter_test.initializer
+    # batch_test = iter_test.get_next()
+    # data["test_labels"] = tf.one_hot(batch_test[1], args.num_classes)
+    # data["test_features"] = batch_test[0]
+    #
+    # if args.test_or_train == 'train':
+    #     iter_train = train_ds.make_initializable_iterator()
+    #     batch_train = iter_train.get_next()
+    #     data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
+    #     data["train_features"] = batch_train[0]
+    #     data["train_initializer"] = iter_train.initializer
+    # return data
 
 
 ## Make the output dir

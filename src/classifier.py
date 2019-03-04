@@ -13,6 +13,8 @@ import procedure
 import logging as log
 import tensorflow as tf
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 
 
 logger = log.getLogger("classifier")
@@ -26,8 +28,8 @@ if args.seed is not None:
 # if args.seed != 2594:   # every time change the random seed should save the data again
 # dataio.split_data_for_val(args)
 
-spectra, labels = dataio.get_data(args)
-data_tensors = dataio.get_data_tensors(args, spectra, labels)
+train_data, test_data = dataio.get_data(args)
+data_tensors = dataio.get_data_tensors(args, train_data, test_data)
 graph = graph.get_graph(args, data_tensors)
 with tf.Session() as sess:
     output_data = procedure.run(sess, args, graph)
