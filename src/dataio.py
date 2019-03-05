@@ -164,10 +164,7 @@ def get_data(args):
     train_data = {}
     test_data = {}
     # First time preprocess data functions are needed: split_data_for_val(args),split_data_for_lout_val(args)
-    # train_data["features"], test_data["features"], train_data["labels"], test_data["labels"] = train_test_split(spectra, labels, test_size = args.test_ratio/100.0, random_state = 42)
-
     assert args.num_classes != np.max(labels), "The number of class doesn't match the data!"
-
     return spectra.astype(np.float32), np.squeeze(labels).astype(np.int32)
 
 
@@ -232,8 +229,10 @@ def make_output_dir(args):
         raise FileExistsError("Output path already exists.")
     else:
         os.makedirs(args.output_path)
-        if args.test_or_train == 'train':
-            os.makedirs(args.model_save_dir)
+        os.makedirs(args.model_save_dir)
+        # copy and save all the files
+        copy_save_all_files(args)
+
 
 
 def save_command_line(args):
@@ -287,3 +286,28 @@ def save_my_model(saver, sess, save_dir, step, name=None):
         os.makedirs(save_dir)
     saver.save(sess, checkpoint_path, global_step=step)
     logger.info('Done.')
+
+
+def copy_save_all_files(args):
+    """
+    Copy and save all files related to model directory
+    :param args:
+    :return:
+    """
+    src_dir = '../src'  ## the dir of original files
+    save_dir = os.path.join(args.model_save_dir, 'src')
+    if not os.path.exists(save_dir):  # if subfolder doesn't exist, should make the directory and then save file.
+        os.makedirs(save_dir)
+
+    for filename in os.listdir(src_dir):
+        src_file_name = os.path.join(src_dir, filename)
+        target_file_name = os.path.join(save_dir, filename)
+        try:
+            with open(src_file_name, 'r') as file_src:
+                with open(target_file_name, 'w') as file_dst:
+                    for line in file_src:
+                        file_dst.write(line)
+        except:
+            print('WithCopy Failed!')
+        finally:
+            print('Done WithCopy File!')
