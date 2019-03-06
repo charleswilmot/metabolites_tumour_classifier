@@ -197,7 +197,6 @@ def oversample_train(train_data, num_classes):
     from imblearn.over_sampling import RandomOverSampler
     ros = RandomOverSampler(random_state=34)
     X_resampled, y_resampled = ros.fit_resample(train_data["spectra"], train_data["labels"])
-
     train_data["spectra"] = X_resampled
     train_data["labels"] = y_resampled
     
