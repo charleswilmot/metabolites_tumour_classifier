@@ -148,8 +148,7 @@ class CNN:
         """
         layer_number = 1
         out = inp
-        for (out_ch, bn, activation, drop) in zip(self.out_channels, self.bn_cnn,
-                                                        self.activations_cnn, self.drop_cnn):
+        for (out_ch, bn, activation, drop) in zip(self.out_channels, self.bn_cnn, self.activations_cnn, self.drop_cnn):
             out = self._make_cnn_layer(out, out_ch, bn, activation, drop, layer_number, training)
             layer_number += 1
 
@@ -164,9 +163,9 @@ class CNN:
         """
         layer_number = 1
         out = tf.layers.flatten(inp)
-        for (out_dim, bn, activation, drop) in zip(self.fc_dims, self.bn_cnn,
-                                                   self.activations_cnn, self.drop_cnn):
+        for (out_dim, bn, activation, drop) in zip(self.fc_dims, self.bn_cnn, self.activations_cnn, self.drop_cnn):
             out = self._make_fnn_layer(out, out_dim, bn, activation, drop, layer_number, training)
+            layer_number += 1
 
         return out
 
@@ -182,18 +181,15 @@ class CNN:
     # @param training, bool
     def _make_cnn_layer(self, inp, out_ch, bn, activation, drop, layer_number, training):
         _to_format = [out_ch, bn, drop, activation, training]
-        layer_name = "layer_{}".format(layer_number + 1)
+        layer_name = "cnn_layer_{}".format(layer_number + 1)
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
-        with tf.variable_scope(layer_name):
+        with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
             out = tf.layers.conv1d(inp, out_ch, self.kernel_size, 1, padding='SAME')
             out = tf.layers.max_pooling1d(out, self.pool_size, self.pool_size, padding="SAME")
             out = tf.layers.batch_normalization(
-                out,
-                training=training,
-                reuse=self._net_constructed_once,
-                name=layer_name) if bn else out
+                out, training=training) if bn else out
             out = out if activation is None else activation(out)
             out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
         return out
@@ -206,17 +202,14 @@ class CNN:
     # @param activation activation function
     def _make_fnn_layer(self, inp, out_dim, bn, activation, drop, layer_number, training):
         _to_format = [out_dim, bn, drop, activation, training]
-        layer_name = "layer_{}".format(layer_number + 1)
+        layer_name = "fc_layer_{}".format(layer_number)
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
-        with tf.variable_scope(layer_name):
+        with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
             out = tf.layers.dense(inp, out_dim, activation=activation)
             out = tf.layers.batch_normalization(
-                out,
-                training=training,
-                reuse=self._net_constructed_once,
-                name=layer_name) if bn else out
+                out, training=training) if bn else out
             out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
         return out
 

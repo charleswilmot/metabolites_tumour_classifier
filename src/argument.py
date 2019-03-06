@@ -10,6 +10,7 @@ import logging as log
 import tensorflow as tf
 import dataio
 import datetime
+import ipdb
 
 #
 PADDING_SIZE = 35
@@ -200,10 +201,6 @@ parser.add_argument(
     help="Json file path for model parameters"
 )
 parser.add_argument(
-    '-model_name', default="MLP",
-    help="Name of the model."
-)
-parser.add_argument(
     '-A', '--activations', type=activation, action='store', nargs='+',
     default=['lrelu', 'lrelu', 'lrelu', 'lrelu', 'sigmoid'],
     help="Activation functions for every layer. Taken in 'lrelu', 'relu', 'sigmoid', 'tanh'"
@@ -270,16 +267,16 @@ params.update(json_path, mode=args.test_or_train)
 # load model specific parameters
 json_path = args.model_config
 assert os.path.isfile(json_path), "No json file found at {}, run build_vocab.py".format(json_path)
-params.update(json_path, mode=args.model_name) # update params with the model configuration
+params.update(json_path, mode=params.model_name) # update params with the model configuration
 
 # specify some params
 time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
+
 params.output_path = os.path.join(params.output_path,
                                 time_str + "-class-{}-{}".format(params.num_classes, args.test_or_train))
 params.model_save_dir = os.path.join(params.output_path, "network")
 params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from
-params.model_name = args.model_name
 params.test_or_train = args.test_or_train
 params.resume_training = (args.restore_from != None)
 

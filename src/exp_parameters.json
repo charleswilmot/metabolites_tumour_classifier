@@ -16,7 +16,7 @@
             "model_save_dir": null,
             "restore_from": null,
 
-            "model_name": "MLP",
+            "model_name": "CNN",
             "optimizer_type": "adam",
             "loss_type": "mse",
             "learning_rate": 0.0005

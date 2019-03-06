@@ -28,10 +28,10 @@ def loss_plot(ax, data, training=False):
         train_loss = data["train_loss"]
         ax.plot(range(1, len(train_loss) + 1), train_loss, color='darkviolet', linestyle='--', marker='o', label='Train', alpha=0.8)
         test_loss = data["test_loss"]
-        ax.plot(range(1, len(test_loss) + 1), test_loss, color='g', linestyle='--', marker='*', label='Test', alpha=0.8)
+        ax.plot(range(1, len(test_loss) + 1), test_loss, color='g', linestyle='--', marker='*', label='Validation', alpha=0.8)
     else:
         test_loss = [data["test_loss"]]
-        ax.plot(range(1, len(test_loss) + 1), np.array(test_loss), color='g', linestyle='--', marker='*', label='Test', alpha=0.8)
+        ax.plot(range(1, len(test_loss) + 1), np.array(test_loss), color='g', linestyle='--', marker='*', label='Validation', alpha=0.8)
     ax.set_title("Loss")
     ax.legend(loc="best")
 
@@ -41,17 +41,17 @@ def accuracy_plot(ax, data, training=False):
         train_accuracy = data["train_accuracy"]
         ax.plot(range(1, len(train_accuracy) + 1), train_accuracy, color='darkviolet', linestyle='--', marker='o', label='Train', alpha=0.8)
         test_accuracy = data["test_accuracy"]
-        ax.plot(range(1, len(test_accuracy) + 1), test_accuracy, color='g', linestyle='--', marker='*',label='Test', alpha=0.8)
+        ax.plot(range(1, len(test_accuracy) + 1), test_accuracy, color='g', linestyle='--', marker='*',label='Validation', alpha=0.8)
         highest = max(test_accuracy)
     else:
         test_accuracy = data["test_accuracy"]
-        ax.plot(range(1, test_accuracy.size + 1), test_accuracy, color='g', linestyle='--', marker='*', label='Test',
+        ax.plot(range(1, test_accuracy.size + 1), test_accuracy, color='g', linestyle='--', marker='*', label='Validation',
                 alpha=0.8)
         highest = test_accuracy
     ax.plot([np.argmax(test_accuracy) + 1, 0], [highest, highest], '-.k')
-    plt.text(np.argmax(test_accuracy) + 1, highest, "%.3f" % (highest), horizontalalignment="center", color="k", size=18)
+    plt.text(np.argmax(test_accuracy) + 1, highest, "%.4f" % (highest), horizontalalignment="center", color="k", size=18)
     ax.set_title("Accuracy")
-    ax.legend(loc="best")
+    ax.legend(loc="lower right")
 
 
 def loss_figure(args, data, training=False):

@@ -129,10 +129,10 @@ def testing(sess, graph):
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     confusion = sum_confusion(ret)
     wrong_features, wrong_labels = get_wrong_examples(ret)
-    activity = get_activity(ret)
+    # activity = get_activity(ret)
     test_labels = concat_labels(ret, key="test_labels")
 
-    return {"test_accuracy": accuracy, "test_loss": loss, "test_confusion": confusion, "test_wrong_features": wrong_features, "test_wrong_labels": wrong_labels, "test_activity": activity, "test_labels": test_labels}
+    return {"test_accuracy": accuracy, "test_loss": loss, "test_confusion": confusion, "test_wrong_features": wrong_features, "test_wrong_labels": wrong_labels, "test_labels": test_labels}
 
 
 test_phase = testing
@@ -230,7 +230,7 @@ def training(sess, args, graph, saver):
         output_data["test_confusion"] = ret["test_confusion"]
         output_data["test_wrong_features"] = ret["test_wrong_features"]
         output_data["test_wrong_labels"] = ret["test_wrong_labels"]
-        output_data["test_activity"] = ret["test_activity"]
+        # output_data["test_activity"] = ret["test_activity"]
         output_data["test_labels"] = ret["test_labels"]
         output_data["current_step"] += 1
         # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch

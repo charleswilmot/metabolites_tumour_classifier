@@ -10,8 +10,8 @@ import plot
 import tensorflow as tf
 import scipy.io
 import random
-from sklearn.model_selection import train_test_split
-
+# from sklearn.model_selection import train_test_split
+import ipdb
 logger = log.getLogger("classifier")
 
 
@@ -152,18 +152,27 @@ def split_data_for_val(args):
 def get_data(args):
     """
     Load self_saved data. A dict, data["features"], data["labels"]. See the save function in split_data_for_val()
+    # First time preprocess data functions are needed: split_data_for_val(args),split_data_for_lout_val(args)
     :param args: Param object with path to the data
     :return:
     """
-
     mat = scipy.io.loadmat(args.input_data)["DATA"]
-    inds = np.arange(len(mat))
-    np.random.shuffle(inds)
-    spectra = mat[inds, 2:]
-    labels = mat[inds, 1]
-    train_data = {}
-    test_data = {}
-    # First time preprocess data functions are needed: split_data_for_val(args),split_data_for_lout_val(args)
+    spectra = mat[:, 2:]
+    labels = mat[:, 1]
+
+    ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
+    if args.num_classes-1 < np.max(labels):
+        need_inds = np.empty((0))
+        for class_id in range(args.num_classes):
+            need_inds = np.append(need_inds, np.where(labels==class_id)[0])
+        need_inds = need_inds.astype(np.int32)
+        spectra = spectra[need_inds]
+        labels = labels[need_inds]
+
+    temp_rand = np.arange(len(labels))
+    np.random.shuffle(temp_rand)
+    spectra = spectra[temp_rand]
+    labels = labels[temp_rand]
     assert args.num_classes != np.max(labels), "The number of class doesn't match the data!"
     return spectra.astype(np.float32), np.squeeze(labels).astype(np.int32)
 
@@ -176,9 +185,8 @@ def get_data_tensors(args, spectra, labels):
     data = {}
     spectra, labels = tf.constant(spectra), tf.constant(labels)
     dataset = tf.data.Dataset.from_tensor_slices((spectra, labels))
-    # train and test split
     args.num_train = int(((100 - args.test_ratio) * spectra.get_shape().as_list()[0]) // 100)
-    train_ds = dataset.take(args.num_train).shuffle(buffer_size=args.num_train).repeat(args.number_of_epochs).batch(args.batch_size)
+    # train and test split
     test_ds = dataset.skip(args.num_train).batch(args.batch_size)
     iter_test = test_ds.make_initializable_iterator()
     data["test_initializer"] = iter_test.initializer
@@ -186,39 +194,15 @@ def get_data_tensors(args, spectra, labels):
     data["test_labels"] = tf.one_hot(batch_test[1], args.num_classes)
     data["test_features"] = batch_test[0]
     if args.test_or_train == 'train':
+        train_ds = dataset.take(args.num_train).shuffle(buffer_size=args.num_train).repeat().batch(
+            args.batch_size)
         iter_train = train_ds.make_initializable_iterator()
         batch_train = iter_train.get_next()
         data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
         data["train_features"] = batch_train[0]
         data["train_initializer"] = iter_train.initializer
+
     return data
-
-
-# def get_data_tensors(args, train_data, test_data):
-
-    # data = {}
-    # train_spectra, train_labels = tf.constant(train_data["features"]), tf.constant(train_data["labels"])
-    # train_ds = tf.data.Dataset.from_tensor_slices((train_spectra, train_labels)).shuffle(buffer_size=10000).repeat().batch(args.batch_size)
-    #
-    # test_spectra, test_labels = tf.constant(test_data["features"]), tf.constant(test_data["labels"])
-    # test_ds = tf.data.Dataset.from_tensor_slices((test_spectra, test_labels)).shuffle(buffer_size=5000).repeat().batch(args.test_batch_size)
-    #
-    # # train and test split
-    # args.num_train = train_spectra.get_shape().as_list()[0]
-    #
-    # iter_test = test_ds.make_initializable_iterator()
-    # data["test_initializer"] = iter_test.initializer
-    # batch_test = iter_test.get_next()
-    # data["test_labels"] = tf.one_hot(batch_test[1], args.num_classes)
-    # data["test_features"] = batch_test[0]
-    #
-    # if args.test_or_train == 'train':
-    #     iter_train = train_ds.make_initializable_iterator()
-    #     batch_train = iter_train.get_next()
-    #     data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
-    #     data["train_features"] = batch_train[0]
-    #     data["train_initializer"] = iter_train.initializer
-    # return data
 
 
 ## Make the output dir
@@ -232,6 +216,8 @@ def make_output_dir(args):
         os.makedirs(args.model_save_dir)
         # copy and save all the files
         copy_save_all_files(args)
+        print(args.input_data)
+        print(args.output_path)
 
 
 

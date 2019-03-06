@@ -6,6 +6,8 @@
 #  python3 classifier.py train -h\n
 #  python3 classifier.py test -h\n
 #  example: python3 classifier.py -b 20 -s 17845 train ../data/ ../results/ -e 100
+import matplotlib
+matplotlib.use('Agg')
 import graph
 import dataio
 import argument
@@ -13,8 +15,7 @@ import procedure
 import logging as log
 import tensorflow as tf
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
+
 
 
 logger = log.getLogger("classifier")
