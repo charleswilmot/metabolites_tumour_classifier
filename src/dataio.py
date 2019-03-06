@@ -57,7 +57,7 @@ def pick_lout_ids(ids, num_lout=1):
 
     from collections import Counter
     count = dict(Counter(list(ids)))  # count the num of samples of each id
-    lout_ids = np.random.choice(list(count.keys()), num_lout)
+    lout_ids = list(count.keys())[0:num_lout]
     return lout_ids
 
 
@@ -77,7 +77,7 @@ def split_data_for_lout_val(args):
     validate["labels"] = np.empty((0))
     validate["ids"] = np.empty((0))
 
-    lout_ids = pick_lout_ids(ids, num_lout=20)  # leave 10 subjects out
+    lout_ids = pick_lout_ids(ids, num_lout=args.num_lout)  # leave 10 subjects out
     all_inds = np.empty((0))
     for id in lout_ids:
         inds = np.where(ids == id)[0]
@@ -97,10 +97,10 @@ def split_data_for_lout_val(args):
     train_test_mat["DATA"][:, 0] = train_test_data[:, 0]
     train_test_mat["DATA"][:, 1] = train_test_data[:, 1]
     train_test_mat["DATA"][:, 2:] = train_test_data[:, 2:]
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_lout_val_data.mat'.format(args.num_classes),
+    scipy.io.savemat(os.path.dirname(args.input_data) + '/20190301-{}class_lout{}_val_data.mat'.format(args.num_classes, args.num_lout),
                      val_mat)
     scipy.io.savemat(
-        os.path.dirname(args.input_data) + '/{}class_lout_train_test_data.mat'.format(args.num_classes),
+        os.path.dirname(args.input_data) + '/20190301-{}class_lout{}_train_test_data.mat'.format(args.num_classes, args.num_lout),
         train_test_mat)
 
 
@@ -156,10 +156,12 @@ def get_data(args):
     :param args: Param object with path to the data
     :return:
     """
+    # split_data_for_lout_val(args)
     mat = scipy.io.loadmat(args.input_data)["DATA"]
     spectra = mat[:, 2:]
     labels = mat[:, 1]
-
+    train_data = {}
+    test_data = {}
     ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
     if args.num_classes-1 < np.max(labels):
         need_inds = np.empty((0))
@@ -171,30 +173,55 @@ def get_data(args):
 
     temp_rand = np.arange(len(labels))
     np.random.shuffle(temp_rand)
-    spectra = spectra[temp_rand]
-    labels = labels[temp_rand]
+    spectra_rand = spectra[temp_rand]
+    labels_rand = labels[temp_rand]
     assert args.num_classes != np.max(labels), "The number of class doesn't match the data!"
-    return spectra.astype(np.float32), np.squeeze(labels).astype(np.int32)
+    args.num_train = int(((100 - args.test_ratio) * spectra_rand.shape[0]) // 100)
+    train_data["spectra"] = spectra_rand[0:args.num_train].astype(np.float32)
+    train_data["labels"] = np.squeeze(labels_rand[0:args.num_train]).astype(np.int32)
+    test_data["spectra"] = spectra_rand[args.num_train:].astype(np.float32)
+    test_data["labels"] = np.squeeze(labels_rand[args.num_train:]).astype(np.int32)
+    
+    ## oversample the minority samples
+    train_data = oversample_train(train_data, args.num_classes)
+    
+    return train_data, test_data
 
 
+def oversample_train(train_data, num_classes):
+    """
+    Oversample the minority samples
+    :param train_data:"spectra", 2d array, "labels", 1d array
+    :return:
+    """
+    from imblearn.over_sampling import RandomOverSampler
+    ros = RandomOverSampler(random_state=34)
+    X_resampled, y_resampled = ros.fit_resample(train_data["spectra"], train_data["labels"])
+
+    train_data["spectra"] = X_resampled
+    train_data["labels"] = y_resampled
+    
+    return train_data
+    
+    
+    
 ## Get batches of data in tf.dataset
 # @param args the arguments passed to the software
 # @param train_data dict, "features", "labels"
 # @param test_data dict, "features", "labels"
-def get_data_tensors(args, spectra, labels):
+def get_data_tensors(args, train_data, test_data):
     data = {}
-    spectra, labels = tf.constant(spectra), tf.constant(labels)
-    dataset = tf.data.Dataset.from_tensor_slices((spectra, labels))
-    args.num_train = int(((100 - args.test_ratio) * spectra.get_shape().as_list()[0]) // 100)
-    # train and test split
-    test_ds = dataset.skip(args.num_train).batch(args.batch_size)
+    test_spectra, test_labels = tf.constant(test_data["spectra"]), tf.constant(test_data["labels"])
+    test_ds = tf.data.Dataset.from_tensor_slices((test_spectra, test_labels)).batch(args.batch_size)
+    
     iter_test = test_ds.make_initializable_iterator()
     data["test_initializer"] = iter_test.initializer
     batch_test = iter_test.get_next()
     data["test_labels"] = tf.one_hot(batch_test[1], args.num_classes)
     data["test_features"] = batch_test[0]
     if args.test_or_train == 'train':
-        train_ds = dataset.take(args.num_train).shuffle(buffer_size=args.num_train).repeat().batch(
+        train_spectra, train_labels = tf.constant(train_data["spectra"]), tf.constant(train_data["labels"])
+        train_ds = tf.data.Dataset.from_tensor_slices((train_spectra, train_labels)).shuffle(buffer_size=10000).repeat().batch(
             args.batch_size)
         iter_train = train_ds.make_initializable_iterator()
         batch_train = iter_train.get_next()

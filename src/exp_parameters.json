@@ -11,12 +11,13 @@
 
             "out_format": "m",
             "data_len": 288,
+            "num_lout": 30,
 
             "output_path": "../results/",
             "model_save_dir": null,
             "restore_from": null,
 
-            "model_name": "CNN",
+            "model_name": "MLP",
             "optimizer_type": "adam",
             "loss_type": "mse",
             "learning_rate": 0.0005
@@ -25,8 +26,8 @@
         "train": {
             "number_of_epochs": 2000,
             "test_every": 100,
-            "input_data": "../data/20190301-3class_lout_train_test_data.mat",
-            "test_ratio": 15,
+            "input_data": "../data/20190301-3class_lout30_train_test_data.mat",
+            "test_ratio": 10,
             "learning_rate": 0.0005,
             "restore_from": null,
             "num_train": null
@@ -34,7 +35,7 @@
         },
 
         "test":{
-            "input_data": "../data/20190301-3class_lout_val_data.mat",
+            "input_data": "../data/20190301-3class_lout30_val_data.mat",
             "test_ratio": 100,
             "number_of_epochs": 2
 
