@@ -89,7 +89,7 @@ def all_figures(args, data, training=False, epoch=0):
     # loss_figure(args, data, training=training)
     # accuracy_figure(args, data, training=training)
     accuracy_loss_figure(args, data, training=training, epoch=epoch)
-    plot_confusion_matrix(args, data, ifnormalize=False, training=training)
+    plot_confusion_matrix(args, data, ifnormalize=True, training=training)
     plot_wrong_examples(args, data, training=training)
     # plot_tsne(args, data)
     # plot_hierarchy_cluster(args, data)

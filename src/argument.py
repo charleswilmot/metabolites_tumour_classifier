@@ -273,7 +273,7 @@ params.update(json_path, mode=params.model_name) # update params with the model 
 time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
 
 params.output_path = os.path.join(params.output_path,
-                                time_str + "-class-{}-{}-{}".format(params.num_classes, params.model_name, args.test_or_train))
+                                time_str + "data-{}-class-{}-{}-{}".format(params.input_data[-20:-4], params.num_classes, params.model_name, args.test_or_train))
 params.model_save_dir = os.path.join(params.output_path, "network")
 params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from

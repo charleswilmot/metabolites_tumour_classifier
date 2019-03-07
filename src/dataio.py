@@ -43,7 +43,7 @@ def get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=0
     return train_test, validate
 
 
-def pick_lout_ids(ids, num_lout=1):
+def pick_lout_ids(ids, num_lout=1, start=0):
     """
     Leave out several subjects for validation
     :param labels:
@@ -57,11 +57,12 @@ def pick_lout_ids(ids, num_lout=1):
 
     from collections import Counter
     count = dict(Counter(list(ids)))  # count the num of samples of each id
-    lout_ids = list(count.keys())[0:num_lout]
+    lout_ids = list(count.keys())[num_lout*start : num_lout*(start+1)]
+    np.savetxt("../data/lout_ids_{}.csv".format(start), np.array(lout_ids), fmt="%.1f", delimiter=',')
     return lout_ids
 
 
-def split_data_for_lout_val(args):
+def split_data_for_lout_val(args, start=0):
     """
     Split the original data in leave several subjects
     :param args:
@@ -77,7 +78,7 @@ def split_data_for_lout_val(args):
     validate["labels"] = np.empty((0))
     validate["ids"] = np.empty((0))
 
-    lout_ids = pick_lout_ids(ids, num_lout=args.num_lout)  # leave 10 subjects out
+    lout_ids = pick_lout_ids(ids, num_lout=args.num_lout, start=start)  # leave 10 subjects out
     all_inds = np.empty((0))
     for id in lout_ids:
         inds = np.where(ids == id)[0]
@@ -97,11 +98,18 @@ def split_data_for_lout_val(args):
     train_test_mat["DATA"][:, 0] = train_test_data[:, 0]
     train_test_mat["DATA"][:, 1] = train_test_data[:, 1]
     train_test_mat["DATA"][:, 2:] = train_test_data[:, 2:]
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/20190301-{}class_lout{}_val_data.mat'.format(args.num_classes, args.num_lout),
-                     val_mat)
+    scipy.io.savemat(os.path.dirname(args.input_data) + '/20190301-{}class_lout{}_val_data{}.mat'.format(args.num_classes, args.num_lout, start), val_mat)
     scipy.io.savemat(
-        os.path.dirname(args.input_data) + '/20190301-{}class_lout{}_train_test_data.mat'.format(args.num_classes, args.num_lout),
-        train_test_mat)
+        os.path.dirname(args.input_data) + '/20190301-{}class_lout{}_train_test_data{}.mat'.format(args.num_classes, args.num_lout, start), train_test_mat)
+
+def get_cross_val_lout_data(args):
+    """
+    Get k-fold cross-val datasets.
+    :param args:
+    :return:
+    """
+    for i in range(5, 420 // args.num_lout):
+        split_data_for_lout_val(args, start=i)
 
 
 def split_data_for_val(args):
@@ -149,6 +157,7 @@ def split_data_for_val(args):
     scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_train_test_data.mat'.format(args.num_classes, num_val), train_test_mat)
 
 
+
 def get_data(args):
     """
     Load self_saved data. A dict, data["features"], data["labels"]. See the save function in split_data_for_val()
@@ -156,7 +165,7 @@ def get_data(args):
     :param args: Param object with path to the data
     :return:
     """
-    # split_data_for_lout_val(args)
+    
     mat = scipy.io.loadmat(args.input_data)["DATA"]
     spectra = mat[:, 2:]
     labels = mat[:, 1]
@@ -182,8 +191,9 @@ def get_data(args):
     test_data["spectra"] = spectra_rand[args.num_train:].astype(np.float32)
     test_data["labels"] = np.squeeze(labels_rand[args.num_train:]).astype(np.int32)
     
-    ## oversample the minority samples
-    train_data = oversample_train(train_data, args.num_classes)
+    ## oversample the minority samples ONLY in training data
+    if args.test_or_train == 'train':
+        train_data = oversample_train(train_data, args.num_classes)
     
     return train_data, test_data
 

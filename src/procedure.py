@@ -240,7 +240,7 @@ def training(sess, args, graph, saver):
 
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:
-            print("Best accuracy {}".format(output_data["test_accuracy"][-1]))
+            print("EpochBest accuracy {}".format(output_data["test_accuracy"][-1]))
             best_accuracy = output_data["test_accuracy"][-1]
             save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
             save_plots(sess, args, output_data, training=True, epoch=epoch)
