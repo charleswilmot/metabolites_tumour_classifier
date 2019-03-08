@@ -9,6 +9,7 @@ import matplotlib.pylab as pylab
 import ipdb
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
+from sklearn import metrics
 
 base = 22
 params = {'legend.fontsize': base-8,
@@ -70,6 +71,23 @@ def accuracy_figure(args, data, training=False):
     logger.info("Accuracy plot saved")
 
 
+def plot_auc_curve(args, data, epoch=0):
+    """
+    Plot AUC curve
+    :param args:
+    :param data:
+    :return:
+    """
+    f = plt.figure()
+    fpr, tpr, _ = metrics.roc_curve(np.argmax(data["test_labels"], 1), data["test_pred"][:, 1])  # input the positive label's prob distribution
+    auc = metrics.roc_auc_score(data["test_labels"], data["test_pred"])
+    plt.plot(fpr, tpr, label="auc=" + str(auc))
+    plt.legend(loc=4)
+    plt.xlabel("False positive rate")
+    plt.ylabel("True positive rate")
+    f.savefig(args.output_path + '/AUC_curve_step_{}.png'.format(epoch))
+    plt.close()
+
 def accuracy_loss_figure(args, data, training=False, epoch=0):
     f = plt.figure()
     ax = f.add_subplot(121)
@@ -90,7 +108,8 @@ def all_figures(args, data, training=False, epoch=0):
     # accuracy_figure(args, data, training=training)
     accuracy_loss_figure(args, data, training=training, epoch=epoch)
     plot_confusion_matrix(args, data, ifnormalize=True, training=training)
-    plot_wrong_examples(args, data, training=training)
+    # plot_wrong_examples(args, data, training=training)
+    plot_auc_curve(args, data, epoch=epoch)
     # plot_tsne(args, data)
     # plot_hierarchy_cluster(args, data)
 

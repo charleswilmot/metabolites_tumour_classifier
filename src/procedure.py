@@ -100,7 +100,7 @@ def get_activity(ret):
 def concat_labels(ret, key="labels"):
     interest = np.empty((0, ret[0][key].shape[1]))
     for b in ret:
-        interest = np.vstack((interest, b["test_labels"]))
+        interest = np.vstack((interest, b[key]))
 
     return np.array(interest)
 
@@ -122,7 +122,6 @@ def testing(sess, graph):
         "test_features": graph["test_features"],
         "test_out": graph["test_out"],
         "test_wrong_inds": graph["test_wrong_inds"],
-        "test_activity": graph["test_activity"]
     }
     initialize(sess, graph, test_only=True)
     ret, tape_end = compute(sess, graph, fetches)
@@ -131,12 +130,17 @@ def testing(sess, graph):
     wrong_features, wrong_labels = get_wrong_examples(ret)
     # activity = get_activity(ret)
     test_labels = concat_labels(ret, key="test_labels")
-
-    return {"test_accuracy": accuracy, "test_loss": loss, "test_confusion": confusion, "test_wrong_features": wrong_features, "test_wrong_labels": wrong_labels, "test_labels": test_labels}
+    test_pred = concat_labels(ret, key="test_out")
+    return {"test_accuracy": accuracy,
+            "test_loss": loss,
+            "test_confusion": confusion,
+            "test_wrong_features": wrong_features,
+            "test_wrong_labels": wrong_labels,
+            "test_labels": test_labels,
+            "test_pred": test_pred}
 
 
 test_phase = testing
-
 ##
 #
 def train_phase(sess, graph, nbatches): # change
@@ -204,6 +208,7 @@ def training(sess, args, graph, saver):
     output_data["test_loss"] = []
     output_data["test_accuracy"] = []
     output_data["test_confusion"] = 0
+    output_data["test_pred"] = []
     output_data["current_step"] = 0
     end = False
     best_accuracy = 0
@@ -222,6 +227,7 @@ def training(sess, args, graph, saver):
         num_trained += ret["num_trained"]
         epoch = num_trained * 1.0 / args.num_train
         logger.debug("Training phase done")
+        
         # test phase
         ret = test_phase(sess, graph)
         output_data["test_loss"].append(ret["test_loss"])
@@ -232,15 +238,14 @@ def training(sess, args, graph, saver):
         output_data["test_wrong_labels"] = ret["test_wrong_labels"]
         # output_data["test_activity"] = ret["test_activity"]
         output_data["test_labels"] = ret["test_labels"]
+        output_data["test_pred"] = ret["test_pred"]
         output_data["current_step"] += 1
         # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch
-
-
         logger.debug("Epoch {}, Testing phase done\t({})".format(epoch, ret["test_accuracy"]))
 
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:
-            print("Epoch {:1f} Best accuracy {}".format(epoch, output_data["test_accuracy"][-1]))
+            print("Epoch {:0.1f} Best accuracy {}".format(epoch, output_data["test_accuracy"][-1]))
             best_accuracy = output_data["test_accuracy"][-1]
             save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
             save_plots(sess, args, output_data, training=True, epoch=epoch)
@@ -262,10 +267,11 @@ def run(sess, args, graph):
     else:
         # raise(NotImplementedError("Initialize train iterator here..."))
         logger.info("Initializing network with random weights")
-        sess.run(tf.global_variables_initializer())
+        sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
     if args.test_or_train == 'train':
         initialize(sess, graph, test_only=False)
         return training(sess, args, graph, saver)
     else:
         initialize(sess, graph, test_only=True)
         return testing(sess, graph)
+        

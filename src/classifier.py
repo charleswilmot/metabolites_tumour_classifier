@@ -8,10 +8,12 @@
 #  example: python3 classifier.py -b 20 -s 17845 train ../data/ ../results/ -e 100
 import matplotlib
 matplotlib.use('Agg')
-import graph
-import dataio
-import argument
-import procedure
+import sys
+sys.path.append("..")
+from src import graph
+from src import dataio
+from src import argument
+from src import procedure
 import logging as log
 import tensorflow as tf
 import numpy as np
@@ -27,10 +29,9 @@ if args.seed is not None:
     tf.set_random_seed(args.seed)
 
 # if args.seed != 2594:   # every time change the random seed should save the data again
-# dataio.split_data_for_val(args)
 
-train_data, test_data = dataio.get_data(args)
-data_tensors = dataio.get_data_tensors(args, train_data, test_data)
+data_tensors, args = dataio.get_data_tensors(args)
+
 graph = graph.get_graph(args, data_tensors)
 with tf.Session() as sess:
     output_data = procedure.run(sess, args, graph)

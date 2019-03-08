@@ -75,7 +75,7 @@ class MLP:
         net = self._make_layer(net, i+1, training)
         out = net
         self._net_constructed_once = True
-        return out, activity
+        return out
 
     ## Private function for adding layers to the network
     # @param inp input tensor
@@ -127,10 +127,10 @@ class CNN:
         self.activations_fnn = convert_activation(args.activations)[len(self.out_channels):]
         self.drop_cnn = np.array(args.dropout_probs)[0:len(self.out_channels)]
         self.drop_fnn = np.array(args.dropout_probs)[len(self.out_channels):]
-
-        assert (len(args.batch_norms) ==            # check total including FNN part
-               len(args.activations) ==
-               len(args.dropout_probs))
+        
+        assert(self.fc_dims[-1] == args.num_classes), "Softmax output does not match number of classes"
+        assert (len(self.bn_cnn) == len(self.out_channels) == len(self.drop_cnn) == len(self.activations_cnn))
+        assert (len(self.bn_fnn) == len(self.fc_dims) == len(self.drop_fnn) == len(self.activations_fnn))
 
     def __call__(self, features, training=False):
         out = tf.reshape(features, [-1, self.data_len, 1])
@@ -181,17 +181,20 @@ class CNN:
     # @param training, bool
     def _make_cnn_layer(self, inp, out_ch, bn, activation, drop, layer_number, training):
         _to_format = [out_ch, bn, drop, activation, training]
-        layer_name = "cnn_layer_{}".format(layer_number + 1)
+        layer_name = "cnn_layer_{}".format(layer_number)
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
         with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
-            out = tf.layers.conv1d(inp, out_ch, self.kernel_size, 1, padding='SAME')
+            print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
+            kernel_size = inp.get_shape().as_list()[1]
+            out = tf.layers.conv1d(inp, out_ch, kernel_size, 1, padding='SAME')
             out = tf.layers.max_pooling1d(out, self.pool_size, self.pool_size, padding="SAME")
             out = tf.layers.batch_normalization(
                 out, training=training) if bn else out
             out = out if activation is None else activation(out)
             out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
+        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
         return out
 
     ## Private function for adding fully-connected layers to the network
@@ -207,10 +210,12 @@ class CNN:
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
         with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+            print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_dim))
             out = tf.layers.dense(inp, out_dim, activation=activation)
             out = tf.layers.batch_normalization(
                 out, training=training) if bn else out
             out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
+        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
         return out
 
 
@@ -243,11 +248,23 @@ def get_ncorrect(out, out_true):
 ## Compute the confusion matrix
 # @param net the network object
 # @see MLP example of a network object
-def get_confusion_matrix(out, out_true, num_classes):
-    conf_matrix = tf.confusion_matrix(tf.argmax(out_true, 1), tf.argmax(out, 1), num_classes=num_classes)
+def get_confusion_matrix(predictions, labels, num_classes):
+    conf_matrix = tf.confusion_matrix(tf.argmax(labels, 1), tf.argmax(predictions, 1), num_classes=num_classes)
     return conf_matrix
 
 
+def get_roc_curve(predictions, labels, num_classes):
+    """
+    Get the ROC AUC curve
+    :param out:
+    :param out_true:
+    :param num_classes:
+    :return:
+    """
+    if num_classes == 2:
+        return tf.metrics.auc(tf.argmax(labels, 1), tf.argmax(predictions, 1), curve='ROC')
+    
+    
 ## Defines an training operation according to the arguments passed to the software
 # @param args arguments passed to the command line
 # @param loss loss tensor
@@ -255,11 +272,12 @@ def get_confusion_matrix(out, out_true, num_classes):
 def get_train_op(args, loss):
     logger.debug("Defining optimizer")
     optimizer_type = args.optimizer_type
-    lr = args.learning_rate
+    # lr = args.learning_rate
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         if optimizer_type == "adam":
-            optimizer = tf.train.AdamOptimizer(lr).minimize(loss)
+            optimizer = tf.train.AdamOptimizer(args.learning_rate).minimize(loss)
+            print("learning rate", args.learning_rate)
         if optimizer_type == "rmsprop":
             optimizer = tf.train.RMSPropOptimizer(lr).minimize(loss)
         if optimizer_type == "gradient_descent":
@@ -281,18 +299,20 @@ def get_graph(args, data_tensors):
     elif args.model_name == "CNN":
         net = CNN(args)
 
-    graph["test_out"], graph["test_activity"] = net(data_tensors["test_features"])
+    graph["test_out"] = net(data_tensors["test_features"])
     graph["test_batch_size"] = tf.shape(graph["test_out"])[0]
     graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], data_tensors["test_labels"])
     graph["test_ncorrect"], graph["test_wrong_inds"] = get_ncorrect(graph["test_out"], data_tensors["test_labels"])
     graph["test_confusion"] = get_confusion_matrix(graph["test_out"], data_tensors["test_labels"], args.num_classes)
+    graph["test_auc"] = get_roc_curve(graph["test_out"], data_tensors["test_labels"], args.num_classes)
     if args.test_or_train == "train":
-        graph["train_out"], graph["train_activity"] = net(data_tensors["train_features"], training=True)
+        graph["train_out"] = net(data_tensors["train_features"], training=True)
         graph["train_labels"] = data_tensors["train_labels"]
         graph["train_batch_size"] = tf.shape(graph["train_out"])[0]
         graph["train_loss_sum"] = get_loss_sum(args, graph["train_out"], data_tensors["train_labels"])
         graph["train_ncorrect"], graph["train_wrong_inds"] = get_ncorrect(graph["train_out"], data_tensors["train_labels"])
         graph["train_confusion"] = get_confusion_matrix(graph["train_out"], data_tensors["train_labels"], args.num_classes)
         graph["train_op"] = get_train_op(args, graph["train_loss_sum"])
+
     logger.info("Graph defined")
     return graph

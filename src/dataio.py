@@ -108,7 +108,7 @@ def get_cross_val_lout_data(args):
     :param args:
     :return:
     """
-    for i in range(5, 420 // args.num_lout):
+    for i in range(10):
         split_data_for_lout_val(args, start=i)
 
 
@@ -165,7 +165,6 @@ def get_data(args):
     :param args: Param object with path to the data
     :return:
     """
-    
     mat = scipy.io.loadmat(args.input_data)["DATA"]
     spectra = mat[:, 2:]
     labels = mat[:, 1]
@@ -213,13 +212,14 @@ def oversample_train(train_data, num_classes):
     return train_data
     
     
-    
 ## Get batches of data in tf.dataset
 # @param args the arguments passed to the software
 # @param train_data dict, "features", "labels"
 # @param test_data dict, "features", "labels"
-def get_data_tensors(args, train_data, test_data):
+def get_data_tensors(args):
     data = {}
+    train_data, test_data = get_data(args)
+    
     test_spectra, test_labels = tf.constant(test_data["spectra"]), tf.constant(test_data["labels"])
     test_ds = tf.data.Dataset.from_tensor_slices((test_spectra, test_labels)).batch(args.batch_size)
     
@@ -237,8 +237,9 @@ def get_data_tensors(args, train_data, test_data):
         data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
         data["train_features"] = batch_train[0]
         data["train_initializer"] = iter_train.initializer
+        # args.test_every = train_labels.get_shape().as_list()[0] // 2
 
-    return data
+    return data, args
 
 
 ## Make the output dir
