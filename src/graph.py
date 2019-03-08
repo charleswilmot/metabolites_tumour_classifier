@@ -231,7 +231,7 @@ def get_loss_sum(args, out, out_true):
     if loss_type == "rmse":
         loss = tf.reduce_sum(tf.reduce_mean(tf.abs(out - out_true), axis=1))
     if loss_type == "softmax_ce":
-        loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=out, labels=out_true))
+        loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits_v2(logits=out, labels=out_true))
     return loss
 
 
@@ -269,19 +269,19 @@ def get_roc_curve(predictions, labels, num_classes):
 # @param args arguments passed to the command line
 # @param loss loss tensor
 # @see get_loss_sum function to generate a loss tensor
-def get_train_op(args, loss):
+def get_train_op(args, loss, learning_rate_op):
     logger.debug("Defining optimizer")
     optimizer_type = args.optimizer_type
     # lr = args.learning_rate
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         if optimizer_type == "adam":
-            optimizer = tf.train.AdamOptimizer(args.learning_rate).minimize(loss)
-            print("learning rate", args.learning_rate)
+            optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate_op).minimize(loss)
+            print("learning rate", learning_rate_op)
         if optimizer_type == "rmsprop":
-            optimizer = tf.train.RMSPropOptimizer(lr).minimize(loss)
+            optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate_op).minimize(loss)
         if optimizer_type == "gradient_descent":
-            optimizer = tf.train.GradientDescentOptimizer(lr).minimize(loss)
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate_op).minimize(loss)
     return optimizer
 
 
@@ -299,6 +299,7 @@ def get_graph(args, data_tensors):
     elif args.model_name == "CNN":
         net = CNN(args)
 
+    lr_placeholder = tf.placeholder(tf.float32, [], name='learning_rate')
     graph["test_out"] = net(data_tensors["test_features"])
     graph["test_batch_size"] = tf.shape(graph["test_out"])[0]
     graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], data_tensors["test_labels"])
@@ -312,7 +313,10 @@ def get_graph(args, data_tensors):
         graph["train_loss_sum"] = get_loss_sum(args, graph["train_out"], data_tensors["train_labels"])
         graph["train_ncorrect"], graph["train_wrong_inds"] = get_ncorrect(graph["train_out"], data_tensors["train_labels"])
         graph["train_confusion"] = get_confusion_matrix(graph["train_out"], data_tensors["train_labels"], args.num_classes)
-        graph["train_op"] = get_train_op(args, graph["train_loss_sum"])
+        graph["learning_rate_op"] = tf.placeholder(tf.float32, [], name='learning_rate')
+        # graph["train_op"] = tf.train.AdamOptimizer(learning_rate=graph["learning_rate_op"]).minimize(graph["train_loss_sum"])
+        graph["train_op"] = get_train_op(args, graph["train_loss_sum"], graph["learning_rate_op"])
+        
 
     logger.info("Graph defined")
     return graph

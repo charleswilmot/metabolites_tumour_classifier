@@ -5,7 +5,7 @@
                     "out_channels": [16, 32],
                     "pool_size": 3,
                     "strides": 3,
-                    "kernel_size": 288,
+                    "kernel_size": 5,
                     "fc": [200, 2],
                     "dropout_probs": [0.3, 0.3, 0.5, 0.5],
                     "batch_norms":[true, true, true, true],

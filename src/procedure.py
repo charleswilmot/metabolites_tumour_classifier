@@ -20,8 +20,6 @@ def reduce_mean_loss_accuracy(ret):
     accuracy = sum([b["ncorrect"] for b in ret]) / N
     return loss, accuracy
 
-
-
 ## Processes the output of compute (cf See also) to calculate the sum of confusion matrices
 # @param ret dictionary containing the keys "ncorrect", "loss_sum" and "batch_size"
 # @param N number of examples computed by compute
@@ -42,14 +40,17 @@ def limit(max_batches):
         return range(max_batches)
 
 
-def compute(sess, graph, fetches, max_batches=None):
+def compute(sess, fetches, max_batches=None, learning_rate=0.0005):
     # return loss / accuracy for the complete set
     ret = []
     tape_end = False
     i = 0
     for _ in limit(max_batches):
         try:
-            ret.append(sess.run(fetches))
+            if "train_op" in fetches.keys():
+                ret.append(sess.run(fetches, feed_dict={fetches["learning_rate_op"]: learning_rate}))
+            else:
+                ret.append(sess.run(fetches))
         except tf.errors.OutOfRangeError:
             tape_end = True
             break
@@ -105,6 +106,18 @@ def concat_labels(ret, key="labels"):
     return np.array(interest)
 
 
+def get_learning_rate(epoch):
+    learning_rate = 0.01
+    if epoch > 100:
+        learning_rate *= 5 * 1e-1
+    elif epoch > 80:
+        learning_rate *= 5 * 1e-1
+    elif epoch > 40:
+        learning_rate *= 5 * 1e-1
+    elif epoch > 10:
+        learning_rate *= 5 * 1e-1
+    return learning_rate
+########################################################################
 
 ## Testing phase
 # @param sess a tensorflow Session object
@@ -124,7 +137,7 @@ def testing(sess, graph):
         "test_wrong_inds": graph["test_wrong_inds"],
     }
     initialize(sess, graph, test_only=True)
-    ret, tape_end = compute(sess, graph, fetches)
+    ret, tape_end = compute(sess, fetches)
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     confusion = sum_confusion(ret)
     wrong_features, wrong_labels = get_wrong_examples(ret)
@@ -143,16 +156,17 @@ def testing(sess, graph):
 test_phase = testing
 ##
 #
-def train_phase(sess, graph, nbatches): # change
+def train_phase(sess, graph, nbatches, epoch): # change
     fetches = {
         "ncorrect": graph["train_ncorrect"],
         "loss_sum": graph["train_loss_sum"],
         "confusion": graph["train_confusion"],
         "batch_size": graph["train_batch_size"],
-        "train_op": graph["train_op"]
+        "train_op": graph["train_op"],
+        "learning_rate_op": graph["learning_rate_op"]
     }
-
-    ret, tape_end = compute(sess, graph, fetches, max_batches=nbatches)
+    lr = get_learning_rate(epoch)
+    ret, tape_end = compute(sess, fetches, max_batches=nbatches, learning_rate=lr)
     if tape_end:
         return None
     loss, accuracy = reduce_mean_loss_accuracy(ret)
@@ -217,8 +231,8 @@ def training(sess, args, graph, saver):
 
     while condition(end, output_data, args.number_of_epochs):
         # train phase
-        ret = train_phase(sess, graph, args.test_every)
-
+        
+        ret = train_phase(sess, graph, args.test_every, epoch)
         if ret is not None:
             output_data["train_loss"].append(ret["loss"])
             output_data["train_accuracy"].append(ret["accuracy"])
