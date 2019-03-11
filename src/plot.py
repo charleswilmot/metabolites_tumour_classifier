@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import logging as log
 import numpy as np
 import matplotlib.pylab as pylab
+from collections import Counter
 # import tsne
 import ipdb
 from scipy.spatial.distance import pdist, squareform
@@ -110,6 +111,7 @@ def all_figures(args, data, training=False, epoch=0):
     plot_confusion_matrix(args, data, ifnormalize=True, training=training)
     # plot_wrong_examples(args, data, training=training)
     plot_auc_curve(args, data, epoch=epoch)
+    plot_prob_distr_on_ids(data, args.output_path)
     # plot_tsne(args, data)
     # plot_hierarchy_cluster(args, data)
 
@@ -226,3 +228,119 @@ def plot_hierarchy_cluster(args, data):
     plt.ylabel("distance")
     f.savefig(args.output_path + '/{}-hierarchy-on-activity-{}.png'.format(args.num_classes, data["current_step"]))
     plt.close()
+    
+
+
+def plot_class_activation_map(sess, class_activation_map, top_conv,
+                                 images_test, labels_test, pred_labels, global_step,
+                                 num_images, args):
+    """TODO, the labels are all stacked not like test_conv is only the first batch
+    Plot the class activation
+    :param sess:
+    :param class_activation_map:
+    :param top_conv:
+    :param images_test:
+    :param labels_test:
+    :param pred_labels:
+    :param global_step:
+    :param num_images:
+    :param args:
+    :return:
+    """
+    labels_int = np.argmax(labels_test, axis=1)
+    classmap_answer = sess.run(class_activation_map)
+
+    classmap_high = list(map(lambda x: (np.where(np.squeeze(x) > np.percentile(np.squeeze(x), 80))[0]), classmap_answer))
+    classmap_low = list(map(lambda x: (np.where(np.squeeze(x) < np.percentile(np.squeeze(x), 18))[0]), classmap_answer))
+    plots_per_fig = 5
+    counts = np.arange(plots_per_fig)
+
+    rand_inds = np.random.choice(np.arange(len(classmap_answer)), num_images)
+    classmap_high = np.array(classmap_high)[rand_inds]
+    classmap_low = np.array(classmap_low)[rand_inds]
+    images_plot = images_test[rand_inds]
+    labels_plot = labels_int[rand_inds]
+    pred_plot = pred_labels[rand_inds]
+    for j in range(num_images // plots_per_fig):
+        fig = plt.figure()
+        for count, vis_h, vis_l, ori in zip(counts, classmap_high[j*plots_per_fig : (j+1)*plots_per_fig], classmap_low[j*plots_per_fig : (j+1)*plots_per_fig], images_plot[j*plots_per_fig : (j+1)*plots_per_fig]):
+
+            plt.subplot(plots_per_fig, 1, count+1)
+            plt.plot(np.arange(ori.size), ori, 'darkorchid', label='original', linewidth=0.8)
+            plt.plot(np.array(vis_h), np.repeat(ori.max(), vis_h.size), '.', color='deepskyblue', label='attention')
+
+            att_indices = collect_and_plot_atten(vis_h, 1)  # collect the attention part indices
+
+            plt.xlim([0, ori.size])
+            plt.xlabel("label: {} - pred: {}".format(np.str(labels_plot[j*plots_per_fig+count]), np.str(pred_plot[j*plots_per_fig+count])))
+            if count == 0:
+                plt.legend(bbox_to_anchor=(0.15, 1.05, 0.7, 0.1), loc="lower left", mode="expand", borderaxespad=0, ncol=2, scatterpoints=3)
+            if count == plots_per_fig - 1:
+                plt.xlabel("time / s, label: {} - pred: {}".format(np.str(labels_plot[j*plots_per_fig+count]), np.str(pred_plot[j*plots_per_fig+count])))
+
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.90)
+        plt.savefig(args.output_path + '/class_activity_map-step-test{}-count{}.pdf'.format(global_step, j), format='pdf')
+        plt.close()#
+
+
+def collect_and_plot_atten(indices, scale):
+    """
+    PLot vertical lines on the attention area
+    :param indices:
+    :return:
+    """
+    xcoords = list(np.where((indices[1:] - indices[0:-1]) > 1)[0] + 1)
+    for ind in np.arange(len(xcoords)) * 2:
+        xcoords.insert(ind, xcoords[ind] - 1)
+
+    start_end_inds = [0] + xcoords + [len(indices) - 1]
+    for xc in ([0] + xcoords + [len(indices) - 1]):  # [0] + xcoords + [len(vis_h)-1]
+        plt.axvline(x=indices[xc] / np.float(scale), color='b', linewidth=0.35)
+
+    return start_end_inds
+
+
+def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
+    """
+    Get the prob distribution histogram of samples of each id
+    :param test_data:
+    :return:
+    """
+    predictions = test_data["test_pred"]
+    ids = test_data["test_ids"]
+    labels_int = np.argmax(test_data["test_labels"], axis=1)
+    count = dict(Counter(list(ids)))  # c
+    
+    for id in count.keys():
+        plt.figure()
+        id_inds = np.where(ids == id)[0]
+        vote_label = np.sum(labels_int[id_inds]) * 1.0 / id_inds.size
+        vote_pred = np.sum(np.argmax(predictions[id_inds], axis=1)) * 1.0 / id_inds.size
+        
+        label_of_id = 0 if vote_label < (1.0 / num_classes) else 1
+        pred_of_id = 0 if vote_pred < (1.0 / num_classes) else 1
+        plt.subplot(1, 2, 1)
+        label_hist = plt.hist(labels_int[id_inds], bins=2, align='mid', range=(0.0, 1.0), label="true label", color='orange')
+        for i in range(2):
+            if label_hist[0][i] > 0:
+                plt.text(label_hist[1][i] + 0.25, label_hist[0][i], str(np.int(label_hist[0][i])), fontsize=base-8)
+        plt.legend()
+        plt.xticks(range(0, 2))
+        plt.ylabel("frequency")
+        plt.xlabel("class")
+        
+        ax = plt.subplot(1, 2, 2)
+        pred_hist = plt.hist(np.array(predictions[id_inds][:, label_of_id]), align='mid', bins=10, range=(0.0, 1.0), color='royalblue', label="predicted")
+        ymin, ymax = ax.get_ylim()
+        plt.vlines(0.5, ymin, ymax, colors='k', linestyles='--')
+        for i in range(10):
+            if pred_hist[0][i] > 0:
+                plt.text(pred_hist[1][i]+0.05, pred_hist[0][i], str(np.int(pred_hist[0][i])), fontsize=base-8)
+        plt.legend()
+        plt.ylabel("frequency")
+        plt.xlabel("probability")
+        plt.title("True label {} - pred as {}".format(label_of_id, pred_of_id))
+        plt.tight_layout()
+        plt.savefig(output_dir + '/prob_distri_of_id_{}.png'.format(id), format="png")
+        plt.close()

@@ -6,7 +6,7 @@ import numpy as np
 import logging as log
 import sys
 import os
-import plot
+from src import plot
 import tensorflow as tf
 import scipy.io
 import random
@@ -168,6 +168,7 @@ def get_data(args):
     mat = scipy.io.loadmat(args.input_data)["DATA"]
     spectra = mat[:, 2:]
     labels = mat[:, 1]
+    ids = mat[:, 0]
     train_data = {}
     test_data = {}
     ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
@@ -178,17 +179,21 @@ def get_data(args):
         need_inds = need_inds.astype(np.int32)
         spectra = spectra[need_inds]
         labels = labels[need_inds]
+        ids = ids[need_inds]
 
     temp_rand = np.arange(len(labels))
     np.random.shuffle(temp_rand)
     spectra_rand = spectra[temp_rand]
     labels_rand = labels[temp_rand]
+    ids_rand = ids[temp_rand]
     assert args.num_classes != np.max(labels), "The number of class doesn't match the data!"
     args.num_train = int(((100 - args.test_ratio) * spectra_rand.shape[0]) // 100)
     train_data["spectra"] = spectra_rand[0:args.num_train].astype(np.float32)
     train_data["labels"] = np.squeeze(labels_rand[0:args.num_train]).astype(np.int32)
+    train_data["ids"] = np.squeeze(ids_rand[0:args.num_train]).astype(np.int32)
     test_data["spectra"] = spectra_rand[args.num_train:].astype(np.float32)
     test_data["labels"] = np.squeeze(labels_rand[args.num_train:]).astype(np.int32)
+    test_data["ids"] = np.squeeze(ids_rand[args.num_train:]).astype(np.int32)
     
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
@@ -220,22 +225,24 @@ def get_data_tensors(args):
     data = {}
     train_data, test_data = get_data(args)
     
-    test_spectra, test_labels = tf.constant(test_data["spectra"]), tf.constant(test_data["labels"])
-    test_ds = tf.data.Dataset.from_tensor_slices((test_spectra, test_labels)).batch(args.batch_size)
+    test_spectra, test_labels, test_ids = tf.constant(test_data["spectra"]), tf.constant(test_data["labels"]), tf.constant(test_data["ids"])
+    test_ds = tf.data.Dataset.from_tensor_slices((test_spectra, test_labels, test_ids)).batch(args.batch_size)
     
     iter_test = test_ds.make_initializable_iterator()
     data["test_initializer"] = iter_test.initializer
     batch_test = iter_test.get_next()
-    data["test_labels"] = tf.one_hot(batch_test[1], args.num_classes)
     data["test_features"] = batch_test[0]
+    data["test_labels"] = tf.one_hot(batch_test[1], args.num_classes)
+    data["test_ids"] = batch_test[2]
     if args.test_or_train == 'train':
         train_spectra, train_labels = tf.constant(train_data["spectra"]), tf.constant(train_data["labels"])
         train_ds = tf.data.Dataset.from_tensor_slices((train_spectra, train_labels)).shuffle(buffer_size=10000).repeat().batch(
             args.batch_size)
         iter_train = train_ds.make_initializable_iterator()
         batch_train = iter_train.get_next()
-        data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
         data["train_features"] = batch_train[0]
+        data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
+        data["train_ids"] =batch_train[2]
         data["train_initializer"] = iter_train.initializer
         # args.test_every = train_labels.get_shape().as_list()[0] // 2
 
@@ -334,3 +341,5 @@ def copy_save_all_files(args):
             print('WithCopy Failed!')
         finally:
             print('Done WithCopy File!')
+            
+
