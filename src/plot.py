@@ -308,39 +308,33 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
     :return:
     """
     predictions = test_data["test_pred"]
+    pred_int = np.argmax(test_data["test_pred"], axis=1)
     ids = test_data["test_ids"]
     labels_int = np.argmax(test_data["test_labels"], axis=1)
     count = dict(Counter(list(ids)))  # c
     
     for id in count.keys():
+        if id == 443.0:
+            print("421")
         plt.figure()
         id_inds = np.where(ids == id)[0]
         vote_label = np.sum(labels_int[id_inds]) * 1.0 / id_inds.size
-        vote_pred = np.sum(np.argmax(predictions[id_inds], axis=1)) * 1.0 / id_inds.size
+        vote_pred = np.sum(predictions[id_inds][:, 1]) / id_inds.size
+        # vote_pred = np.sum(pred_int[id_inds]) * 1.0 / id_inds.size
         
-        label_of_id = 0 if vote_label < (1.0 / num_classes) else 1
-        pred_of_id = 0 if vote_pred < (1.0 / num_classes) else 1
-        plt.subplot(1, 2, 1)
-        label_hist = plt.hist(labels_int[id_inds], bins=2, align='mid', range=(0.0, 1.0), label="true label", color='orange')
-        for i in range(2):
-            if label_hist[0][i] > 0:
-                plt.text(label_hist[1][i] + 0.25, label_hist[0][i], str(np.int(label_hist[0][i])), fontsize=base-8)
-        plt.legend()
-        plt.xticks(range(0, 2))
-        plt.ylabel("frequency")
-        plt.xlabel("class")
+        label_of_id = 0 if vote_label < 0.5 else 1
+        pred_of_id = 0 if vote_pred < 0.5 else 1
         
-        ax = plt.subplot(1, 2, 2)
-        pred_hist = plt.hist(np.array(predictions[id_inds][:, label_of_id]), align='mid', bins=10, range=(0.0, 1.0), color='royalblue', label="predicted")
+        ax = plt.subplot(1, 1, 1)
+        pred_hist = plt.hist(np.array(predictions[id_inds][:, 1]), align='mid', bins=10, range=(0.0, 1.0), color='royalblue', label="predicted")
         ymin, ymax = ax.get_ylim()
         plt.vlines(0.5, ymin, ymax, colors='k', linestyles='--')
-        for i in range(10):
-            if pred_hist[0][i] > 0:
-                plt.text(pred_hist[1][i]+0.05, pred_hist[0][i], str(np.int(pred_hist[0][i])), fontsize=base-8)
+        plt.text(0.25, ymax, str(np.int(np.sum(predictions[id_inds][:, 1] < 0.5))), fontsize=base-4)
+        plt.text(0.75, ymax, str(np.int(np.sum(predictions[id_inds][:, 1] >= 0.5))), fontsize=base-4)
         plt.legend()
         plt.ylabel("frequency")
-        plt.xlabel("probability")
-        plt.title("True label {} - pred as {}".format(label_of_id, pred_of_id))
+        plt.xlabel("probability of classified as class 1")
+        plt.title("True label {} - pred as {} / (in total {} voxels for id {})".format(label_of_id, pred_of_id, id_inds.size, id))
         plt.tight_layout()
         plt.savefig(output_dir + '/prob_distri_of_id_{}.png'.format(id), format="png")
         plt.close()

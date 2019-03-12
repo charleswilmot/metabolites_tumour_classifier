@@ -35,7 +35,7 @@
         },
 
         "test":{
-            "input_data": "../data/20190301-3class_lout30_val_data6.mat",
+            "input_data": "../data/20190301-3class_lout30_val_data0.mat",
             "test_ratio": 100,
             "number_of_epochs": 2
 

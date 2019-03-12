@@ -27,6 +27,8 @@ def convert_activation(acti_names):
             acti_funcs.append(tf.tanh)
         elif act == 'sigmoid':
             acti_funcs.append(tf.nn.sigmoid)
+        elif act == 'softmax':
+            acti_funcs.append(tf.nn.softmax)
         elif act == 'None':
             acti_funcs.append(None)
         else:

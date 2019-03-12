@@ -28,7 +28,7 @@
                     "layer_dims": [288, 500, 100, 2],
                     "dropout_probs": [0.13, 0.13, 0.13],
                     "batch_norms": [true, true, true],
-                    "activations": ["lrelu", "lrelu", "sigmoid"]
+                    "activations": ["lrelu", "lrelu", "softmax"]
 
                 }
 
