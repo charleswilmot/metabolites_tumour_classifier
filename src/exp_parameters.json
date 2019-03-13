@@ -5,13 +5,13 @@
             "exp_config": "./exp_parameters.json",
             "model_config": "./model_parameters.json",
             "num_classes": 2,
-            "batch_size": 64,
+            "batch_size": 128,
             "test_batch_size": 128,
             "seed": 2594,
 
             "out_format": "m",
             "data_len": 288,
-            "num_lout": 30,
+            "num_lout": 20,
 
             "output_path": "../results/",
             "model_save_dir": null,
@@ -19,7 +19,7 @@
 
             "model_name": "MLP",
             "optimizer_type": "adam",
-            "loss_type": "mse",
+            "loss_type": "softmax_ce",
             "learning_rate": 0.0005
         },
 

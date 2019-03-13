@@ -3,9 +3,9 @@
 import numpy as np
 import logging as log
 import tensorflow as tf
-
+from tqdm import tqdm
 from dataio import save_my_model, load_model, save_plots
-
+from src import plot as plot
 
 logger = log.getLogger("classifier")
 
@@ -19,8 +19,6 @@ def reduce_mean_loss_accuracy(ret):
     loss = sum([b["loss_sum"] for b in ret]) / N
     accuracy = sum([b["ncorrect"] for b in ret]) / N
     return loss, accuracy
-
-
 
 ## Processes the output of compute (cf See also) to calculate the sum of confusion matrices
 # @param ret dictionary containing the keys "ncorrect", "loss_sum" and "batch_size"
@@ -42,14 +40,18 @@ def limit(max_batches):
         return range(max_batches)
 
 
-def compute(sess, graph, fetches, max_batches=None):
+def compute(sess, fetches, max_batches=None, learning_rate=0.0005):
     # return loss / accuracy for the complete set
     ret = []
     tape_end = False
-    i = 0
+
+    # for i in tqdm(range(max_batches)):
     for _ in limit(max_batches):
         try:
-            ret.append(sess.run(fetches))
+            if "train_op" in fetches.keys():
+                ret.append(sess.run(fetches, feed_dict={fetches["learning_rate_op"]: learning_rate}))
+            else:
+                ret.append(sess.run(fetches))
         except tf.errors.OutOfRangeError:
             tape_end = True
             break
@@ -98,13 +100,62 @@ def get_activity(ret):
 # @param key, the key of the interested data in the dict that you want to extract and concat
 # @return array of con
 def concat_labels(ret, key="labels"):
-    interest = np.empty((0, ret[0][key].shape[1]))
-    for b in ret:
-        interest = np.vstack((interest, b["test_labels"]))
+    if len(ret[0][key].shape) == 2:
+        interest = np.empty((0, ret[0][key].shape[1]))
+        for b in ret:
+            interest = np.vstack((interest, b[key]))
+    else:
+        interest = np.empty((0))
+        for b in ret:
+            interest = np.append(interest, b[key])
+    
 
     return np.array(interest)
 
 
+def get_learning_rate(epoch):
+    learning_rate = 0.01
+    if epoch > 300:
+        learning_rate *= np.power(0.5, 7)
+    elif epoch > 200:
+        learning_rate *= np.power(0.5, 6)
+    elif epoch > 150:
+        learning_rate *= np.power(0.5, 5)
+    elif epoch > 100:
+        learning_rate *= np.power(0.5, 4)
+    elif epoch > 80:
+        learning_rate *= np.power(0.5, 3)
+    elif epoch > 60:
+        learning_rate *= np.power(0.5, 2)
+    elif epoch > 25:
+        learning_rate *= 0.5
+    return learning_rate
+
+
+def get_class_map(labels, conv_out, weights, seq_len, seq_width):
+    """
+    Get the map for a specific sample with class. Some samples can be assigned to different classes.
+    :param labels_int: 1d array, [batch_size,], the int labels in one batch
+    :param conv_out: list, list of arry that contains the output from the conv_layer from the network
+    :param weights: weights of the last GAP feature map
+    :param im_width: The length of the input sample
+    :return: class map
+    """
+    conv_out = np.expand_dims(conv_out, 2)
+    channels = conv_out.shape[-1]
+    num_samples = conv_out.shape[0]
+    classmaps = []
+    labels_int = np.argmax(labels, axis=1)
+    conv_resized = tf.image.resize_nearest_neighbor(conv_out, [seq_len, seq_width])
+    for ind, label in enumerate(labels_int[0: num_samples]):
+        label_w = tf.gather(tf.transpose(weights), label)
+        label_w = tf.reshape(label_w, [-1, channels, 1])
+        resized = tf.reshape(conv_resized[ind], [-1, seq_len * seq_width, channels])
+        classmap = tf.matmul(resized, label_w)
+        classmaps.append(tf.reshape(classmap, [-1, seq_len, seq_width]))
+        
+    return classmaps
+########################################################################
 
 ## Testing phase
 # @param sess a tensorflow Session object
@@ -119,36 +170,55 @@ def testing(sess, graph):
         "confusion": graph["test_confusion"],
         "batch_size": graph["test_batch_size"],
         "test_labels": graph["test_labels"],
+        "test_ids": graph["test_ids"],
         "test_features": graph["test_features"],
         "test_out": graph["test_out"],
+        # "test_conv": graph["test_conv"],
+        # "test_gap_w": graph["test_gap_w"],
         "test_wrong_inds": graph["test_wrong_inds"],
-        "test_activity": graph["test_activity"]
     }
     initialize(sess, graph, test_only=True)
-    ret, tape_end = compute(sess, graph, fetches)
+    ret, tape_end = compute(sess, fetches)
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     confusion = sum_confusion(ret)
     wrong_features, wrong_labels = get_wrong_examples(ret)
     # activity = get_activity(ret)
     test_labels = concat_labels(ret, key="test_labels")
+    test_ids = concat_labels(ret, key="test_ids")
+    test_pred = concat_labels(ret, key="test_out")
+    # test_conv = ret[0]["test_conv"]
+    # test_gap_w = ret[0]["test_gap_w"]
+    test_features = ret[0]["test_features"]
 
-    return {"test_accuracy": accuracy, "test_loss": loss, "test_confusion": confusion, "test_wrong_features": wrong_features, "test_wrong_labels": wrong_labels, "test_labels": test_labels}
+    return {"test_accuracy": accuracy,
+            "test_loss": loss,
+            "test_confusion": confusion,
+            "test_wrong_features": wrong_features,
+            "test_wrong_labels": wrong_labels,
+            "test_labels": test_labels,
+            "test_ids": test_ids,
+            "test_features": test_features,
+            # "test_conv": test_conv,
+            # "test_gap_w": test_gap_w,
+            "test_pred": test_pred}
+
+
 
 
 test_phase = testing
-
 ##
 #
-def train_phase(sess, graph, nbatches): # change
+def train_phase(sess, graph, nbatches, epoch): # change
     fetches = {
         "ncorrect": graph["train_ncorrect"],
         "loss_sum": graph["train_loss_sum"],
         "confusion": graph["train_confusion"],
         "batch_size": graph["train_batch_size"],
-        "train_op": graph["train_op"]
+        "train_op": graph["train_op"],
+        "learning_rate_op": graph["learning_rate_op"]
     }
-
-    ret, tape_end = compute(sess, graph, fetches, max_batches=nbatches)
+    lr = get_learning_rate(epoch)
+    ret, tape_end = compute(sess, fetches, max_batches=nbatches, learning_rate=lr)
     if tape_end:
         return None
     loss, accuracy = reduce_mean_loss_accuracy(ret)
@@ -204,6 +274,7 @@ def training(sess, args, graph, saver):
     output_data["test_loss"] = []
     output_data["test_accuracy"] = []
     output_data["test_confusion"] = 0
+    output_data["test_pred"] = []
     output_data["current_step"] = 0
     end = False
     best_accuracy = 0
@@ -212,8 +283,8 @@ def training(sess, args, graph, saver):
 
     while condition(end, output_data, args.number_of_epochs):
         # train phase
-        ret = train_phase(sess, graph, args.test_every)
-
+        
+        ret = train_phase(sess, graph, args.test_every, epoch)
         if ret is not None:
             output_data["train_loss"].append(ret["loss"])
             output_data["train_accuracy"].append(ret["accuracy"])
@@ -222,28 +293,30 @@ def training(sess, args, graph, saver):
         num_trained += ret["num_trained"]
         epoch = num_trained * 1.0 / args.num_train
         logger.debug("Training phase done")
+        
         # test phase
         ret = test_phase(sess, graph)
         output_data["test_loss"].append(ret["test_loss"])
         output_data["test_accuracy"].append(ret["test_accuracy"])
-
         output_data["test_confusion"] = ret["test_confusion"]
         output_data["test_wrong_features"] = ret["test_wrong_features"]
         output_data["test_wrong_labels"] = ret["test_wrong_labels"]
         # output_data["test_activity"] = ret["test_activity"]
         output_data["test_labels"] = ret["test_labels"]
+        output_data["test_pred"] = ret["test_pred"]
+        output_data["test_conv"] = ret["test_conv"]
         output_data["current_step"] += 1
         # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch
-
-
         logger.debug("Epoch {}, Testing phase done\t({})".format(epoch, ret["test_accuracy"]))
 
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:
-            print("Epoch {:1f} Best accuracy {}".format(epoch, output_data["test_accuracy"][-1]))
+            print("Epoch {:0.1f} Best accuracy {}".format(epoch, output_data["test_accuracy"][-1]))
             best_accuracy = output_data["test_accuracy"][-1]
             save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
             save_plots(sess, args, output_data, training=True, epoch=epoch)
+            class_maps = get_class_map(ret["test_labels"], ret["test_conv"], ret["test_gap_w"], args.data_len, 1)
+            plot.plot_class_activation_map(sess, class_maps, ret["test_conv"], ret["test_features"], ret["test_labels"], np.argmax(ret["test_pred"], 1), epoch, 10, args)
 
     logger.info("Training procedure done")
     return output_data
@@ -262,10 +335,11 @@ def run(sess, args, graph):
     else:
         # raise(NotImplementedError("Initialize train iterator here..."))
         logger.info("Initializing network with random weights")
-        sess.run(tf.global_variables_initializer())
+        sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
     if args.test_or_train == 'train':
         initialize(sess, graph, test_only=False)
         return training(sess, args, graph, saver)
     else:
         initialize(sess, graph, test_only=True)
         return testing(sess, graph)
+        
