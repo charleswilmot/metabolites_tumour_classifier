@@ -111,7 +111,7 @@ def all_figures(args, data, training=False, epoch=0):
     plot_confusion_matrix(args, data, ifnormalize=True, training=training)
     # plot_wrong_examples(args, data, training=training)
     plot_auc_curve(args, data, epoch=epoch)
-    plot_prob_distr_on_ids(data, args.output_path)
+    # plot_prob_distr_on_ids(data, args.output_path)
     # plot_tsne(args, data)
     # plot_hierarchy_cluster(args, data)
 

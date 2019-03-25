@@ -5,7 +5,7 @@ import logging as log
 import tensorflow as tf
 from tqdm import tqdm
 from dataio import save_my_model, load_model, save_plots
-from src import plot as plot
+import plot as plot
 
 logger = log.getLogger("classifier")
 
@@ -108,8 +108,6 @@ def concat_labels(ret, key="labels"):
         interest = np.empty((0))
         for b in ret:
             interest = np.append(interest, b[key])
-    
-
     return np.array(interest)
 
 
@@ -304,7 +302,8 @@ def training(sess, args, graph, saver):
         # output_data["test_activity"] = ret["test_activity"]
         output_data["test_labels"] = ret["test_labels"]
         output_data["test_pred"] = ret["test_pred"]
-        output_data["test_conv"] = ret["test_conv"]
+        output_data["test_ids"] = ret["test_ids"]
+        # output_data["test_conv"] = ret["test_conv"]
         output_data["current_step"] += 1
         # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch
         logger.debug("Epoch {}, Testing phase done\t({})".format(epoch, ret["test_accuracy"]))
@@ -315,8 +314,8 @@ def training(sess, args, graph, saver):
             best_accuracy = output_data["test_accuracy"][-1]
             save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
             save_plots(sess, args, output_data, training=True, epoch=epoch)
-            class_maps = get_class_map(ret["test_labels"], ret["test_conv"], ret["test_gap_w"], args.data_len, 1)
-            plot.plot_class_activation_map(sess, class_maps, ret["test_conv"], ret["test_features"], ret["test_labels"], np.argmax(ret["test_pred"], 1), epoch, 10, args)
+            # class_maps = get_class_map(ret["test_labels"], ret["test_conv"], ret["test_gap_w"], args.data_len, 1)
+            # plot.plot_class_activation_map(sess, class_maps, ret["test_conv"], ret["test_features"], ret["test_labels"], np.argmax(ret["test_pred"], 1), epoch, 10, args)
 
     logger.info("Training procedure done")
     return output_data
@@ -327,7 +326,7 @@ def training(sess, args, graph, saver):
 # @param args the arguments passed to the software
 # @param graph the graph (cf See also)
 # @param input_data training and testing data
-def run(sess, args, graph):
+def main_train(sess, args, graph):
     saver = tf.train.Saver()
     if args.restore_from:
         global_step = load_model(saver, sess, args.restore_from)

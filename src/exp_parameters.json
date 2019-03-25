@@ -25,8 +25,9 @@
 
         "train": {
             "number_of_epochs": 2000,
-            "test_every": 100,
-            "input_data": "../data/20190301-3class_lout30_train_test_data13.mat",
+            "test_freq": 1,
+            "test_every": null,
+            "input_data": "../data/20190325/20190325-3class_lout20_train_test_data6.mat",
             "test_ratio": 10,
             "learning_rate": 0.0005,
             "restore_from": null,
@@ -35,7 +36,8 @@
         },
 
         "test":{
-            "input_data": "../data/20190301-3class_lout30_val_data0.mat",
+            "input_data": "../data/20190325/20190325-3class_lout20_val_data8.mat",
+
             "test_ratio": 100,
             "number_of_epochs": 2
 

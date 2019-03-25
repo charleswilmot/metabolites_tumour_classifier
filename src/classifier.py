@@ -10,10 +10,10 @@ import matplotlib
 matplotlib.use('Agg')
 import sys
 sys.path.append("..")
-from src import graph
-from src import dataio
-from src import argument
-from src import procedure
+import graph
+import dataio
+import argument
+import procedure
 import logging as log
 import tensorflow as tf
 import numpy as np
@@ -29,12 +29,12 @@ if args.seed is not None:
     tf.set_random_seed(args.seed)
 
 # if args.seed != 2594:   # every time change the random seed should save the data again
-
+## get leave-out train and test sets: dataio.split_data_for_lout_val(args)
 data_tensors, args = dataio.get_data_tensors(args)
 
 graph = graph.get_graph(args, data_tensors)
 with tf.Session() as sess:
-    output_data = procedure.run(sess, args, graph)
+    output_data = procedure.main_train(sess, args, graph)
     if args.test_or_train == "train":
         dataio.save_plots(sess, args, output_data, training=True)
     else:

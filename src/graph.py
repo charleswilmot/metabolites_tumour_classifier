@@ -356,7 +356,7 @@ def get_loss_sum(args, out, out_true):
     if loss_type == "rmse":
         loss = tf.reduce_sum(tf.reduce_mean(tf.abs(out - out_true), axis=1))
     if loss_type == "softmax_ce":
-        loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits_v2(logits=out, labels=out_true))
+        loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=out, labels=out_true))
     return loss
 
 

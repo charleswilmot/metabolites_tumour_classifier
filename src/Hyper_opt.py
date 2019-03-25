@@ -9,13 +9,16 @@ import matplotlib.pyplot as plt
 # import tensorflow as tf
 import numpy as np
 # import math
+import os
+import fnmatch
 import scipy.io
+import pandas as pd
 
 # from tf.keras.models import Sequential  # This does not work!
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.layers import InputLayer, Input
-from tensorflow.python.keras.layers import Reshape, MaxPooling2D
+from tensorflow.python.keras.layers import Reshape, MaxPooling2D, BatchNormalization, Dropout
 from tensorflow.python.keras.layers import Conv2D, Dense, Flatten
 # from tensorflow.python.keras.callbacks import TensorBoard
 from tensorflow.python.keras.optimizers import Adam
@@ -33,32 +36,119 @@ from skopt.utils import use_named_args
 
 dim_learning_rate = Real(low=1e-6, high=1e-2, prior='log-uniform',
                              name='learning_rate')
-dim_num_dense_layers = Integer(low=1, high=5, name='num_dense_layers')
-dim_num_dense_nodes = Integer(low=5, high=512, name='num_dense_nodes')
-dim_activation = Categorical(categories=['relu', 'sigmoid'],
+dim_num_dense_layers = Integer(low=1, high=4, name='num_dense_layers')
+dim_num_dense_nodes = Integer(low=50, high=512, name='num_dense_nodes')
+dim_activation = Categorical(categories=['relu', 'lrelu'],
                              name='activation')
-dim_kernel_size = Integer(low=2, high=288, name='kernel_size')
+dim_kernel_size = Integer(low=2, high=100, name='kernel_size')
+dim_num_filters_cnn1 = Integer(low=8, high=128, name='num_filters_cnn1')
+dim_num_filters_cnn2 = Integer(low=8, high=128, name='num_filters_cnn2')
+dim_num_filters_cnn3 = Integer(low=8, high=128, name='num_filters_cnn3')
+dim_drop_rate = Real(low=0.2, high=0.85, name='drop_rate')
+
 
 dimensions = [dim_learning_rate,
               dim_num_dense_layers,
               dim_num_dense_nodes,
               dim_activation,
-              dim_kernel_size]
-default_parameters = [1e-5, 1, 16, 'relu', 9]
+              dim_kernel_size,
+              dim_num_filters_cnn1,
+              dim_num_filters_cnn2,
+              dim_num_filters_cnn3,
+              dim_drop_rate]
+default_parameters = [1e-5, 1, 50, 'relu', 9, 8, 16, 32, 0.5]
+
+
+
+def find_files(data_dir, file_pattern='*.csv'):
+    """
+    Find all the files in one directory with pattern in the filenames and perform train_test_split, and save file names seperately.
+    :param args.data_dir: str, the directory of the files
+    :param args.class_mode: str, "1EPG (BL-EPG)", "3EPG (BL-earlyEPG-middleEPG-lateEPG)"
+    :param args.test_ratio: the ratio of whole data used for testing
+    :param args.num_hours_per_class: how many hours to choose for training
+    :param save_dir:
+    :return: test_files, list all the testing files
+    :return: train_files, list all the training files
+    """
+    train_files_labels = []
+    test_files_labels = []
+    ## get the number of files in folders
+    for root, dirnames, fnames in os.walk(data_dir):
+        if os.path.basename(root) == "BL":
+            fnames = fnmatch.filter(fnames, file_pattern)
+            train_files_labels, test_files_labels = get_train_test_files_split(root, fnames, 0.2,
+                                                                               train_files_labels, test_files_labels,
+                                                                               label=0,
+                                                                               num2use=8)
+        elif os.path.basename(root) == "EPG":
+            fnames = fnmatch.filter(fnames, file_pattern)
+            train_files_labels, test_files_labels = get_train_test_files_split(root, fnames, 0.2, train_files_labels,
+                                                                               test_files_labels, label=1, num2use=8)
+        else:
+            print("No file is found under mode")
+    
+    np.random.shuffle(train_files_labels)
+    np.random.shuffle(test_files_labels)
+    np.savetxt(os.path.join("Optimize", "test_files.txt"), np.array(test_files_labels), fmt="%s", delimiter=",")
+    np.savetxt(os.path.join("Optimize", "train_files.txt"), np.array(train_files_labels), fmt="%s", delimiter=",")
+    return train_files_labels, test_files_labels
+
+
+def get_train_test_files_split(root, fns, ratio, train_list, test_list, label=0, num2use=100):
+    """
+    Get equal number of files for testing from each folder
+    :param fns: list, all file names from the folder
+    :param ratio: float, the test file ratio.
+    :param train_list: the list for training files
+    :param test_list: the list for testing files
+    :param label: int, the label need to be assigned to the file
+    :param num2use: int, the number of files that you want to use(randomize file selection)
+    :return: lists, editted train and test file lists
+    """
+    np.random.shuffle(fns)
+    if num2use > len(fns):
+        num_files = len(fns)
+    else:
+        num_files = num2use
+
+    num_test_files = np.ceil(ratio * num_files).astype(np.int)
+
+    train_within_folder = []
+    for ind, f in enumerate(fns[0:num_files]):
+        if ind < num_test_files:
+            test_list.append((os.path.join(root, f), label))
+        else:
+            train_list.append((os.path.join(root, f), label))
+            train_within_folder.append((os.path.join(root, f), label))
+
+    if ratio != 1.0:
+        if num2use > len(fns):  # only oversampling training data
+            theo_num_train = np.int(num2use * (1 - ratio))
+            repeat_times = theo_num_train // len(train_within_folder) - 1 # already have one round of those files
+            train_within_folder = train_within_folder * repeat_times + train_within_folder[0: theo_num_train - (len(train_within_folder) * repeat_times )]
+            for ind, fn in enumerate(train_within_folder):
+                train_list.append((fn[0], label) )
+
+    return train_list, test_list
 
 
 def log_dir_name(learning_rate, num_dense_layers,
-                 num_dense_nodes, activation, kernel_size):
+                 num_dense_nodes, activation, kernel_size, num_filters_cnn1, num_filters_cnn2, num_filters_cnn3, drop_rate):
 
     # The dir-name for the TensorBoard log-dir.
-    s = "-lr_{0:.0e}-layers_{1}-nodes_{2}-act_{3}-kernel_{4}_acc-"
+    s = "-lr_{0:.0e}-layers_{1}-nodes_{2}-act_{3}-kernel_{4}_-filterCNN1_{5}-filterCNN2_{6}-filterCNN3_{7}-drop_{8}-acc-"
 
     # Insert all the hyper-parameters in the dir-name.
     log_dir = s.format(learning_rate,
                        num_dense_layers,
                        num_dense_nodes,
                        activation,
-                       kernel_size)
+                       kernel_size,
+                       num_filters_cnn1,
+                       num_filters_cnn2,
+                       num_filters_cnn3,
+                       drop_rate)
 
     return log_dir
 
@@ -90,7 +180,8 @@ def plot_images(images, cls_true, cls_pred=None):
     # Ensure the plot is shown correctly with multiple plots
     # in a single Notebook cell.
     plt.show()
-    
+
+
 def plot_example_errors(cls_pred):
     # cls_pred is an array of the predicted class-number for
     # all images in the test-set.
@@ -152,14 +243,14 @@ def get_data():
     lb_int = np.squeeze(labels_rand[num_train:]).astype(np.int32)
     test_data["labels"] = np.eye(num_classes)[lb_int]
     test_data["ids"] = np.squeeze(ids_rand[num_train:]).astype(np.int32)
-    
+
     ## oversample the minority samples ONLY in training data
     train_data["spectra"] = spectra_rand[0:num_train].astype(np.float32)
     train_data["labels"] = np.squeeze(labels_rand[0:num_train]).astype(np.int32)
     train_data = oversample_train(train_data, num_classes)
-    
+
     # train_data["labels"] = np.eye(num_classes)[np.squeeze(train_data["labels"][0:num_train]).astype(np.int32)]
-    
+
     return train_data, test_data
 
 
@@ -174,12 +265,13 @@ def oversample_train(train_data, num_classes):
     X_resampled, y_resampled = ros.fit_resample(train_data["spectra"], train_data["labels"])
     train_data["spectra"] = X_resampled
     train_data["labels"] = np.eye(num_classes)[np.squeeze(y_resampled).astype(np.int32)]
-    
+
+
     return train_data
 
 
 def create_model(learning_rate, num_dense_layers,
-                 num_dense_nodes, activation, kernel_size):
+                 num_dense_nodes, activation, kernel_size, num_filters_cnn1, num_filters_cnn2, num_filters_cnn3, drop_rate):
     """
     Hyper-parameters:
     learning_rate:     Learning-rate for the optimizer.
@@ -199,16 +291,25 @@ def create_model(learning_rate, num_dense_layers,
     # but the convolutional layers expect images with shape (28, 28, 1)
     model.add(Reshape(img_shape_full))
 
-    # First convolutional layer.
+    # Add the CNN layer to the model.
+    # This has two hyper-parameters we want to optimize:
+    # The number of nodes and the activation function.
+    model.add(Conv2D(kernel_size=(kernel_size, 1), strides=(4, 1), filters=num_filters_cnn1, padding='same', activation=activation, name='conv1'))
+    model.add(MaxPooling2D(pool_size=(2, 1), strides=(2, 1)))
+    model.add(BatchNormalization())
+    model.add(Dropout(drop_rate))
     # There are many hyper-parameters in this layer, but we only
     # want to optimize the activation-function in this example.
-    model.add(Conv2D(kernel_size=(kernel_size, 1), strides=(2, 1), filters=16, padding='same', activation=activation, name='layer_conv1'))
+    model.add(Conv2D(kernel_size=(kernel_size, 1), strides=(2, 1), filters=num_filters_cnn2, padding='same', activation=activation, name='conv2'))
     model.add(MaxPooling2D(pool_size=(2, 1), strides=(2, 1)))
-
+    model.add(BatchNormalization())
+    model.add(Dropout(drop_rate))
     # Second convolutional layer.
     # Again, we only want to optimize the activation-function here.
-    model.add(Conv2D(kernel_size=(kernel_size, 1), strides=(2, 1), filters=36, padding='same',  activation=activation, name='layer_conv2'))
+    model.add(Conv2D(kernel_size=(kernel_size, 1), strides=(2, 1), filters=num_filters_cnn3, padding='same',  activation=activation, name='conv3'))
     model.add(MaxPooling2D(pool_size=(2, 1), strides=(2, 1)))
+    model.add(BatchNormalization())
+    model.add(Dropout(drop_rate))
 
     # Flatten the 4-rank output of the convolutional layers
     # to 2-rank that can be input to a fully-connected / dense layer.
@@ -249,7 +350,7 @@ def create_model(learning_rate, num_dense_layers,
 
 @use_named_args(dimensions=dimensions)
 def fitness(learning_rate, num_dense_layers,
-            num_dense_nodes, activation, kernel_size):
+            num_dense_nodes, activation, kernel_size, num_filters_cnn1, num_filters_cnn2, num_filters_cnn3, drop_rate):
     """
     Hyper-parameters:
     learning_rate:     Learning-rate for the optimizer.
@@ -264,6 +365,10 @@ def fitness(learning_rate, num_dense_layers,
     print('num_dense_nodes:', num_dense_nodes)
     print('activation:', activation)
     print('kernel_size:', kernel_size)
+    print('num_filters_cnn1:', num_filters_cnn1)
+    print('num_filters_cnn2:', num_filters_cnn2)
+    print('num_filters_cnn3:', num_filters_cnn3)
+    print('drop_rate:', drop_rate)
     print()
 
     
@@ -272,11 +377,16 @@ def fitness(learning_rate, num_dense_layers,
                          num_dense_layers=num_dense_layers,
                          num_dense_nodes=num_dense_nodes,
                          activation=activation,
-                         kernel_size=kernel_size)
+                         kernel_size=kernel_size,
+                         num_filters_cnn1=num_filters_cnn1,
+                         num_filters_cnn2=num_filters_cnn2,
+                         num_filters_cnn3=num_filters_cnn3,
+                         drop_rate=drop_rate,
+                         )
 
     # Dir-name for the TensorBoard log-files.
     log_dir = log_dir_name(learning_rate, num_dense_layers,
-                           num_dense_nodes, activation, kernel_size)
+                           num_dense_nodes, activation, kernel_size, num_filters_cnn1, num_filters_cnn2, num_filters_cnn3, drop_rate)
     
     # Create a callback-function for Keras which will be
     # run after each epoch has ended during training.
@@ -295,7 +405,7 @@ def fitness(learning_rate, num_dense_layers,
     # Use Keras to train the model.
     history = model.fit(x=train_data["spectra"],
                         y=train_data["labels"],
-                        epochs=25,
+                        epochs=20,
                         batch_size=64,
                         validation_data=validation_data)
 
@@ -317,7 +427,16 @@ def fitness(learning_rate, num_dense_layers,
     if accuracy > best_accuracy:
         # Save the new model to harddisk.
         # model.save(path_best_model)
-        np.savetxt("Optiresults/" + log_dir + "{}".format(accuracy), np.arange(10).reshape(5, 2), header="lr{}-num_lay{}-num_nodes{}-act{}".format(learning_rate, num_dense_layers, num_dense_nodes, activation))
+        model.summary(print_fn=myprint)
+        np.savetxt("Optiresults/" + log_dir + "{}".format(accuracy), np.arange(10).reshape(5, 2), header="-lr_{0:.0e}-layers_{}-nodes_{}-act_{}-kernel_{}_-CNN1_{}-CNN2_{}-CNN3_{}-drop_{}-acc-".format(learning_rate,
+                       num_dense_layers,
+                       num_dense_nodes,
+                       activation,
+                       kernel_size,
+                       num_filters_cnn1,
+                       num_filters_cnn2,
+                       num_filters_cnn3,
+                       drop_rate, accuracy))
         # Update the classification accuracy.
         best_accuracy = accuracy
 
@@ -337,19 +456,18 @@ def fitness(learning_rate, num_dense_layers,
 
 
 if __name__ == "__main__":
-    
     best_accuracy = 0.0
 
     # Number of classes, one class for each of 10 digits.
     num_classes = 2
-    
+
     train_data, test_data = get_data()
     # data = input_data.read_data_sets('data/MNIST/', one_hot=True)
     print("Size of:")
     print("- Training-set:\t\t{}".format(len(train_data["labels"])))
     print("- Test-set:\t\t{}".format(len(test_data["labels"])))
     validation_data = (test_data["spectra"], test_data["labels"])
-    
+
     # We know that MNIST images are 28 pixels in each dimension.
     img_size = 288
 
@@ -367,9 +485,6 @@ if __name__ == "__main__":
     # Number of colour channels for the images: 1 channel for gray-scale.
     num_channels = 1
 
-    
-    
-    
     # fitness(x=default_parameters)
     search_result = gp_minimize(func=fitness,
                                 dimensions=dimensions,

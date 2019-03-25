@@ -6,7 +6,7 @@ import numpy as np
 import logging as log
 import sys
 import os
-from src import plot
+import plot
 import tensorflow as tf
 import scipy.io
 import random
@@ -62,7 +62,7 @@ def pick_lout_ids(ids, num_lout=1, start=0):
     return lout_ids
 
 
-def split_data_for_lout_val(args, start=0):
+def split_data_for_lout_val(args):
     """
     Split the original data in leave several subjects
     :param args:
@@ -70,37 +70,38 @@ def split_data_for_lout_val(args, start=0):
     """
     mat = scipy.io.loadmat(args.input_data)["DATA"]
     spectra = mat[:, 2:]
-    labels = mat[:, 1]
+    labels = mat[:, 1]  ##20190325-9243 samples, 428 patients
     ids = mat[:, 0]
-    train_test = {}
-    validate = {}
-    validate["features"] = np.empty((0, 288))
-    validate["labels"] = np.empty((0))
-    validate["ids"] = np.empty((0))
 
-    lout_ids = pick_lout_ids(ids, num_lout=args.num_lout, start=start)  # leave 10 subjects out
-    all_inds = np.empty((0))
-    for id in lout_ids:
-        inds = np.where(ids == id)[0]
-        all_inds = np.append(all_inds, inds)
-        validate["features"] = np.vstack((validate["features"], spectra[inds, :]))
-        validate["labels"] = np.append(validate["labels"], labels[inds])
-        validate["ids"] = np.append(validate["ids"], ids[inds])
-    train_test_data = np.delete(mat, all_inds, axis=0)  # delete all leaved-out subjects
-    # ndData
-    val_mat = {}
-    train_test_mat = {}
-    val_mat["DATA"] = np.zeros((validate["labels"].size, 290))
-    val_mat["DATA"][:, 0] = validate["ids"]
-    val_mat["DATA"][:, 1] = validate["labels"]
-    val_mat["DATA"][:, 2:] = validate["features"]
-    train_test_mat["DATA"] = np.zeros((len(train_test_data), 290))
-    train_test_mat["DATA"][:, 0] = train_test_data[:, 0]
-    train_test_mat["DATA"][:, 1] = train_test_data[:, 1]
-    train_test_mat["DATA"][:, 2:] = train_test_data[:, 2:]
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/20190301-{}class_lout{}_val_data{}.mat'.format(args.num_classes, args.num_lout, start), val_mat)
-    scipy.io.savemat(
-        os.path.dirname(args.input_data) + '/20190301-{}class_lout{}_train_test_data{}.mat'.format(args.num_classes, args.num_lout, start), train_test_mat)
+    for i in range(10):
+        validate = {}
+        validate["features"] = np.empty((0, 288))
+        validate["labels"] = np.empty((0))
+        validate["ids"] = np.empty((0))
+
+        lout_ids = pick_lout_ids(ids, num_lout=args.num_lout, start=i)  # leave 10 subjects out
+        all_inds = np.empty((0))
+        for id in lout_ids:
+            inds = np.where(ids == id)[0]
+            all_inds = np.append(all_inds, inds)
+            validate["features"] = np.vstack((validate["features"], spectra[inds, :]))
+            validate["labels"] = np.append(validate["labels"], labels[inds])
+            validate["ids"] = np.append(validate["ids"], ids[inds])
+        train_test_data = np.delete(mat, all_inds, axis=0)  # delete all leaved-out subjects
+        # ndData
+        val_mat = {}
+        train_test_mat = {}
+        val_mat["DATA"] = np.zeros((validate["labels"].size, 290))
+        val_mat["DATA"][:, 0] = validate["ids"]
+        val_mat["DATA"][:, 1] = validate["labels"]
+        val_mat["DATA"][:, 2:] = validate["features"]
+        train_test_mat["DATA"] = np.zeros((len(train_test_data), 290))
+        train_test_mat["DATA"][:, 0] = train_test_data[:, 0]
+        train_test_mat["DATA"][:, 1] = train_test_data[:, 1]
+        train_test_mat["DATA"][:, 2:] = train_test_data[:, 2:]
+        scipy.io.savemat(os.path.dirname(args.input_data) + '/20190325-{}class_lout{}_val_data{}.mat'.format(args.num_classes, args.num_lout, i), val_mat)
+        scipy.io.savemat(
+            os.path.dirname(args.input_data) + '/20190325-{}class_lout{}_train_test_data{}.mat'.format(args.num_classes, args.num_lout, i), train_test_mat)
 
 def get_cross_val_lout_data(args):
     """
@@ -242,9 +243,8 @@ def get_data_tensors(args):
         batch_train = iter_train.get_next()
         data["train_features"] = batch_train[0]
         data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
-        data["train_ids"] =batch_train[2]
         data["train_initializer"] = iter_train.initializer
-        # args.test_every = train_labels.get_shape().as_list()[0] // 2
+        args.test_every = train_labels.get_shape().as_list()[0] // args.test_freq
 
     return data, args
 
