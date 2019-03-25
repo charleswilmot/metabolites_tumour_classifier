@@ -73,7 +73,7 @@ def split_data_for_lout_val(args):
     labels = mat[:, 1]  ##20190325-9243 samples, 428 patients
     ids = mat[:, 0]
 
-    for i in range(10):
+    for i in range(10, 23):
         validate = {}
         validate["features"] = np.empty((0, 288))
         validate["labels"] = np.empty((0))
@@ -102,15 +102,6 @@ def split_data_for_lout_val(args):
         scipy.io.savemat(os.path.dirname(args.input_data) + '/20190325-{}class_lout{}_val_data{}.mat'.format(args.num_classes, args.num_lout, i), val_mat)
         scipy.io.savemat(
             os.path.dirname(args.input_data) + '/20190325-{}class_lout{}_train_test_data{}.mat'.format(args.num_classes, args.num_lout, i), train_test_mat)
-
-def get_cross_val_lout_data(args):
-    """
-    Get k-fold cross-val datasets.
-    :param args:
-    :return:
-    """
-    for i in range(10):
-        split_data_for_lout_val(args, start=i)
 
 
 def split_data_for_val(args):
@@ -244,7 +235,8 @@ def get_data_tensors(args):
         data["train_features"] = batch_train[0]
         data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
         data["train_initializer"] = iter_train.initializer
-        args.test_every = train_labels.get_shape().as_list()[0] // args.test_freq
+        args.test_every = train_labels.get_shape().as_list()[0] // (args.test_freq * args.batch_size)
+        # test_freq: how many times to test in one training epoch
 
     return data, args
 
