@@ -29,8 +29,7 @@ if args.seed is not None:
     tf.set_random_seed(args.seed)
 
 # if args.seed != 2594:   # every time change the random seed should save the data again
-## get leave-out train and test sets:
-dataio.split_data_for_lout_val(args)
+## get leave-out train and test sets: dataio.split_data_for_lout_val(args)
 data_tensors, args = dataio.get_data_tensors(args)
 
 graph = graph.get_graph(args, data_tensors)
