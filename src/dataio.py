@@ -54,12 +54,12 @@ def pick_lout_ids(ids, num_lout=1, start=0):
     :param train_test:
     :param validate:
     :return:
+    Use it at the first time to get a overview of the data distribution. sorted_count = sorted(count.items(), key=lambda kv: kv[1])
+    # np.savetxt("../data/20190325/20190325_count.csv", np.array(sorted_count), fmt="%.1f", delimiter=',')
     """
     count = dict(Counter(list(ids)))  # count the num of samples of each id
-    # sorted_count = sorted(count.items(), key=lambda kv: kv[1])
-    # np.savetxt("../data/20190325/20190325_count.csv", np.array(sorted_count), fmt="%.1f", delimiter=',')
     lout_ids = list(count.keys())[num_lout*start : num_lout*(start+1)]
-    np.savetxt("../data/lout_ids_{}.csv".format(start), np.array(lout_ids), fmt="%.1f", delimiter=',')
+    # np.savetxt("../data/lout_ids_{}.csv".format(start), np.array(lout_ids), fmt="%.1f", delimiter=',')
     return lout_ids
 
 
@@ -74,13 +74,14 @@ def split_data_for_lout_val(args):
     labels = mat[:, 1]  ##20190325-9243 samples, 428 patients
     ids = mat[:, 0]
 
-    for i in range(10, 23):
+    for i in range(5):
         validate = {}
         validate["features"] = np.empty((0, 288))
         validate["labels"] = np.empty((0))
         validate["ids"] = np.empty((0))
 
         lout_ids = pick_lout_ids(ids, num_lout=args.num_lout, start=i)  # leave 10 subjects out
+
         all_inds = np.empty((0))
         for id in lout_ids:
             inds = np.where(ids == id)[0]
@@ -89,6 +90,8 @@ def split_data_for_lout_val(args):
             validate["labels"] = np.append(validate["labels"], labels[inds])
             validate["ids"] = np.append(validate["ids"], ids[inds])
         train_test_data = np.delete(mat, all_inds, axis=0)  # delete all leaved-out subjects
+        print("Leave out: \n", lout_ids, "\n num_lout\n", len(validate["labels"]))
+
         # ndData
         val_mat = {}
         train_test_mat = {}
@@ -100,6 +103,7 @@ def split_data_for_lout_val(args):
         train_test_mat["DATA"][:, 0] = train_test_data[:, 0]
         train_test_mat["DATA"][:, 1] = train_test_data[:, 1]
         train_test_mat["DATA"][:, 2:] = train_test_data[:, 2:]
+        print("num_train\n", len(train_test_mat["DATA"][:, 1]))
         scipy.io.savemat(os.path.dirname(args.input_data) + '/20190325-{}class_lout{}_val_data{}.mat'.format(args.num_classes, args.num_lout, i), val_mat)
         scipy.io.savemat(
             os.path.dirname(args.input_data) + '/20190325-{}class_lout{}_train_test_data{}.mat'.format(args.num_classes, args.num_lout, i), train_test_mat)
@@ -190,13 +194,13 @@ def get_data(args):
 
     test_count = dict(Counter(list(test_data["ids"])))  # count the num of samples of each id
     sorted_count = sorted(test_count.items(), key=lambda kv: kv[1])
-    np.savetxt(os.path.join(args.output_path, "test_ids_count.csv"), np.array(sorted_count), fmt='%.1f', delimiter=',')
+    np.savetxt(os.path.join(args.output_path, "test_ids_count.csv"), np.array(sorted_count), fmt='%d', delimiter=',')
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
         train_data = oversample_train(train_data, args.num_classes)
         train_count = dict(Counter(list(train_data["ids"])))  # count the num of samples of each id
         sorted_count = sorted(train_count.items(), key=lambda kv: kv[1])
-        np.savetxt(os.path.join(args.output_path, "train_ids_count.csv"), np.array(sorted_count), fmt='%.1f', delimiter=',')
+        np.savetxt(os.path.join(args.output_path, "train_ids_count.csv"), np.array(sorted_count), fmt='%d', delimiter=',')
     
     return train_data, test_data
 

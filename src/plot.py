@@ -168,7 +168,7 @@ def plot_wrong_examples(args, data, training=False):
     colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
     num_classes = data["test_wrong_labels"].shape[-1]
     f, axs = plt.subplots(num_classes, 1, 'col')
-    plt.suptitle("Mistakes", x=0.5, y=0.90, fontsize=base)
+    plt.suptitle("Mistakes", x=0.5, y=0.925, fontsize=base)
     for i in range(num_classes):
         if len(data["test_wrong_features"][labels == i, :]) != 0:
             axs[i].plot(data["test_wrong_features"][labels == i, :].T, color=colors[i])
@@ -286,35 +286,54 @@ def plot_class_activation_map(sess, class_activation_map, top_conv,
     plots_per_fig = 10
     counts = np.arange(plots_per_fig)
 
-    rand_inds = np.random.choice(np.arange(len(classmap_answer)), num_images)
-    classmap_high = np.array(classmap_high)[rand_inds]
-    # classmap_low = np.array(classmap_low)[rand_inds]
-    images_plot = images_test[rand_inds]
-    labels_plot = labels_int[rand_inds]
-    pred_plot = pred_labels[rand_inds]
+    # rand_inds = np.random.choice(np.arange(len(classmap_answer)), num_images)
+    # classmap_high = np.array(classmap_high)[rand_inds]
+    # images_plot = images_test[rand_inds]
+    # labels_plot = labels_int[rand_inds]
+    # pred_plot = pred_labels[rand_inds]
 
-    for j in range(num_images // plots_per_fig):
-        fig = plt.figure()
-        for count, vis_h, ori in zip(counts, classmap_high[j*plots_per_fig : (j+1)*plots_per_fig], images_plot[j*plots_per_fig : (j+1)*plots_per_fig]):
-
-            label_c = 'k' if labels_plot[j*plots_per_fig+count] == pred_plot[j*plots_per_fig+count] else 'r'
-            plt.subplot(plots_per_fig//2, 2, count+1)
-            plt.plot(np.arange(ori.size), ori, 'darkorchid', label='original', linewidth=0.8)
-            plt.plot(np.array(vis_h), np.repeat(ori.max(), vis_h.size), '.', color='deepskyblue', label='attention')
-
-            att_indices = collect_and_plot_atten(vis_h, 1)  # collect the attention part indices
-
-            plt.xlim([0, ori.size])
-            plt.xlabel("label: {} - pred: {}".format(np.str(labels_plot[j*plots_per_fig+count]), np.str(pred_plot[j*plots_per_fig+count])), color=label_c)
-            if count == 0:
-                plt.legend(bbox_to_anchor=(0.15, 1.05, 0.7, 0.1), loc="lower left", mode="expand", borderaxespad=0, ncol=2, scatterpoints=3)
-            if count == plots_per_fig - 1:
-                plt.xlabel("time / s, label: {} - pred: {}".format(np.str(labels_plot[j*plots_per_fig+count]), np.str(pred_plot[j*plots_per_fig+count])))
-
+    for class_id in range(args.num_classes):
+        inds = np.where(labels_int == class_id)[0]
+        class_maps_plot = np.array(classmap_high)[inds]
+        images_plot = images_test[inds]
+        labels_plot = labels_int[inds]
+        pred_plot = pred_labels[inds]
+        row = np.int(np.sqrt(len(inds)))
+        counts = np.arange(row * 3)
+        fig, axs = plt.subplots(row, 5, 'col')
+        for j, vis_h, ori, label, pred in zip(counts, class_maps_plot, images_plot, labels_plot, pred_plot):
+            label_c = 'k' if label == pred else 'r'
+            axs[j].plot(np.arange(ori.size), ori, 'darkorchid', label='original', linewidth=0.8)
+            axs[j].plot(np.array(vis_h), np.repeat(ori.max(), vis_h.size), '.', color='deepskyblue', label='attention')
         plt.tight_layout()
         plt.subplots_adjust(top=0.90)
-        plt.savefig(args.output_path + '/class_activity_map-step-test{}-count{}.pdf'.format(global_step, j), format='pdf')
-        plt.close()#
+        fig.subplots_adjust(hspace=0)
+        plt.savefig(args.output_path + '/class_activity_map-step-test{}-class{}.pdf'.format(global_step, class_id), format='pdf')
+        plt.close()
+
+
+    # for j in range(num_images // plots_per_fig):
+    #     fig = plt.figure()
+    #     for count, vis_h, ori in zip(counts, classmap_high[j*plots_per_fig : (j+1)*plots_per_fig], images_plot[j*plots_per_fig : (j+1)*plots_per_fig]):
+    #
+    #         label_c = 'k' if labels_plot[j*plots_per_fig+count] == pred_plot[j*plots_per_fig+count] else 'r'
+    #         plt.subplot(plots_per_fig//2, 2, count+1)
+    #         plt.plot(np.arange(ori.size), ori, 'darkorchid', label='original', linewidth=0.8)
+    #         plt.plot(np.array(vis_h), np.repeat(ori.max(), vis_h.size), '.', color='deepskyblue', label='attention')
+    #
+    #         att_indices = collect_and_plot_atten(vis_h, 1)  # collect the attention part indices
+    #
+    #         plt.xlim([0, ori.size])
+    #         plt.xlabel("label: {} - pred: {}".format(np.str(labels_plot[j*plots_per_fig+count]), np.str(pred_plot[j*plots_per_fig+count])), color=label_c)
+    #         if count == 0:
+    #             plt.legend(bbox_to_anchor=(0.15, 1.05, 0.7, 0.1), loc="lower left", mode="expand", borderaxespad=0, ncol=2, scatterpoints=3)
+    #         if count == plots_per_fig - 1:
+    #             plt.xlabel("time / s, label: {} - pred: {}".format(np.str(labels_plot[j*plots_per_fig+count]), np.str(pred_plot[j*plots_per_fig+count])))
+    #
+    #     plt.tight_layout()
+    #     plt.subplots_adjust(top=0.90)
+    #     plt.savefig(args.output_path + '/class_activity_map-step-test{}-count{}.pdf'.format(global_step, j), format='pdf')
+    #     plt.close()#
 
 
 def collect_and_plot_atten(indices, scale):
@@ -328,7 +347,7 @@ def collect_and_plot_atten(indices, scale):
         xcoords.insert(ind, xcoords[ind] - 1)
 
     start_end_inds = [0] + xcoords + [len(indices) - 1]
-    for xc in ([0] + xcoords + [len(indices) - 1]):  # [0] + xcoords + [len(vis_h)-1]
+    for xc in ([0] + xcoords + [len(indices) - 1]):
         plt.axvline(x=indices[xc] / np.float(scale), color='b', linewidth=0.35)
 
     return start_end_inds
@@ -345,20 +364,32 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
     ids = test_data["test_ids"]
     labels_int = np.argmax(test_data["test_labels"], axis=1)
     count = dict(Counter(list(ids)))  # c
-    
+
+    # Plot prob. histogram all the voxels from each class
+    distr_color = ["m", "lawngreen"]
+    plt.figure()
+    for class_id in range(num_classes):
+        # plt.subplot(2, 1, class_id+1)
+        inds = np.where(labels_int == class_id)[0]
+        plt.hist(np.array(predictions[inds][:, class_id]), align='mid', bins=50, range=(0.0, 1.0), color=distr_color[class_id], label="class {} probability ".format(class_id), alpha=0.55, density=True)
+    plt.xlabel("probability")
+    plt.ylabel("density")
+    plt.legend(loc="best")
+    plt.savefig(output_dir + '/prob_distri_of_all_class_voxels2.png'.format(class_id), format="png")
+    plt.close()
+
+    # Plot prob. histogram of each individual
     for id in count.keys():
-        if id == 443.0:
-            print("421")
         plt.figure()
         id_inds = np.where(ids == id)[0]
         vote_label = np.sum(labels_int[id_inds]) * 1.0 / id_inds.size
         vote_pred = np.sum(predictions[id_inds][:, 1]) / id_inds.size
-        # vote_pred = np.sum(pred_int[id_inds]) * 1.0 / id_inds.size
+        # vote_pred = np.sum(pred_int[id_inds]) * 1.0 / id_inds.size   # brute force majority vote
         
         label_of_id = 0 if vote_label < 0.5 else 1
         pred_of_id = 0 if vote_pred < 0.5 else 1
 
-        color = "royalblue" if label_of_id == pred_of_id else "violet"
+        color = "slateblue" if label_of_id == pred_of_id else "r"
         
         ax = plt.subplot(1, 1, 1)
         pred_hist = plt.hist(np.array(predictions[id_inds][:, 1]), align='mid', bins=10, range=(0.0, 1.0), color=color, label="predicted")

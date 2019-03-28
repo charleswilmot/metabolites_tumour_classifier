@@ -11,7 +11,7 @@
 
             "out_format": "m",
             "data_len": 288,
-            "num_lout": 20,
+            "num_lout": 40,
 
             "output_path": "../results/",
             "model_save_dir": null,
@@ -27,7 +27,7 @@
             "number_of_epochs": 500,
             "test_freq": 1,
             "test_every": null,
-            "input_data": "../data/20190325/20190325-3class_lout20_val_data1.mat",
+            "input_data": "../data/20190325/20190325-3class_lout40_train_test_data0.mat",
             "test_ratio": 10,
             "learning_rate": 0.0005,
             "restore_from": null,
@@ -36,7 +36,7 @@
         },
 
         "test":{
-            "input_data": "../data/20190325/20190325-3class_lout20_val_data13.mat",
+            "input_data": "../data/20190325/20190325-3class_lout20_val_data3.mat",
 
             "test_ratio": 100,
             "number_of_epochs": 2
