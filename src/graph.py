@@ -152,12 +152,12 @@ class CNN:
         :return:
         """
         layer_number = 1
-        out = inp
+        net = inp
         for (out_ch, bn, activation, drop) in zip(self.out_channels, self.bn_cnn, self.activations_cnn, self.drop_cnn):
-            out = self._make_cnn_layer(out, out_ch, bn, activation, drop, layer_number, training)
+            net = self._make_cnn_layer(net, out_ch, bn, activation, drop, layer_number, training)
             layer_number += 1
 
-        return out
+        return net
 
     def construct_fnn_layers(self, inp, training):
         """
@@ -167,12 +167,12 @@ class CNN:
         :return: output tensors of the layers
         """
         layer_number = 1
-        out = tf.layers.flatten(inp)
+        net = tf.layers.flatten(inp)
         for (out_dim, bn, activation, drop) in zip(self.fc_dims, self.bn_cnn, self.activations_cnn, self.drop_cnn):
-            out = self._make_fnn_layer(out, out_dim, bn, activation, drop, layer_number, training)
+            net = self._make_fnn_layer(net, out_dim, bn, activation, drop, layer_number, training)
             layer_number += 1
 
-        return out
+        return net
 
     ## Private function for adding one conv layers to the network
     # @param inp input tensor

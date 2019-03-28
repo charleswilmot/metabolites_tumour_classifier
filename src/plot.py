@@ -11,10 +11,11 @@ import ipdb
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
 from sklearn import metrics
+import tensorflow as tf
 
 base = 22
 params = {'legend.fontsize': base-8,
-          'figure.figsize': (10, 8),
+          'figure.figsize': (13, 8.6),
          'axes.labelsize': base-4,
          #'weight' : 'bold',
          'axes.titlesize':base,
@@ -54,6 +55,7 @@ def accuracy_plot(ax, data, training=False):
     plt.text(np.argmax(test_accuracy) + 1, highest, "%.4f" % (highest), horizontalalignment="center", color="k", size=18)
     ax.set_title("Accuracy")
     ax.legend(loc="lower right")
+    return highest
 
 
 def loss_figure(args, data, training=False):
@@ -67,7 +69,7 @@ def loss_figure(args, data, training=False):
 def accuracy_figure(args, data, training=False):
     f = plt.figure()
     ax = f.add_subplot(111)
-    accuracy_plot(ax, data, training=training)
+    max_acc = accuracy_plot(ax, data, training=training)
     f.savefig(args.output_path + '/accuracy_step_{}.png'.format(data["current_step"]))
     logger.info("Accuracy plot saved")
 
@@ -82,36 +84,41 @@ def plot_auc_curve(args, data, epoch=0):
     f = plt.figure()
     fpr, tpr, _ = metrics.roc_curve(np.argmax(data["test_labels"], 1), data["test_pred"][:, 1])  # input the positive label's prob distribution
     auc = metrics.roc_auc_score(data["test_labels"], data["test_pred"])
-    plt.plot(fpr, tpr, label="auc=" + str(auc))
+    plt.plot(fpr, tpr, label="auc={0:.4f}".format(auc))
     plt.legend(loc=4)
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
-    f.savefig(args.output_path + '/AUC_curve_step_{}.png'.format(epoch))
+    f.savefig(args.output_path + '/AUC_curve_step_{:.2f}-auc_{:.4}.png'.format(epoch, auc))
     plt.close()
 
 def accuracy_loss_figure(args, data, training=False, epoch=0):
     f = plt.figure()
     ax = f.add_subplot(121)
-    accuracy_plot(ax, data, training=training)
+    max_acc = accuracy_plot(ax, data, training=training)
     ax = f.add_subplot(122)
     loss_plot(ax, data, training=training)
     plt.tight_layout()
     if training:
-        f.savefig(args.output_path + '/accuracy_loss_step_{}-epoch-{}.png'.format(data["current_step"], epoch))
+        f.savefig(args.output_path + '/accuracy_loss_step_{}-epoch-{:.2f}_acc_{:.4}.png'.format(data["current_step"], epoch, max_acc))
     else:
-        f.savefig(args.output_path + '/accuracy_loss_step_{}.png'.format("VALID"))
+        f.savefig(args.output_path + '/accuracy_loss-step_{}-acc_{:.4f}.png'.format("VALID", max_acc))
     plt.close()
     logger.info("Accuracy + Loss plot saved")
 
 
-def all_figures(args, data, training=False, epoch=0):
+def all_figures(sess, args, data, training=False, epoch=0):
     # loss_figure(args, data, training=training)
     # accuracy_figure(args, data, training=training)
     accuracy_loss_figure(args, data, training=training, epoch=epoch)
     plot_confusion_matrix(args, data, ifnormalize=True, training=training)
-    # plot_wrong_examples(args, data, training=training)
     plot_auc_curve(args, data, epoch=epoch)
-    # plot_prob_distr_on_ids(data, args.output_path)
+    if not training:
+        plot_wrong_examples(args, data, training=training)
+        plot_prob_distr_on_ids(data, args.output_path)
+        if args.model_name == 'CNN_CAM':
+            class_maps = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.data_len, 1)
+            plot_class_activation_map(sess, class_maps, data["test_conv"], data["test_features"], data["test_labels"], np.argmax(data["test_pred"], 1), epoch, 20, args)
+
     # plot_tsne(args, data)
     # plot_hierarchy_cluster(args, data)
 
@@ -157,19 +164,19 @@ def plot_wrong_examples(args, data, training=False):
     :param data: dict,
     :return:
     """
-    f = plt.figure()
     labels = np.argmax(data["test_wrong_labels"], axis=1)
     colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
     num_classes = data["test_wrong_labels"].shape[-1]
-    plt.title("Mistakes")
+    f, axs = plt.subplots(num_classes, 1, 'col')
+    plt.suptitle("Mistakes", x=0.5, y=0.90, fontsize=base)
     for i in range(num_classes):
-        ax = f.add_subplot(num_classes, 1, i+1)
-        if len(data["test_wrong_features"][labels==i, :]) != 0:
-            ax.plot(data["test_wrong_features"][labels==i, :].T, color=colors[i])
-            ax.plot(data["test_wrong_features"][labels==i, :][0], color=colors[i], label="label {}".format(i))
-        plt.setp(ax.get_xticklabels(), visible=False)
-        plt.legend(loc="best")
-        f.subplots_adjust(hspace=0)
+        if len(data["test_wrong_features"][labels == i, :]) != 0:
+            axs[i].plot(data["test_wrong_features"][labels == i, :].T, color=colors[i])
+            axs[i].plot(data["test_wrong_features"][labels == i, :][0], color=colors[i], label="True label {}".format(i))  # for labeling
+        if i < num_classes - 1:
+            plt.setp(axs[i].get_xticklabels(), visible=False)
+        axs[i].legend(loc="best")
+    f.subplots_adjust(hspace=0)
     if training:
         f.savefig(args.output_path + '/{}-class_wrong_examples_{}.png'.format(num_classes, data["current_step"]))
     else:
@@ -228,7 +235,31 @@ def plot_hierarchy_cluster(args, data):
     plt.ylabel("distance")
     f.savefig(args.output_path + '/{}-hierarchy-on-activity-{}.png'.format(args.num_classes, data["current_step"]))
     plt.close()
-    
+
+
+def get_class_map(labels, conv_out, weights, seq_len, seq_width):
+    """
+    Get the map for a specific sample with class. Some samples can be assigned to different classes.
+    :param labels_int: 1d array, [batch_size,], the int labels in one batch
+    :param conv_out: list, list of arry that contains the output from the conv_layer from the network
+    :param weights: weights of the last GAP feature map
+    :param im_width: The length of the input sample
+    :return: class map
+    """
+    conv_out = np.expand_dims(conv_out, 2)
+    channels = conv_out.shape[-1]
+    num_samples = conv_out.shape[0]
+    classmaps = []
+    labels_int = np.argmax(labels, axis=1)
+    conv_resized = tf.image.resize_nearest_neighbor(conv_out, [seq_len, seq_width])
+    for ind, label in enumerate(labels_int[0: num_samples]):
+        label_w = tf.gather(tf.transpose(weights), label)
+        label_w = tf.reshape(label_w, [-1, channels, 1])
+        resized = tf.reshape(conv_resized[ind], [-1, seq_len * seq_width, channels])
+        classmap = tf.matmul(resized, label_w)
+        classmaps.append(tf.reshape(classmap, [-1, seq_len, seq_width]))
+
+    return classmaps
 
 
 def plot_class_activation_map(sess, class_activation_map, top_conv,
@@ -251,28 +282,30 @@ def plot_class_activation_map(sess, class_activation_map, top_conv,
     classmap_answer = sess.run(class_activation_map)
 
     classmap_high = list(map(lambda x: (np.where(np.squeeze(x) > np.percentile(np.squeeze(x), 80))[0]), classmap_answer))
-    classmap_low = list(map(lambda x: (np.where(np.squeeze(x) < np.percentile(np.squeeze(x), 18))[0]), classmap_answer))
-    plots_per_fig = 5
+    # classmap_low = list(map(lambda x: (np.where(np.squeeze(x) < np.percentile(np.squeeze(x), 18))[0]), classmap_answer))
+    plots_per_fig = 10
     counts = np.arange(plots_per_fig)
 
     rand_inds = np.random.choice(np.arange(len(classmap_answer)), num_images)
     classmap_high = np.array(classmap_high)[rand_inds]
-    classmap_low = np.array(classmap_low)[rand_inds]
+    # classmap_low = np.array(classmap_low)[rand_inds]
     images_plot = images_test[rand_inds]
     labels_plot = labels_int[rand_inds]
     pred_plot = pred_labels[rand_inds]
+
     for j in range(num_images // plots_per_fig):
         fig = plt.figure()
-        for count, vis_h, vis_l, ori in zip(counts, classmap_high[j*plots_per_fig : (j+1)*plots_per_fig], classmap_low[j*plots_per_fig : (j+1)*plots_per_fig], images_plot[j*plots_per_fig : (j+1)*plots_per_fig]):
+        for count, vis_h, ori in zip(counts, classmap_high[j*plots_per_fig : (j+1)*plots_per_fig], images_plot[j*plots_per_fig : (j+1)*plots_per_fig]):
 
-            plt.subplot(plots_per_fig, 1, count+1)
+            label_c = 'k' if labels_plot[j*plots_per_fig+count] == pred_plot[j*plots_per_fig+count] else 'r'
+            plt.subplot(plots_per_fig//2, 2, count+1)
             plt.plot(np.arange(ori.size), ori, 'darkorchid', label='original', linewidth=0.8)
             plt.plot(np.array(vis_h), np.repeat(ori.max(), vis_h.size), '.', color='deepskyblue', label='attention')
 
             att_indices = collect_and_plot_atten(vis_h, 1)  # collect the attention part indices
 
             plt.xlim([0, ori.size])
-            plt.xlabel("label: {} - pred: {}".format(np.str(labels_plot[j*plots_per_fig+count]), np.str(pred_plot[j*plots_per_fig+count])))
+            plt.xlabel("label: {} - pred: {}".format(np.str(labels_plot[j*plots_per_fig+count]), np.str(pred_plot[j*plots_per_fig+count])), color=label_c)
             if count == 0:
                 plt.legend(bbox_to_anchor=(0.15, 1.05, 0.7, 0.1), loc="lower left", mode="expand", borderaxespad=0, ncol=2, scatterpoints=3)
             if count == plots_per_fig - 1:
@@ -324,10 +357,13 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
         
         label_of_id = 0 if vote_label < 0.5 else 1
         pred_of_id = 0 if vote_pred < 0.5 else 1
+
+        color = "royalblue" if label_of_id == pred_of_id else "violet"
         
         ax = plt.subplot(1, 1, 1)
-        pred_hist = plt.hist(np.array(predictions[id_inds][:, 1]), align='mid', bins=10, range=(0.0, 1.0), color='royalblue', label="predicted")
+        pred_hist = plt.hist(np.array(predictions[id_inds][:, 1]), align='mid', bins=10, range=(0.0, 1.0), color=color, label="predicted")
         ymin, ymax = ax.get_ylim()
+        ymax += 2
         plt.vlines(0.5, ymin, ymax, colors='k', linestyles='--')
         plt.text(0.25, ymax, str(np.int(np.sum(predictions[id_inds][:, 1] < 0.5))), fontsize=base-4)
         plt.text(0.75, ymax, str(np.int(np.sum(predictions[id_inds][:, 1] >= 0.5))), fontsize=base-4)

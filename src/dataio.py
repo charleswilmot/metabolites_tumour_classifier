@@ -11,6 +11,7 @@ import tensorflow as tf
 import scipy.io
 import random
 # from sklearn.model_selection import train_test_split
+from collections import Counter
 import ipdb
 logger = log.getLogger("classifier")
 
@@ -54,9 +55,9 @@ def pick_lout_ids(ids, num_lout=1, start=0):
     :param validate:
     :return:
     """
-
-    from collections import Counter
     count = dict(Counter(list(ids)))  # count the num of samples of each id
+    # sorted_count = sorted(count.items(), key=lambda kv: kv[1])
+    # np.savetxt("../data/20190325/20190325_count.csv", np.array(sorted_count), fmt="%.1f", delimiter=',')
     lout_ids = list(count.keys())[num_lout*start : num_lout*(start+1)]
     np.savetxt("../data/lout_ids_{}.csv".format(start), np.array(lout_ids), fmt="%.1f", delimiter=',')
     return lout_ids
@@ -186,10 +187,16 @@ def get_data(args):
     test_data["spectra"] = spectra_rand[args.num_train:].astype(np.float32)
     test_data["labels"] = np.squeeze(labels_rand[args.num_train:]).astype(np.int32)
     test_data["ids"] = np.squeeze(ids_rand[args.num_train:]).astype(np.int32)
-    
+
+    test_count = dict(Counter(list(test_data["ids"])))  # count the num of samples of each id
+    sorted_count = sorted(test_count.items(), key=lambda kv: kv[1])
+    np.savetxt(os.path.join(args.output_path, "test_ids_count.csv"), np.array(sorted_count), fmt='%.1f', delimiter=',')
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
         train_data = oversample_train(train_data, args.num_classes)
+        train_count = dict(Counter(list(train_data["ids"])))  # count the num of samples of each id
+        sorted_count = sorted(train_count.items(), key=lambda kv: kv[1])
+        np.savetxt(os.path.join(args.output_path, "train_ids_count.csv"), np.array(sorted_count), fmt='%.1f', delimiter=',')
     
     return train_data, test_data
 
@@ -265,7 +272,7 @@ def save_command_line(args):
 
 def save_plots(sess, args, output_data, training=False, epoch=0):
     logger.info("Saving output data")
-    plot.all_figures(args, output_data, training=training, epoch=epoch)
+    plot.all_figures(sess, args, output_data, training=training, epoch=epoch)
     logger.info("Output data saved to {}".format("TODO"))
 
 

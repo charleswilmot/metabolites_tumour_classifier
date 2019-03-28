@@ -2,25 +2,25 @@
     "model": {
                 "CNN":{
                     "model_name": "CNN",
-                    "out_channels": [32, 64],
+                    "out_channels": [16, 32],
                     "pool_size": 3,
                     "strides": 3,
-                    "kernel_size": 7,
+                    "kernel_size": 288,
                     "fc": [200, 2],
                     "dropout_probs": [0.3, 0.3, 0.5, 0.5],
                     "batch_norms":[true, true, true, true],
-                    "activations":["lrelu", "lrelu", "lrelu", "sigmoid"]
+                    "activations":["lrelu", "lrelu", "lrelu", "softmax"]
 
                 },
                 "CNN_CAM":{
                     "model_name": "CNN_CAM",
-                    "out_channels": [8, 16, 32, 64],
+                    "out_channels": [8, 16, 32],
                     "pool_size": 3,
                     "strides": 3,
                     "kernel_size": 288,
-                    "dropout_probs": [0.3, 0.3, 0.3, 0.3],
-                    "batch_norms":[true, true, true, true],
-                    "activations":["lrelu", "lrelu", "lrelu", "lrelu"]
+                    "dropout_probs": [0.3, 0.3, 0.3],
+                    "batch_norms":[true, true, true],
+                    "activations":["lrelu", "lrelu", "lrelu"]
 
                 },
                 "MLP":{

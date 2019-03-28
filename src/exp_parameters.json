@@ -4,7 +4,7 @@
             "test_or_train": "train",
             "exp_config": "./exp_parameters.json",
             "model_config": "./model_parameters.json",
-            "num_classes": 3,
+            "num_classes": 2,
             "batch_size": 128,
             "test_bs": 128,
             "seed": 2594,
@@ -17,7 +17,7 @@
             "model_save_dir": null,
             "restore_from": null,
 
-            "model_name": "MLP",
+            "model_name": "CNN_CAM",
             "optimizer_type": "adam",
             "loss_type": "softmax_ce",
             "learning_rate": 0.0005
@@ -27,7 +27,7 @@
             "number_of_epochs": 500,
             "test_freq": 1,
             "test_every": null,
-            "input_data": "../data/20190325/20190325_DATA.mat",
+            "input_data": "../data/20190325/20190325-3class_lout20_val_data1.mat",
             "test_ratio": 10,
             "learning_rate": 0.0005,
             "restore_from": null,
@@ -36,7 +36,7 @@
         },
 
         "test":{
-            "input_data": "../data/20190325/20190325-3class_lout20_val_data1.mat",
+            "input_data": "../data/20190325/20190325-3class_lout20_val_data13.mat",
 
             "test_ratio": 100,
             "number_of_epochs": 2

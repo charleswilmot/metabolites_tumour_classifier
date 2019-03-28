@@ -171,8 +171,8 @@ def testing(sess, graph):
         "test_ids": graph["test_ids"],
         "test_features": graph["test_features"],
         "test_out": graph["test_out"],
-        # "test_conv": graph["test_conv"],
-        # "test_gap_w": graph["test_gap_w"],
+        "test_conv": graph["test_conv"],
+        "test_gap_w": graph["test_gap_w"],
         "test_wrong_inds": graph["test_wrong_inds"],
     }
     initialize(sess, graph, test_only=True)
@@ -184,8 +184,8 @@ def testing(sess, graph):
     test_labels = concat_labels(ret, key="test_labels")
     test_ids = concat_labels(ret, key="test_ids")
     test_pred = concat_labels(ret, key="test_out")
-    # test_conv = ret[0]["test_conv"]
-    # test_gap_w = ret[0]["test_gap_w"]
+    test_conv = ret[0]["test_conv"]
+    test_gap_w = ret[0]["test_gap_w"]
     test_features = ret[0]["test_features"]
 
     return {"test_accuracy": accuracy,
@@ -196,8 +196,8 @@ def testing(sess, graph):
             "test_labels": test_labels,
             "test_ids": test_ids,
             "test_features": test_features,
-            # "test_conv": test_conv,
-            # "test_gap_w": test_gap_w,
+            "test_conv": test_conv,
+            "test_gap_w": test_gap_w,
             "test_pred": test_pred}
 
 
@@ -314,7 +314,7 @@ def training(sess, args, graph, saver):
             best_accuracy = output_data["test_accuracy"][-1]
             save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
             save_plots(sess, args, output_data, training=True, epoch=epoch)
-            # class_maps = get_class_map(ret["test_labels"], ret["test_conv"], ret["test_gap_w"], args.data_len, 1)
+            class_maps = get_class_map(ret["test_labels"], ret["test_conv"], ret["test_gap_w"], args.data_len, 1)
             # plot.plot_class_activation_map(sess, class_maps, ret["test_conv"], ret["test_features"], ret["test_labels"], np.argmax(ret["test_pred"], 1), epoch, 10, args)
 
     logger.info("Training procedure done")
