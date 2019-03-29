@@ -44,7 +44,7 @@ def get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=0
     return train_test, validate
 
 
-def pick_lout_ids(ids, num_lout=1, start=0):
+def pick_lout_ids(ids, count, num_lout=1, start=0):
     """
     Leave out several subjects for validation
     :param labels:
@@ -57,8 +57,11 @@ def pick_lout_ids(ids, num_lout=1, start=0):
     Use it at the first time to get a overview of the data distribution. sorted_count = sorted(count.items(), key=lambda kv: kv[1])
     # np.savetxt("../data/20190325/20190325_count.csv", np.array(sorted_count), fmt="%.1f", delimiter=',')
     """
-    count = dict(Counter(list(ids)))  # count the num of samples of each id
-    lout_ids = list(count.keys())[num_lout*start : num_lout*(start+1)]
+      # count the num of samples of each id
+    if start == 9:
+        lout_ids = list(count.keys())[num_lout*start :]
+    else:
+        lout_ids = list(count.keys())[num_lout * start: num_lout * (start + 1)]
     # np.savetxt("../data/lout_ids_{}.csv".format(start), np.array(lout_ids), fmt="%.1f", delimiter=',')
     return lout_ids
 
@@ -74,13 +77,15 @@ def split_data_for_lout_val(args):
     labels = mat[:, 1]  ##20190325-9243 samples, 428 patients
     ids = mat[:, 0]
 
-    for i in range(5):
+    count = dict(Counter(list(ids)))
+
+    for i in range(len(count) // args.num_lout):
         validate = {}
         validate["features"] = np.empty((0, 288))
         validate["labels"] = np.empty((0))
         validate["ids"] = np.empty((0))
 
-        lout_ids = pick_lout_ids(ids, num_lout=args.num_lout, start=i)  # leave 10 subjects out
+        lout_ids = pick_lout_ids(ids, count, num_lout=args.num_lout, start=i)  # leave 10 subjects out
 
         all_inds = np.empty((0))
         for id in lout_ids:
