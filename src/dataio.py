@@ -190,10 +190,14 @@ def get_data(args):
     ids_rand = ids[temp_rand]
     assert args.num_classes != np.max(labels), "The number of class doesn't match the data!"
     args.num_train = int(((100 - args.test_ratio) * spectra_rand.shape[0]) // 100)
-    train_data["spectra"] = spectra_rand[0:args.num_train].astype(np.float32)
+    train_temp = spectra_rand[0:args.num_train].astype(np.float32)
+    train_data["spectra"] = (train_temp - np.expand_dims(np.min(train_temp, axis=1), 1)) / (
+                np.expand_dims(np.max(train_temp, axis=1), 1) - np.expand_dims(np.min(train_temp, axis=1), 1))
     train_data["labels"] = np.squeeze(labels_rand[0:args.num_train]).astype(np.int32)
     train_data["ids"] = np.squeeze(ids_rand[0:args.num_train]).astype(np.int32)
-    test_data["spectra"] = spectra_rand[args.num_train:].astype(np.float32)
+    test_temp = spectra_rand[args.num_train:].astype(np.float32)
+    test_data["spectra"] = (test_temp - np.expand_dims(np.min(test_temp, axis=1), 1)) / (
+            np.expand_dims(np.max(test_temp, axis=1), 1) - np.expand_dims(np.min(test_temp, axis=1), 1))
     test_data["labels"] = np.squeeze(labels_rand[args.num_train:]).astype(np.int32)
     test_data["ids"] = np.squeeze(ids_rand[args.num_train:]).astype(np.int32)
 
