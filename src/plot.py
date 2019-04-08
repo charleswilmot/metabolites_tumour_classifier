@@ -463,4 +463,4 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
         plt.title("True label {} - pred as {} / (in total {} voxels for id {})".format(label_of_id, pred_of_id, id_inds.size, id))
         plt.tight_layout()
         plt.savefig(output_dir + '/prob_distri_of_id_{}.png'.format(id), format="png")
-        plt.close()
+		plt.close()
