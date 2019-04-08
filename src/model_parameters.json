@@ -2,31 +2,32 @@
     "model": {
                 "CNN":{
                     "model_name": "CNN",
-                    "out_channels": [32, 64],
+                    "out_channels": [16, 32],
                     "pool_size": 3,
                     "strides": 3,
-                    "kernel_size": 7,
+                    "kernel_size": 288,
                     "fc": [200, 2],
                     "dropout_probs": [0.3, 0.3, 0.5, 0.5],
                     "batch_norms":[true, true, true, true],
-                    "activations":["lrelu", "lrelu", "lrelu", "sigmoid"]
+                    "activations":["lrelu", "lrelu", "lrelu", "softmax"]
 
                 },
                 "CNN_CAM":{
                     "model_name": "CNN_CAM",
-                    "out_channels": [8, 16, 32, 64],
-                    "pool_size": 3,
-                    "strides": 3,
-                    "kernel_size": 288,
-                    "dropout_probs": [0.3, 0.3, 0.3, 0.3],
-                    "batch_norms":[true, true, true, true],
-                    "activations":["lrelu", "lrelu", "lrelu", "lrelu"]
+                    "out_channels": [64, 128, 256],
+                    "num_layers": [1, 1, 1],
+                    "pool_size": 2,
+                    "strides": 2,
+                    "kernel_size": 178,
+                    "dropout_probs": [0.15, 0.15, 0.15],
+                    "batch_norms":[true, true, true],
+                    "activations":["relu", "relu", "relu"]
 
                 },
                 "MLP":{
                     "model_name": "MLP",
                     "layer_dims": [288, 500, 100, 2],
-                    "dropout_probs": [0.13, 0.13, 0.13],
+                    "dropout_probs": [0.20, 0.2, 0.2],
                     "batch_norms": [true, true, true],
                     "activations": ["lrelu", "lrelu", "softmax"]
 
