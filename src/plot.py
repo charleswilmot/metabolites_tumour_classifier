@@ -115,7 +115,7 @@ def all_figures(sess, args, data, training=False, epoch=0):
     if not training:
         if args.model_name == 'CNN_CAM':
             class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.data_len, 1, number2use=1000)
-            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], np.argmax(data["test_pred"][rand_inds], 1), epoch, 20, args)
+            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], np.argmax(data["test_pred"][rand_inds], 1), epoch, args)
         # plot_wrong_examples(args, data, training=training)
         # plot_prob_distr_on_ids(data, args.output_path)
 
