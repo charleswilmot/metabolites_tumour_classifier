@@ -7,10 +7,10 @@ import tensorflow as tf
 import numpy as np
 import logging as log
 
-
 logger = log.getLogger("classifier")
 
-
+regularizer = tf.keras.regularizers.l2(l=0.01)
+initializer = tf.glorot_uniform_initializer()
 DTYPE = tf.float32
 
 ## Interprets the string to the activation functions --activations
@@ -193,7 +193,10 @@ class CNN:
         with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             kernel_size = inp.get_shape().as_list()[1]
-            out = tf.layers.conv1d(inp, out_ch, kernel_size, 1, padding='SAME')
+            out = tf.layers.conv1d(inp, out_ch,
+                                   kernel_size, 1,
+                                   padding='SAME',
+                                   kernel_initializer=initializer)
             out = tf.layers.max_pooling1d(out, self.pool_size, self.pool_size, padding="SAME")
             out = tf.layers.batch_normalization(
                 out, training=training) if bn else out
@@ -217,7 +220,9 @@ class CNN:
         logger.debug(string.format(*_to_format))
         with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_dim))
-            out = tf.layers.dense(inp, out_dim, activation=activation)
+            out = tf.layers.dense(inp, out_dim,
+                                  kernel_initializer=initializer,
+                                  activation=activation)
             out = tf.layers.batch_normalization(
                 out, training=training) if bn else out
             out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
@@ -313,14 +318,17 @@ class CNN_CAM:
         out = inp
         with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
-            if self.kernel_size == 288:
-                kernel_size = inp.get_shape().as_list()[1]  # later layers, the filter size should be adjusted by the input
+            if self.kernel_size >= 100:
+                kernel_size = inp.get_shape().as_list()[1] // 2  # later layers, the filter size should be adjusted by the input
             else:
                 kernel_size = self.kernel_size
-            out = tf.layers.conv1d(out, out_ch, kernel_size, 1, padding='SAME')
-            if np.mod(layer_number, 2) == 1:  # only pool after odd number layer
-                out = tf.layers.max_pooling1d(out, self.pool_size, self.strides, padding="SAME")
-            # out = tf.layers.max_pooling1d(out, self.pool_size, self.pool_size, padding="SAME")
+            out = tf.layers.conv1d(out, out_ch,
+                                   kernel_size, 1,
+                                   kernel_initializer=initializer,
+                                   padding='SAME')
+            # if np.mod(layer_number, 2) == 1:  # only pool after odd number layer
+            #     out = tf.layers.max_pooling1d(out, self.pool_size, self.strides, padding="SAME")
+            out = tf.layers.max_pooling1d(out, self.pool_size, self.pool_size, padding="SAME")
             out = tf.layers.batch_normalization(
                 out, training=training) if bn else out
             out = out if activation is None else activation(out)
@@ -343,7 +351,9 @@ class CNN_CAM:
         logger.debug(string.format(*_to_format))
         with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_dim))
-            out = tf.layers.dense(inp, out_dim, activation=activation)
+            out = tf.layers.dense(inp, out_dim,
+                                  kernel_initializer=initializer,
+                                  activation=activation)
             out = tf.layers.batch_normalization(
                 out, training=training) if bn else out
             out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out

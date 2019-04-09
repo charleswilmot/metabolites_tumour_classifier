@@ -113,11 +113,11 @@ def all_figures(sess, args, data, training=False, epoch=0):
     plot_confusion_matrix(args, data, ifnormalize=True, training=training)
     plot_auc_curve(args, data, epoch=epoch)
     if not training:
-        plot_wrong_examples(args, data, training=training)
-        plot_prob_distr_on_ids(data, args.output_path)
         if args.model_name == 'CNN_CAM':
-            class_maps = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.data_len, 1)
-            plot_class_activation_map(sess, class_maps, data["test_conv"], data["test_features"], data["test_labels"], np.argmax(data["test_pred"], 1), epoch, 20, args)
+            class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.data_len, 1, number2use=1000)
+            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], np.argmax(data["test_pred"][rand_inds], 1), epoch, args)
+        # plot_wrong_examples(args, data, training=training)
+        # plot_prob_distr_on_ids(data, args.output_path)
 
     # plot_tsne(args, data)
     # plot_hierarchy_cluster(args, data)
@@ -237,9 +237,10 @@ def plot_hierarchy_cluster(args, data):
     plt.close()
 
 
-def get_class_map(labels, conv_out, weights, seq_len, seq_width):
+def get_class_map(labels, conv_out, weights, seq_len, seq_width, number2use=200):
     """
     Get the map for a specific sample with class. Some samples can be assigned to different classes.
+    :param number2use: int, [batch_size,], the int labels in one batch
     :param labels_int: 1d array, [batch_size,], the int labels in one batch
     :param conv_out: list, list of arry that contains the output from the conv_layer from the network
     :param weights: weights of the last GAP feature map
@@ -248,23 +249,24 @@ def get_class_map(labels, conv_out, weights, seq_len, seq_width):
     """
     conv_out = np.expand_dims(conv_out, 2)
     channels = conv_out.shape[-1]
-    num_samples = conv_out.shape[0]
+    num_samples = min(conv_out.shape[0], number2use)
     classmaps = []
     labels_int = np.argmax(labels, axis=1)
     conv_resized = tf.image.resize_nearest_neighbor(conv_out, [seq_len, seq_width])
-    for ind, label in enumerate(labels_int[0: num_samples]):
+    rand_inds = np.random.choice(conv_out.shape[0], num_samples)
+    for ind, label in enumerate(labels_int[rand_inds]):
         label_w = tf.gather(tf.transpose(weights), label)
         label_w = tf.reshape(label_w, [-1, channels, 1])
         resized = tf.reshape(conv_resized[ind], [-1, seq_len * seq_width, channels])
         classmap = tf.matmul(resized, label_w)
         classmaps.append(tf.reshape(classmap, [-1, seq_len, seq_width]))
 
-    return classmaps
+    return classmaps, rand_inds
 
 
-def plot_class_activation_map(sess, class_activation_map, top_conv,
+def plot_class_activation_map(sess, class_activation_map,
                               samples_test, labels_test, pred_labels, global_step,
-                              num_images, args):
+                              args):
     """TODO, the labels are all stacked not like test_conv is only the first batch
     Plot the class activation
     :param sess:
@@ -274,8 +276,8 @@ def plot_class_activation_map(sess, class_activation_map, top_conv,
     :param labels_test:
     :param pred_labels:
     :param global_step:
-    :param num_images:
     :param args:
+    :param rand_inds:
     :return:
     """
     labels_int = np.argmax(labels_test, axis=1)
@@ -286,14 +288,10 @@ def plot_class_activation_map(sess, class_activation_map, top_conv,
 
     # PLot samples from different classes seperately
     for class_id in range(args.num_classes):
-        plot_aggre_class_map(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step)
-        # plot_aggre_class_map_in1(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, box_position=(0.15, 1.05, 0.7, 0.1), class_id=class_id, global_step=global_step)
+        plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step)
+        # plot_class_maps_in1(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, box_position=(0.15, 1.05, 0.7, 0.1), class_id=class_id, global_step=global_step)
 
-    # Plot randomly picked num_images
-    # plot_random_class_maps(labels_int, classmap_answer, classmap_high, samples_test, pred_labels, args, global_step=global_step, num_images=num_images)
-
-
-def plot_aggre_class_map(labels_int, classmap_high, samples_test, pred_labels, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), class_id=0, global_step=0):
+def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), class_id=0, global_step=0):
     inds = np.where(labels_int == class_id)[0]
     class_maps_plot = np.array(classmap_high)[inds]
     samples_plot = samples_test[inds]
@@ -310,17 +308,30 @@ def plot_aggre_class_map(labels_int, classmap_high, samples_test, pred_labels, s
     for j, vis, ori, label, pred in zip(counts, class_maps_plot, samples_plot, labels_plot, pred_plot):
         att_c = 'deepskyblue' if label == pred else 'r'
         axs[j // col, np.mod(j, col)].plot(np.arange(ori.size), ori, 'darkorchid', label='original', linewidth=0.8)
-        # axs[j // col, np.mod(j, col)].plot(np.array(vis), np.repeat(ori.max(), vis.size), '.', color=att_c, label="attention")
-        axs[j // col + 1, np.mod(j, col)].plot(np.arange(vis.size), vis*np.max(ori), '-.', color=att_c, label="attention")
+        axs[j // col + 1, np.mod(j, col)].plot(np.arange(vis.size), vis, '-.', color=att_c, label="attention")
         axs[0, 0].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=3, numpoints=3)  # [x, y, width, height]
+        axs[0, col-1].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=3, numpoints=3)  # [x, y, width, height]
     plt.tight_layout()
     plt.subplots_adjust(top=0.90)
     fig.subplots_adjust(hspace=0)
+    fig.subplots_adjust(wspace=0)
     plt.savefig(save_dir + '/class_activity_map-step-test{}-class{}_{}.png'.format(global_step, class_id, box_position), format='png')
+    plt.close()
+    
+    ## Plot the mean attention
+    right_inds = np.where(labels_plot == pred_plot)[0]
+    plt.figure()
+    mean = np.mean(np.array(class_maps_plot)[right_inds], axis=0)
+    std = np.std(np.array(class_maps_plot)[right_inds], axis=0)
+    plt.errorbar(np.arange(288), mean, yerr=std, fmt='--o', ecolor='deepskyblue', label='mean attention')
+    plt.plot(samples_plot[0], 'darkorchid', label='original', linewidth=0.8)
+    plt.legend(loc="best")
+    plt.savefig(save_dir + '/mean_class_activity_map-step-test{}-class{}_{}.png'.format(global_step, class_id, box_position),
+                format='png')
     plt.close()
 
 
-def plot_aggre_class_map_in1(labels_int, classmap_high, samples_test, pred_labels, save_dir='./', box_position=(0.15, 1.05, 0.8, 0.1), class_id=0, global_step=0):
+def plot_class_maps_in1(labels_int, classmap_high, samples_test, pred_labels, save_dir='./', box_position=(0.15, 1.05, 0.8, 0.1), class_id=0, global_step=0):
     inds = np.where(labels_int == class_id)[0]
     class_maps_plot = np.array(classmap_high)[inds]
     samples_plot = samples_test[inds]
@@ -345,7 +356,7 @@ def plot_aggre_class_map_in1(labels_int, classmap_high, samples_test, pred_label
                 my_att_label = "correct attetion" if label == pred else "wrong attention"
 
         ax.plot(np.arange(ori.size), ori, 'darkorchid', label=my_ori_label, linewidth=0.8)
-        ax.plot(np.array(vis), np.repeat(ori.max(), vis.size), '.', color=att_c, label=my_att_label)
+        ax.plot(np.arange(vis.size), vis, '-.', color=att_c, label=my_att_label)
     plt.title("Class {} with attention".format(class_id))
     ax.legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=3, numpoints=3)  # [x, y, width, height]
     plt.tight_layout()
@@ -428,27 +439,27 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
     plt.close()
 
     # # Plot prob. histogram of each individual
-    # for id in count.keys():
-    #     plt.figure()
-    #     id_inds = np.where(ids == id)[0]
-    #     vote_label = np.sum(labels_int[id_inds]) * 1.0 / id_inds.size
-    #     vote_pred = np.sum(predictions[id_inds][:, 1]) / id_inds.size
-    #
-    #     label_of_id = 0 if vote_label < 0.5 else 1
-    #     pred_of_id = 0 if vote_pred < 0.5 else 1
-    #
-    #     color = "slateblue" if label_of_id == pred_of_id else "r"
-    #     ax = plt.subplot(1, 1, 1)
-    #     pred_hist = plt.hist(np.array(predictions[id_inds][:, 1]), align='mid', bins=10, range=(0.0, 1.0), color=color, label="predicted")
-    #     ymin, ymax = ax.get_ylim()
-    #     ymax += 1
-    #     plt.vlines(0.5, ymin, ymax, colors='k', linestyles='--')
-    #     plt.text(0.25, ymax, str(np.int(np.sum(predictions[id_inds][:, 1] < 0.5))), fontsize=base-4)
-    #     plt.text(0.75, ymax, str(np.int(np.sum(predictions[id_inds][:, 1] >= 0.5))), fontsize=base-4)
-    #     plt.legend()
-    #     plt.ylabel("frequency")
-    #     plt.xlabel("probability of classified as class 1")
-    #     plt.title("True label {} - pred as {} / (in total {} voxels for id {})".format(label_of_id, pred_of_id, id_inds.size, id))
-    #     plt.tight_layout()
-    #     plt.savefig(output_dir + '/prob_distri_of_id_{}.png'.format(id), format="png")
-    #     plt.close()
+    for id in count.keys():
+        plt.figure()
+        id_inds = np.where(ids == id)[0]
+        vote_label = np.sum(labels_int[id_inds]) * 1.0 / id_inds.size
+        vote_pred = np.sum(predictions[id_inds][:, 1]) / id_inds.size
+
+        label_of_id = 0 if vote_label < 0.5 else 1
+        pred_of_id = 0 if vote_pred < 0.5 else 1
+
+        color = "slateblue" if label_of_id == pred_of_id else "r"
+        ax = plt.subplot(1, 1, 1)
+        pred_hist = plt.hist(np.array(predictions[id_inds][:, 1]), align='mid', bins=10, range=(0.0, 1.0), color=color, label="predicted")
+        ymin, ymax = ax.get_ylim()
+        ymax += 1
+        plt.vlines(0.5, ymin, ymax, colors='k', linestyles='--')
+        plt.text(0.25, ymax, str(np.int(np.sum(predictions[id_inds][:, 1] < 0.5))), fontsize=base-4)
+        plt.text(0.75, ymax, str(np.int(np.sum(predictions[id_inds][:, 1] >= 0.5))), fontsize=base-4)
+        plt.legend()
+        plt.ylabel("frequency")
+        plt.xlabel("probability of classified as class 1")
+        plt.title("True label {} - pred as {} / (in total {} voxels for id {})".format(label_of_id, pred_of_id, id_inds.size, id))
+        plt.tight_layout()
+        plt.savefig(output_dir + '/prob_distri_of_id_{}.png'.format(id), format="png")
+        plt.close()

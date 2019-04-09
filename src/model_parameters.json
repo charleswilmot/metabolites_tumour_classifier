@@ -21,7 +21,7 @@
                     "kernel_size": 288,
                     "dropout_probs": [0.3, 0.3, 0.3],
                     "batch_norms":[true, true, true],
-                    "activations":["lrelu", "lrelu", "lrelu"]
+                    "activations":["relu", "relu", "relu"]
 
                 },
                 "MLP":{

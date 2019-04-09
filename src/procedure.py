@@ -8,7 +8,7 @@ from dataio import save_my_model, load_model, save_plots
 import plot as plot
 
 logger = log.getLogger("classifier")
-
+initializer = tf.glorot_uniform_initializer()
 
 ## Processes the output of compute (cf See also) to calculate the average loss and accuracy
 # @param ret dictionary containing the keys "ncorrect", "loss_sum" and "batch_size"
@@ -116,7 +116,7 @@ def concat_labels(ret, key="labels"):
 
 
 def get_learning_rate(epoch):
-    learning_rate = 0.01
+    learning_rate = 0.05
     if epoch > 300:
         learning_rate *= np.power(0.5, 7)
     elif epoch > 200:
@@ -167,9 +167,7 @@ def testing(sess, graph):
     test_pred = concat_labels(ret, key="test_out")
     test_features = concat_labels(ret, key="test_features")
     test_conv = concat_labels(ret, key="test_conv")
-    # test_conv = ret[0]["test_conv"]
     test_gap_w = ret[0]["test_gap_w"]
-    # test_features = ret[0]["test_features"]
 
     return {"test_accuracy": accuracy,
             "test_loss": loss,
@@ -266,7 +264,8 @@ def training(sess, args, graph, saver):
 
     while condition(end, output_data, epoch, args.number_of_epochs):
         # train phase
-        
+        if epoch > 200 and epoch % 20 == 0:
+            print("Epoch: ", epoch)
         ret = train_phase(sess, graph, args.test_every, epoch)
         if ret is not None:
             output_data["train_loss"].append(ret["loss"])
@@ -295,7 +294,7 @@ def training(sess, args, graph, saver):
 
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:
-            print("Epoch {:0.1f} Best accuracy {}".format(epoch, output_data["test_accuracy"][-1]))
+            print("Epoch {:0.1f} Best accuracy {}\n Confusion:\n{}".format(epoch, output_data["test_accuracy"][-1], ret["test_confusion"]))
             best_accuracy = output_data["test_accuracy"][-1]
             save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
             save_plots(sess, args, output_data, training=True, epoch=epoch)

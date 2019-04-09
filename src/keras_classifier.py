@@ -14,16 +14,14 @@ import argparse
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.layers import InputLayer, Input
-from tensorflow.python.keras.layers import Reshape, MaxPooling2D, Average, BatchNormalization, Dropout
+from tensorflow.python.keras.layers import Reshape, MaxPooling2D, Average
 from tensorflow.python.keras.layers import Conv2D, Dense, Flatten
 # from tensorflow.python.keras.callbacks import TensorBoard
 from tensorflow.python.keras.optimizers import Adam
-from tensorflow.python.keras.models import load_model
+# from tensorflow.python.keras.models import load_model
 from shutil import copyfile
 import datetime
-from sklearn.metrics import confusion_matrix
-from sklearn.cluster import KMeans
-import pandas as pd
+
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("--data",
@@ -31,8 +29,8 @@ ap.add_argument("--data",
 	help="path to input dataset of images")
 ap.add_argument("--out", default="../keras_results",
 	help="path to output trained model")
-ap.add_argument("--restore", default=None,
-	help="path to the saved model")
+# ap.add_argument("-lb", "--label-bin", required=True,
+# 	help="path to output label binarizer")
 # ap.add_argument("-p", "--plot", required=True,
 # 	help="path to output accuracy/loss plot")
 args = vars(ap.parse_args())
@@ -104,27 +102,6 @@ def plot_example_errors(cls_pred):
                 cls_true=cls_true[0:9],
                 cls_pred=cls_pred[0:9])
 
-def get_test_data(data_dir, num_classes=2):
-    mat = scipy.io.loadmat(data_dir)["DATA"]
-    spectra = mat[:, 2:]
-    labels = mat[:, 1]
-    ids = mat[:, 0]
-    ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
-    if num_classes - 1 < np.max(labels):
-        need_inds = np.empty((0))
-        for class_id in range(num_classes):
-            need_inds = np.append(need_inds, np.where(labels == class_id)[0])
-        need_inds = need_inds.astype(np.int32)
-        spectra = spectra[need_inds]
-        labels = labels[need_inds]
-        ids = ids[need_inds]
-
-    test_data["spectra"] = spectra.astype(np.float32)
-    lb_int = np.squeeze(labels).astype(np.int32)
-    test_data["labels"] = np.eye(num_classes)[lb_int]
-    test_data["ids"] = np.squeeze(ids).astype(np.int32)
-    return test_data
-
 
 def get_data(args):
     """
@@ -133,13 +110,14 @@ def get_data(args):
     :param args: Param object with path to the data
     :return:
     """
+    
     mat = scipy.io.loadmat(args["data"])["DATA"]
     spectra = mat[:, 2:]
     labels = mat[:, 1]
     ids = mat[:, 0]
     train_data = {}
     test_data = {}
-    num_classes = 2
+    num_classes = args.num_classes
 
     
     ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
@@ -313,8 +291,6 @@ def create_cam_model(learning_rate, num_dense_layers,
         model.add(Dense(num_dense_nodes,
                         activation=activation,
                         name=name))
-        model.add(BatchNormalization())
-        model.add(Dropout(0.65))
     
     # Last fully-connected / dense layer with softmax-activation
     # for use in classification.
@@ -333,56 +309,6 @@ def create_cam_model(learning_rate, num_dense_layers,
     
     return model
 
-
-def create_fnn_model(learning_rate, num_dense_layers,
-                 num_dense_nodes, activation, kernel_size):
-    """
-    Hyper-parameters:
-    learning_rate:     Learning-rate for the optimizer.
-    num_dense_layers:  Number of dense layers.
-    num_dense_nodes:   Number of nodes in each dense layer.
-    activation:        Activation function for all layers.
-    """
-
-    # Start construction of a Keras Sequential model.
-    model = Sequential()
-
-    # Add an input layer which is similar to a feed_dict in TensorFlow.
-    # Note that the input-shape must be a tuple containing the image-size.
-    model.add(InputLayer(input_shape=(img_size_flat,)))
-
-    # Add fully-connected / dense layers.
-    # The number of layers is a hyper-parameter we want to optimize.
-    for i in range(num_dense_layers):
-        # Name of the layer. This is not really necessary
-        # because Keras should give them unique names.
-        name = 'layer_dense_{0}'.format(i + 1)
-
-        # Add the dense / fully-connected layer to the model.
-        # This has two hyper-parameters we want to optimize:
-        # The number of nodes and the activation function.
-        model.add(Dense(num_dense_nodes,
-                        activation=activation,
-                        name=name))
-        model.add(BatchNormalization())
-        model.add(Dropout(0.65))
-
-    # Last fully-connected / dense layer with softmax-activation
-    # for use in classification.
-    model.add(Dense(num_classes, activation='softmax'))
-
-    model.summary()
-
-    # Use the Adam method for training the network.
-    # We want to find the best learning-rate for the Adam method.
-    optimizer = Adam(lr=learning_rate)
-
-    # In Keras we need to compile the model so it can be trained.
-    model.compile(optimizer=optimizer,
-                  loss='categorical_crossentropy',
-                  metrics=['accuracy'])
-
-    return model
 
 def copy_save_all_files(args, accuracy):
     """
@@ -390,11 +316,10 @@ def copy_save_all_files(args, accuracy):
     :param args:
     :return:
     """
-    params = {}
     time_str = '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now())
-    results_dir = os.path.join(args["out"], time_str + '-{0:.4f}'.format(accuracy))
+    results_dir = os.path.join(args["out"], time_str + '-{:0.4f}'.format(accuracy))
     src_dir = '../src'  ## the dir of original files
-    save_dir = os.path.join(results_dir, 'src')
+    save_dir = os.path.join(args["out"], 'src')
     if not os.path.exists(save_dir):  # if subfolder doesn't exist, should make the directory and then save file.
         os.makedirs(save_dir)
     if not os.path.exists(results_dir):
@@ -409,9 +334,8 @@ def copy_save_all_files(args, accuracy):
             print('WithCopy Failed!')
         finally:
             print('Done WithCopy File!')
-    params["out"] = results_dir
-    return params
-
+    args.out = results_dir
+    
     
 def train(learning_rate, num_dense_layers,
           num_dense_nodes, activation, kernel_size, args):
@@ -422,50 +346,35 @@ def train(learning_rate, num_dense_layers,
     num_dense_nodes:   Number of nodes in each dense layer.
     activation:        Activation function for all layers.
     """
+    
     # Create the neural network with these hyper-parameters.
-    model = create_cam_model(learning_rate=learning_rate,
+    model = create_model(learning_rate=learning_rate,
                              num_dense_layers=num_dense_layers,
                              num_dense_nodes=num_dense_nodes,
                              activation=activation,
                              kernel_size=kernel_size)
+    
 
     # Use Keras to train the model.
-    history = model.fit(train_data["spectra"],
-                        train_data["labels"],
-                        epochs=500,
+    history = model.fit(x=train_data["spectra"],
+                        y=train_data["labels"],
+                        epochs=20,
                         batch_size=64,
                         validation_data=validation_data)
     
     # save the model and label binarizer to disk
-    params = copy_save_all_files(args, history.history['val_acc'][-1])
+    args = copy_save_all_files(args, history.history['val_acc'][-1])
     
     print("[INFO] serializing network and label binarizer...")
-    model.save(params["out"] + "/model_{}".format(history.history['val_acc'][-1]))
+    model.save(args["out"] + "/model_{}".format(history.history['val_acc'][-1]))
+    # f = open(args["label_bin"], "wb")
+    # f.write(pickle.dumps(lb))
+    # f.close()
+    # NOTE: Scikit-optimize does minimization so it tries to
+    # find a set of hyper-parameters with the LOWEST fitness-value.
+    # Because we are interested in the HIGHEST classification
+    # accuracy, we need to negate this number so it can be minimized.
 
-    # Plot the history accuracy
-    plt.figure()
-    plt.plot(history.history['acc'])
-    plt.plot(history.history['val_acc'])
-    plt.title('model accuracy')
-    plt.ylabel('accuracy')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'validation'], loc='upper left')
-    plt.savefig(os.path.join(params["out"], 'accuracy_plot.png'), format='png')
-    plt.close()
-
-
-def load_and_val(data_dir, model_dir, params):
-
-    test_data = get_test_data(data_dir, num_classes=params["num_classes"])
-    loaded = load_model(model_dir)
-
-    # Use Keras to train the model.
-    score = loaded.evaluate(test_data["spectra"],
-                              test_data["labels"])
-    pred = loaded.predict(test_data["spectra"])
-    conf = confusion_matrix(np.argmax(test_data["labels"], axis=1), np.argmax(pred, axis=1))
-    print("test accuracy: {0:.2%}".format(score[1]))
-    print("test confusion:\n {}".format(conf))
 
 if __name__ == "__main__":
     
@@ -475,8 +384,7 @@ if __name__ == "__main__":
     num_classes = 2
     
     train_data, test_data = get_data(args)
-
-    plt.plot(test_data["spectra"][5:10, :].T)
+    # data = input_data.read_data_sets('data/MNIST/', one_hot=True)
     print("Size of:")
     print("- Training-set:\t\t{}".format(len(train_data["labels"])))
     print("- Test-set:\t\t{}".format(len(test_data["labels"])))
@@ -500,11 +408,4 @@ if __name__ == "__main__":
     num_channels = 1
     
     ## Start training
-    if not args["restore"]:
-        train(0.0005, 2, 200, "relu", 9, args)
-    else:
-        params = args
-        params["num_classes"] = 2
-        model_dir = args["restore"]
-        data_dir = '../data/20190325/20190325-3class_lout20_val_data0.mat'
-        load_and_val(data_dir, model_dir, params)
+    train(2e0-4, 1, 256, "relu", 288, args)
