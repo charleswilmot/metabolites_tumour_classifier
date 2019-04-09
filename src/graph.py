@@ -235,10 +235,12 @@ class CNN_CAM:
         self.out_channels = np.array(args.out_channels)
         self.kernel_size = args.kernel_size
         self.pool_size = args.pool_size
+        self.strides = args.strides
         self.bn_cnn = np.array(args.batch_norms)[0:len(self.out_channels)]
         self.activations_cnn = convert_activation(args.activations)[0:len(self.out_channels)]
         self.drop_cnn = np.array(args.dropout_probs)[0:len(self.out_channels)]
         self.num_classes = args.num_classes
+        self.num_layers = args.num_layers
 
         assert (len(self.bn_cnn) == len(self.out_channels) == len(self.drop_cnn) == len(self.activations_cnn))
     
@@ -268,8 +270,8 @@ class CNN_CAM:
         """
         layer_number = 1
         out = inp
-        for (out_ch, bn, activation, drop) in zip(self.out_channels, self.bn_cnn, self.activations_cnn, self.drop_cnn):
-            out = self._make_cnn_layer(out, out_ch, bn, activation, drop, layer_number, training)
+        for (out_ch, bn, activation, drop, num_l) in zip(self.out_channels, self.bn_cnn, self.activations_cnn, self.drop_cnn, self.num_layers):
+            out = self._make_cnn_layer(out, out_ch, bn, activation, drop, layer_number, num_l, training)
             layer_number += 1
         
         return out
@@ -289,31 +291,36 @@ class CNN_CAM:
         
         return out
     
-    ## Private function for adding one conv layers to the network
-    # @param inp input tensor
-    # @param out_ch size of the new layer
-    # @param pool, kernel size of the pooling layer
-    # @param out_ch size of the new layer
-    # @param bn bool stating if batch normalization should be used
-    # @param activation activation function
-    # @param drop, float droupout probability. Set to 0 to disable
-    # @param layer_number, int droupout probability. Set to 0 to disable
-    # @param training, bool
-    def _make_cnn_layer(self, inp, out_ch, bn, activation, drop, layer_number, training):
+
+    def _make_cnn_layer(self, inp, out_ch, bn, activation, drop, layer_number, num_layers, training):
+        """
+        To creat CNN block
+        :param inp:
+        :param out_ch: int, num of filters to use
+        :param bn: bool
+        :param activation: tf function
+        :param drop: float, drop rate
+        :param layer_number: int
+        :param num_layers: int, how many layers in one CNN block, like VGG
+        :param training:
+        :return:
+        """
         _to_format = [out_ch, bn, drop, activation, training]
         layer_name = "cnn_layer_{}".format(layer_number)
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
-
+        out = inp
         with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             if self.kernel_size == 288:
-                kernel_size = inp.get_shape().as_list()[1]
+                kernel_size = inp.get_shape().as_list()[1]  # later layers, the filter size should be adjusted by the input
             else:
                 kernel_size = self.kernel_size
-            out = tf.layers.conv1d(inp, out_ch, kernel_size, 1, padding='SAME')
-            out = tf.layers.max_pooling1d(out, self.pool_size, self.pool_size, padding="SAME")
+            out = tf.layers.conv1d(out, out_ch, kernel_size, 1, padding='SAME')
+            if np.mod(layer_number, 2) == 1:  # only pool after odd number layer
+                out = tf.layers.max_pooling1d(out, self.pool_size, self.strides, padding="SAME")
+            # out = tf.layers.max_pooling1d(out, self.pool_size, self.pool_size, padding="SAME")
             out = tf.layers.batch_normalization(
                 out, training=training) if bn else out
             out = out if activation is None else activation(out)

@@ -121,6 +121,7 @@ def split_data_for_val(args):
     :return: save two .mat files
     """
     mat = scipy.io.loadmat(args.input_data)["DATA"]
+    np.random.shuffle(mat)   # shuffle the data
     spectra = mat[:, 2:]
     labels = mat[:, 1]
     ids = mat[:, 0]
@@ -133,7 +134,7 @@ def split_data_for_val(args):
     train_test["labels"] = np.empty((0))
     train_test["ids"] = np.empty((0))
 
-    num_val = 100   # leave 100 samples from each class out
+    num_val = ids.size // 10   # leave 100 samples from each class out
     if args.num_classes == 2:
         for class_id in range(args.num_classes):
             train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id)
@@ -191,8 +192,9 @@ def get_data(args):
     assert args.num_classes != np.max(labels), "The number of class doesn't match the data!"
     args.num_train = int(((100 - args.test_ratio) * spectra_rand.shape[0]) // 100)
     train_temp = spectra_rand[0:args.num_train].astype(np.float32)
-    train_data["spectra"] = (train_temp - np.expand_dims(np.min(train_temp, axis=1), 1)) / (
-                np.expand_dims(np.max(train_temp, axis=1), 1) - np.expand_dims(np.min(train_temp, axis=1), 1))
+    train_data["spectra"] = spectra_rand[0:args.num_train].astype(np.float32)
+    # train_data["spectra"] = (train_temp - np.expand_dims(np.min(train_temp, axis=1), 1)) / (
+    #             np.expand_dims(np.max(train_temp, axis=1), 1) - np.expand_dims(np.min(train_temp, axis=1), 1))
     train_data["labels"] = np.squeeze(labels_rand[0:args.num_train]).astype(np.int32)
     train_data["ids"] = np.squeeze(ids_rand[0:args.num_train]).astype(np.int32)
     test_temp = spectra_rand[args.num_train:].astype(np.float32)

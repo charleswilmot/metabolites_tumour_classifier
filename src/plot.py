@@ -281,32 +281,37 @@ def plot_class_activation_map(sess, class_activation_map, top_conv,
     labels_int = np.argmax(labels_test, axis=1)
     classmap_answer = sess.run(class_activation_map)
 
-    classmap_high = list(map(lambda x: (np.where(np.squeeze(x) > np.percentile(np.squeeze(x), 90))[0]), classmap_answer))
+    # classmap_high = list(map(lambda x: (np.where(np.squeeze(x) > np.percentile(np.squeeze(x), 90))[0]), classmap_answer))
+    classmap_high = list(map(lambda x: ((np.squeeze(x) - np.min(np.squeeze(x))) / (np.max(np.squeeze(x) - np.min(np.squeeze(x))))), classmap_answer))
 
     # PLot samples from different classes seperately
     for class_id in range(args.num_classes):
-        plot_aggre_class_map(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step)
-        plot_aggre_class_map_in1(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, box_position=(0.15, 1.05, 0.7, 0.1), class_id=class_id, global_step=global_step)
+        plot_aggre_class_map(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step)
+        # plot_aggre_class_map_in1(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, box_position=(0.15, 1.05, 0.7, 0.1), class_id=class_id, global_step=global_step)
 
     # Plot randomly picked num_images
     # plot_random_class_maps(labels_int, classmap_answer, classmap_high, samples_test, pred_labels, args, global_step=global_step, num_images=num_images)
 
 
-def plot_aggre_class_map(labels_int, classmap_high, samples_test, pred_labels, save_dir='./', box_position=(0.15, 1.05, 2, 0.1), class_id=0, global_step=0):
+def plot_aggre_class_map(labels_int, classmap_high, samples_test, pred_labels, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), class_id=0, global_step=0):
     inds = np.where(labels_int == class_id)[0]
     class_maps_plot = np.array(classmap_high)[inds]
     samples_plot = samples_test[inds]
     labels_plot = labels_int[inds]
     pred_plot = pred_labels[inds]
-    row = np.int(np.sqrt(len(inds)))
+    if not row:
+        row = np.int(np.sqrt(len(inds)))
+    else:
+        row = row
     col = min(row, 5)
-    counts = np.arange(row * col)
+    counts = (np.arange(row*col).reshape(-1, col)[np.arange(0, row, 2)]).reshape(-1)# put attention beneath the signal
     fig, axs = plt.subplots(row, col, 'col')
     # plt.title("Individual samples from class {} with attention".format(class_id))
     for j, vis, ori, label, pred in zip(counts, class_maps_plot, samples_plot, labels_plot, pred_plot):
         att_c = 'deepskyblue' if label == pred else 'r'
         axs[j // col, np.mod(j, col)].plot(np.arange(ori.size), ori, 'darkorchid', label='original', linewidth=0.8)
-        axs[j // col, np.mod(j, col)].plot(np.array(vis), np.repeat(ori.max(), vis.size), '.', color=att_c, label="attention")
+        # axs[j // col, np.mod(j, col)].plot(np.array(vis), np.repeat(ori.max(), vis.size), '.', color=att_c, label="attention")
+        axs[j // col + 1, np.mod(j, col)].plot(np.arange(vis.size), vis*np.max(ori), '-.', color=att_c, label="attention")
         axs[0, 0].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=3, numpoints=3)  # [x, y, width, height]
     plt.tight_layout()
     plt.subplots_adjust(top=0.90)
