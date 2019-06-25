@@ -44,7 +44,6 @@ def compute(sess, fetches, max_batches=None, learning_rate=0.0005):
     # return loss / accuracy for the complete set
     ret = []
     tape_end = False
-
     # for i in tqdm(range(max_batches)):
     for _ in limit(max_batches):
         try:
@@ -99,13 +98,11 @@ def get_activity(ret):
 # @param ret dictionary containing the keys "ncorrect", "loss_sum" and "batch_size"
 # @param key, the key of the interested data in the dict that you want to extract and concat
 # @return array of con
-def concat_labels(ret, key="labels"):
-    if len(ret[0][key].shape) == 3:
-        interest = np.empty((0, ret[0][key].shape[1], ret[0][key].shape[2]))
-        for b in ret:
-            interest = np.vstack((interest, b[key]))
-    elif len(ret[0][key].shape) == 2:
-        interest = np.empty((0, ret[0][key].shape[1]))
+def concat_data(ret, key="labels"):
+    if len(ret[0][key].shape) > 1:
+        sh = np.array(ret[0][key].shape)
+        sh[0] = 0
+        interest = np.empty((sh))
         for b in ret:
             interest = np.vstack((interest, b[key]))
     else:
@@ -133,6 +130,30 @@ def get_learning_rate(epoch):
         learning_rate *= 0.5
     return learning_rate
 
+
+def reduce_lr_on_plateu(lr, acc_history, factor=0.1, patience=4,
+                        epsilon=1e-02, min_lr=10e-8):
+    """
+    Reduce learning rate by factor when it didn't increase for patience number of epochs
+    :param lr:, float, the learing rate
+    :param acc_history:lr, float, the learing rate
+    :param factor: float, new_lr = lr * factor
+    :param patience: number of epoch that can tolerant with no increase
+    :param epsilon: only focus on significant changes
+    :param min_lr: lower bound on the learning rate.
+    :return:
+    """
+    # if there are patience epochs with a decreasing accuracy and the decrease is bigger than epsilon, then reduce
+    if np.sum((acc_history[1:] - acc_history[0:-1]) <= 0) >= patience \
+            and np.abs(np.mean((acc_history[1:] - acc_history[0:-1]))) > epsilon:
+        if lr > min_lr:
+            new_lr = lr * factor
+            new_lr = max(new_lr, min_lr)
+        else:
+            new_lr = lr
+    else:
+        new_lr = lr
+    return new_lr
 
 ########################################################################
 
@@ -162,11 +183,11 @@ def testing(sess, graph):
     confusion = sum_confusion(ret)
     wrong_features, wrong_labels = get_wrong_examples(ret)
     # activity = get_activity(ret)
-    test_labels = concat_labels(ret, key="test_labels")
-    test_ids = concat_labels(ret, key="test_ids")
-    test_pred = concat_labels(ret, key="test_out")
-    test_features = concat_labels(ret, key="test_features")
-    test_conv = concat_labels(ret, key="test_conv")
+    test_labels = concat_data(ret, key="test_labels")
+    test_ids = concat_data(ret, key="test_ids")
+    test_pred = concat_data(ret, key="test_out")
+    test_features = concat_data(ret, key="test_features")
+    test_conv = concat_data(ret, key="test_conv")
     test_gap_w = ret[0]["test_gap_w"]
 
     return {"test_accuracy": accuracy,
@@ -182,12 +203,10 @@ def testing(sess, graph):
             "test_pred": test_pred}
 
 
-
-
 test_phase = testing
 ##
 #
-def train_phase(sess, graph, nbatches, epoch): # change
+def train_phase(sess, graph, nbatches, epoch, lr=0.001): # change
     fetches = {
         "ncorrect": graph["train_ncorrect"],
         "loss_sum": graph["train_loss_sum"],
@@ -196,7 +215,6 @@ def train_phase(sess, graph, nbatches, epoch): # change
         "train_op": graph["train_op"],
         "learning_rate_op": graph["learning_rate_op"]
     }
-    lr = get_learning_rate(epoch)
     ret, tape_end = compute(sess, fetches, max_batches=nbatches, learning_rate=lr)
     if tape_end:
         return None
@@ -261,45 +279,63 @@ def training(sess, args, graph, saver):
     best_accuracy = 0
     epoch = 0
     num_trained = 0
+    lr = args.learning_rate
 
     while condition(end, output_data, epoch, args.number_of_epochs):
         # train phase
+
+        if len(output_data["test_accuracy"]) > 4:  # if the test_acc keeps dropping for 3 steps, reduce the learning rate
+            lr = reduce_lr_on_plateu(
+                lr,
+                np.array(output_data["test_accuracy"][-3-1:]),
+                factor=0.5, patience=3,
+                epsilon=1e-04, min_lr=10e-8)
+
         if epoch > 200 and epoch % 20 == 0:
             print("Epoch: ", epoch)
-        ret = train_phase(sess, graph, args.test_every, epoch)
-        if ret is not None:
-            output_data["train_loss"].append(ret["loss"])
-            output_data["train_accuracy"].append(ret["accuracy"])
+        ret_train = train_phase(sess, graph, args.test_every, epoch, lr=lr)
+
+        if ret_train is not None:
+            output_data["train_loss"].append(ret_train["loss"])
+            output_data["train_accuracy"].append(ret_train["accuracy"])
         else:
             end = True
-        num_trained += ret["num_trained"]
+        num_trained += ret_train["num_trained"]
         epoch = num_trained * 1.0 / args.num_train
         logger.debug("Training phase done")
         
         # test phase
-        ret = test_phase(sess, graph)
-        output_data["test_loss"].append(ret["test_loss"])
-        output_data["test_accuracy"].append(ret["test_accuracy"])
-        output_data["test_confusion"] = ret["test_confusion"]
-        output_data["test_wrong_features"] = ret["test_wrong_features"]
-        output_data["test_wrong_labels"] = ret["test_wrong_labels"]
+        ret_test = test_phase(sess, graph)
+        output_data["test_loss"].append(ret_test["test_loss"])
+        output_data["test_accuracy"].append(ret_test["test_accuracy"])
+        output_data["test_confusion"] = ret_test["test_confusion"]
+        output_data["test_wrong_features"] = ret_test["test_wrong_features"]
+        output_data["test_wrong_labels"] = ret_test["test_wrong_labels"]
         # output_data["test_activity"] = ret["test_activity"]
-        output_data["test_labels"] = ret["test_labels"]
-        output_data["test_pred"] = ret["test_pred"]
-        output_data["test_ids"] = ret["test_ids"]
+        output_data["test_labels"] = ret_test["test_labels"]
+        output_data["test_pred"] = ret_test["test_pred"]
+        output_data["test_ids"] = ret_test["test_ids"]
         # output_data["test_conv"] = ret["test_conv"]
         output_data["current_step"] += 1
         # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch
-        logger.debug("Epoch {}, Testing phase done\t({})".format(epoch, ret["test_accuracy"]))
+        logger.debug("Epoch {}, Testing phase done\t({})".format(epoch, ret_test["test_accuracy"]))
 
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:
-            print("Epoch {:0.1f} Best accuracy {}\n Confusion:\n{}".format(epoch, output_data["test_accuracy"][-1], ret["test_confusion"]))
+            print("Epoch {:0.1f} Best test accuracy {}\n Test Confusion:\n{}".format(epoch, output_data["test_accuracy"][-1], ret_test["test_confusion"]))
             best_accuracy = output_data["test_accuracy"][-1]
             save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
             save_plots(sess, args, output_data, training=True, epoch=epoch)
-            # class_maps = get_class_map(ret["test_labels"], ret["test_conv"], ret["test_gap_w"], args.data_len, 1)
-            # plot.plot_class_activation_map(sess, class_maps, ret["test_conv"], ret["test_features"], ret["test_labels"], np.argmax(ret["test_pred"], 1), epoch, 10, args)
+            if "CAM" in args.model_name:
+                class_maps, rand_inds = plot.get_class_map(ret_test["test_labels"],
+                                                ret_test["test_conv"],
+                                                ret_test["test_gap_w"],
+                                                args.data_len, 1, number2use = 200)
+                plot.plot_class_activation_map(sess, class_maps,
+                                               ret_test["test_features"][rand_inds],
+                                               ret_test["test_labels"][rand_inds],
+                                               np.argmax(ret_test["test_pred"], 1)[rand_inds],
+                                               epoch, args)
 
     logger.info("Training procedure done")
     return output_data

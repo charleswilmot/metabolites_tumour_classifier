@@ -14,14 +14,14 @@
                 },
                 "CNN_CAM":{
                     "model_name": "CNN_CAM",
-                    "out_channels": [8, 16, 32],
-                    "num_layers": [1, 1, 1],
-                    "pool_size": 3,
-                    "strides": 3,
-                    "kernel_size": 288,
-                    "dropout_probs": [0.3, 0.3, 0.3],
-                    "batch_norms":[true, true, true],
-                    "activations":["relu", "relu", "relu"]
+                    "out_channels": [8, 16, 32, 64],
+                    "num_layers": [1, 1, 1, 1],
+                    "pool_size": 2,
+                    "strides": 2,
+                    "kernel_size": 32,
+                    "dropout_probs": [0.15, 0.15, 0.15, 0.15],
+                    "batch_norms":[true, true, true, true],
+                    "activations":["relu", "relu", "relu", "relu"]
 
                 },
                 "MLP":{
@@ -31,6 +31,19 @@
                     "batch_norms": [true, true, true],
                     "activations": ["lrelu", "lrelu", "softmax"]
 
+                },
+                "Res_ECG_CAM": {
+                    "model_name": "Res_ECG_CAM",
+                    "out_channels": 16,
+                    "num_layers_in_res": 2,
+                    "num_res_blocks": 11,
+                    "pool_size": 2,
+                    "stride": 2,
+                    "filter_size": 16,
+                    "fc": [500],
+                    "bn": true,
+                    "drop_cnn": 0.2,
+                    "drop_fnn": 0.5
                 }
 
 

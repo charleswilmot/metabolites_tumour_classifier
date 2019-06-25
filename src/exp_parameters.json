@@ -5,8 +5,8 @@
             "exp_config": "./exp_parameters.json",
             "model_config": "./model_parameters.json",
             "num_classes": 2,
-            "batch_size": 128,
-            "test_bs": 128,
+            "batch_size": 32,
+            "test_bs": 64,
             "seed": 2594,
 
             "out_format": "m",
@@ -27,16 +27,18 @@
             "number_of_epochs": 251,
             "test_freq": 1,
             "test_every": null,
-            "input_data": "../data/20190325/2class_train_test_rand_data0.mat",
+            "input_data": "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat",
+            "data_source": "lout40-data5-for-human",
+
             "test_ratio": 10,
-            "learning_rate": 0.0005,
+            "learning_rate": 0.001,
             "restore_from": null,
             "num_train": null
 
         },
 
         "test":{
-            "input_data": "../data/20190325/2class_val_rand_data0.mat",
+            "input_data": "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat",
 
             "test_ratio": 100,
             "number_of_epochs": 2

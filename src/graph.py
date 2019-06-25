@@ -10,12 +10,9 @@ import logging as log
 logger = log.getLogger("classifier")
 
 regularizer = tf.keras.regularizers.l2(l=0.01)
-initializer = tf.glorot_uniform_initializer()
 DTYPE = tf.float32
+initializer = tf.keras.initializers.he_normal(seed=458)
 
-## Interprets the string to the activation functions --activations
-# @param acti_names, list of activations names
-# @return acti_funcs, list of actiations functions
 def convert_activation(acti_names):
     acti_funcs = []
     for act in acti_names:
@@ -361,6 +358,198 @@ class CNN_CAM:
         return out
 
 
+class Res_ECG_CAM:
+    ## Constructor
+    # construct a CNN: cnn 8*3*1-pool2*1-cnn 16*3*1-pool2*1-cnn 32 3*1-pool2*1-fnn--softmax(class)
+    #  @param args arguments passed to the command line
+    def __init__(self, args):
+        logger.debug("Defining Res_ECG")
+        self.data_len = args.data_len
+        self.channel_start = args.out_channels  # Starting num of channels
+        self.num_layers_in_res = args.num_layers_in_res  #
+        self.num_res_blocks = args.num_res_blocks
+        self.kernel_size = args.filter_size  # repeat for all the cnn
+        self.pool_size = args.pool_size  # repeat for all the cnn
+        self.stride = args.stride  # repeat for all the cnn
+        self.drop_cnn = args.drop_cnn  # repeat for all the cnn
+        self.bn = args.bn
+        self.num_classes = args.num_classes
+
+    def __call__(self, features, training=False):
+        ret = {}
+        if len(features.get_shape().as_list()) < 3:
+            inp = tf.reshape(features, [-1, self.data_len, 1, 1])
+        else:
+            inp = tf.expand_dims(features, axis=3)
+        self._net_constructed_once = True
+
+        out = self._make_cnn_layer(inp, self.channel_start,
+                                   self.bn, self.drop_cnn, 1, 1,
+                                   training=training)
+        out = self.build_res_block_ecg_1st(out, training=training)
+
+        ret["conv"] = self.construct_res_blocks_ecg(out, training=training)
+        # GAP layer - global average pooling
+        with tf.variable_scope('GAP', reuse=tf.AUTO_REUSE) as scope:
+            net_gap = tf.squeeze(tf.reduce_mean(ret["conv"], (1)), axis=1) # get the mean of axis 1 and 2 resulting in shape [batch_size, filters]
+
+            print("gap shape", net_gap.get_shape().as_list())
+
+            gap_w = tf.get_variable('W_gap', shape=[net_gap.get_shape().as_list()[-1], self.num_classes],
+                                    initializer=tf.random_normal_initializer(0., 0.01))
+            logits = tf.nn.softmax(tf.matmul(net_gap, gap_w))
+
+        ret["logits"] = logits
+        ret["gap_w"] = gap_w
+        return ret
+
+    def construct_res_blocks_ecg(self, inp, training=True):
+        """
+        Construct the whole cnn layers
+        :param inp:
+        :param training:
+        :return:
+        """
+        out = inp
+        channel = self.channel_start
+        k = 0
+        strides = [2 if (i+1) % 4 == 0 else 1 for i in range(self.num_res_blocks)]   # downsizing in every 4 blocks
+        block_ids = np.arange(self.num_res_blocks)
+
+        for bl_id, s in zip(block_ids, strides):
+            if (bl_id + 1) % 4 == 0 and bl_id > 0:
+                k += 1
+                channel = self.channel_start * np.power(2, k)
+
+            out = self.build_res_blocks_ecg(out, channel, s,
+                                            layer_id=bl_id, training=training)
+        return out
+
+    def _make_cnn_layer(self, inp, out_ch, bn, drop, layer_number, num_layers, training=True):
+        """
+        To creat CNN block
+        :param inp:
+        :param out_ch: int, num of filters to use
+        :param bn: bool
+        :param activation: tf function
+        :param drop: float, drop rate
+        :param layer_number: int
+        :param num_layers: int, how many layers in one CNN block, like VGG
+        :param training:
+        :return:
+        """
+        _to_format = [out_ch, bn, drop, training]
+        layer_name = "cnn_layer_{}".format(layer_number)
+        logger.debug("Creating new layer:")
+        string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\t (training = {})"
+        logger.debug(string.format(*_to_format))
+        out = inp
+        with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+            print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
+            if self.kernel_size >= 100:
+                kernel_size = inp.get_shape().as_list()[
+                                  1] // 2  # later layers, the filter size should be adjusted by the input
+            else:
+                kernel_size = self.kernel_size
+            out = tf.layers.conv2d(inputs = out,
+                                    filters = out_ch,
+                                    kernel_size = [self.kernel_size, 1],
+                                    strides = [1, 1],
+                                    padding = 'SAME',
+                                    kernel_initializer = initializer,
+                                    kernel_regularizer = regularizer,
+                                    activation = None)
+
+            out = tf.layers.batch_normalization(
+                out, training=training) if bn else out
+            out = tf.nn.relu(out)
+            # out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
+        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
+
+        return out
+
+
+    def build_res_block_ecg_1st(self, inp, training=True):
+        """
+        https://github.com/fchollet/deep-learning-models/blob/master/resnet50.py
+        :param out_channels: int, the filters to use in this block
+        :param filter_size: [height, width], the kernel size
+        :param num_layers: int, how many cov layers in one resi block. inp--> (conv -->...--> conv) -->+inp-->
+        :param layer_id: int, the layer id
+        :return: Conv bn relu drop conv
+        """
+        out = inp
+
+        with tf.variable_scope("res_block_start", reuse=tf.AUTO_REUSE):
+            out = tf.layers.conv2d(
+                inputs=out,
+                filters=self.channel_start,
+                kernel_size=[self.kernel_size, 1],
+                strides=[self.stride, 1],   # reduce the height, because shortcut also reduce the height
+                padding='SAME',
+                kernel_initializer=initializer,
+                kernel_regularizer=regularizer,
+                activation=None
+            )
+            out = tf.layers.batch_normalization(out, training=training)
+            out = tf.nn.relu(out)
+            out = tf.layers.dropout(out, self.drop_cnn, training=training)
+            out = tf.layers.conv2d(
+                inputs=out,
+                filters=self.channel_start,
+                kernel_size=[self.kernel_size, 1],
+                padding='SAME',
+                kernel_initializer=initializer,
+                kernel_regularizer=regularizer,
+                activation=None
+            )
+            shortcut = tf.layers.max_pooling2d(inp, pool_size=[self.pool_size, 1],
+                                               strides=[self.stride, 1],
+                                               padding='same')
+            output = tf.nn.relu(shortcut + out)
+            print("ResiBlock_start-output pooling shape", out.shape.as_list())
+            return output
+
+    def build_res_blocks_ecg(self, x, out_channel, stride, layer_id=0, training=True):
+        """
+        https://github.com/fchollet/deep-learning-models/blob/master/resnet50.py
+        :param out_channels: int, the filters to use in this block
+        :param filter_size: [height, width], the kernel size
+        :param num_layers: int, how many cov layers in one resi block. inp--> (conv -->...--> conv) -->+inp-->
+        :param layer_id: int, the layer id
+        :return: bn relu  conv bn relu drop conv
+        """
+        out = x
+        if (layer_id + 1) % 4 == 0 and layer_id > 0:  # only every 4 blocks increase the number of channels and decrease the height
+            zeros_x = tf.zeros_like(x)
+            concat_long_ch = tf.concat([x, zeros_x], axis=3)
+            x = concat_long_ch
+
+        with tf.variable_scope("res_block" + str(layer_id), reuse=tf.AUTO_REUSE):
+            for j in range(self.num_layers_in_res):  # there are two conv layers in one block
+                out = tf.layers.batch_normalization(out, training=training)
+                out = tf.nn.relu(out)
+                if not (layer_id == 0 and j == 0):
+                    drop = self.drop_cnn if j > 0 else 0
+                    out = tf.layers.dropout(out, drop, training=training)
+
+                out = tf.layers.conv2d(
+                    inputs=out,
+                    filters=out_channel,
+                    kernel_size=[self.kernel_size, 1],
+                    padding='SAME',
+                    strides=[stride, 1] if j == 0 else [1, 1],
+                    kernel_initializer=initializer,
+                    kernel_regularizer=regularizer,
+                    activation=None
+                )
+
+            shortcut = tf.layers.max_pooling2d(x, pool_size=[self.pool_size, 1], strides=[stride, 1], padding='same')
+            output = tf.nn.relu(shortcut + out)
+            print("ResiBlock{}-output pooling shape".format(layer_id), out.shape.as_list())
+            return output
+
+# --------------------------utile functions-----------------------------------
 ## Computes the loss tensor according to the arguments passed to the software
 # @param args arguments passed to the command line
 # @param net the network object
@@ -442,6 +631,8 @@ def get_graph(args, data_tensors):
         net = CNN(args)
     elif args.model_name == "CNN_CAM":
         net = CNN_CAM(args)
+    elif args.model_name == "Res_ECG_CAM":
+        net = Res_ECG_CAM(args)
 
     lr_placeholder = tf.placeholder(tf.float32, [], name='learning_rate')
     net_out = net(data_tensors["test_features"])

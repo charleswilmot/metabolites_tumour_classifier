@@ -42,14 +42,14 @@ def loss_plot(ax, data, training=False):
 def accuracy_plot(ax, data, training=False):
     if training:
         train_accuracy = data["train_accuracy"]
-        ax.plot(range(1, len(train_accuracy) + 1), train_accuracy, color='darkviolet', linestyle='--', marker='o', label='Train', alpha=0.8)
+        ax.plot(range(1, len(train_accuracy) + 1), train_accuracy, color='darkviolet', linestyle='--', marker='o', label='Train', alpha=0.7)
         test_accuracy = data["test_accuracy"]
-        ax.plot(range(1, len(test_accuracy) + 1), test_accuracy, color='g', linestyle='--', marker='*',label='Validation', alpha=0.8)
+        ax.plot(range(1, len(test_accuracy) + 1), test_accuracy, color='g', linestyle='--', marker='*',label='Validation', alpha=0.7)
         highest = max(test_accuracy)
     else:
         test_accuracy = data["test_accuracy"]
         ax.plot(range(1, test_accuracy.size + 1), test_accuracy, color='g', linestyle='--', marker='*', label='Validation',
-                alpha=0.8)
+                alpha=0.7)
         highest = test_accuracy
     ax.plot([np.argmax(test_accuracy) + 1, 0], [highest, highest], '-.k')
     plt.text(np.argmax(test_accuracy) + 1, highest, "%.4f" % (highest), horizontalalignment="center", color="k", size=18)
@@ -66,11 +66,12 @@ def loss_figure(args, data, training=False):
     logger.info("Loss plot saved")
 
 
-def accuracy_figure(args, data, training=False):
+def accuracy_figure(args, data, training=False, epoch=0):
     f = plt.figure()
     ax = f.add_subplot(111)
     max_acc = accuracy_plot(ax, data, training=training)
-    f.savefig(args.output_path + '/accuracy_step_{}.png'.format(data["current_step"]))
+    f.savefig(args.output_path + '/accuracy_step_{}_acc_{:.4f}.png'.format(epoch, max_acc))
+    plt.close()
     logger.info("Accuracy plot saved")
 
 
@@ -88,7 +89,9 @@ def plot_auc_curve(args, data, epoch=0):
     plt.legend(loc=4)
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
-    f.savefig(args.output_path + '/AUC_curve_step_{:.2f}-auc_{:.4}.png'.format(epoch, auc))
+    f.savefig(args.output_path + '/AUC_curve_step_{:.2f}-auc_{:.4}-{}.png'.format(epoch, auc, args.data_source))
+    np.savetxt(args.output_path + '/AUC_curve_step_{:.2f}-auc_{:.4}-{}.csv'.format(epoch, auc, args.data_source),
+               np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_pred"][:, 1].reshape(-1,1))), fmt="%.3f", delimiter=',', header="labels,pred[:,1]")
     plt.close()
 
 def accuracy_loss_figure(args, data, training=False, epoch=0):
@@ -108,8 +111,8 @@ def accuracy_loss_figure(args, data, training=False, epoch=0):
 
 def all_figures(sess, args, data, training=False, epoch=0):
     # loss_figure(args, data, training=training)
-    # accuracy_figure(args, data, training=training)
-    accuracy_loss_figure(args, data, training=training, epoch=epoch)
+    accuracy_figure(args, data, training=training, epoch=epoch)
+    # accuracy_loss_figure(args, data, training=training, epoch=epoch)
     plot_confusion_matrix(args, data, ifnormalize=True, training=training)
     plot_auc_curve(args, data, epoch=epoch)
     if not training:
@@ -151,9 +154,9 @@ def plot_confusion_matrix(args, data, ifnormalize=False, training=False):
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     if training:
-        f.savefig(args.output_path + '/confusion_matrix_step_{}.png'.format(data["current_step"]))
+        f.savefig(args.output_path + '/confusion_matrix_step_{}_{}.png'.format(data["current_step"], args.data_source))
     else:
-        f.savefig(args.output_path + '/confusion_matrix_step_{}.png'.format("VALID"))
+        f.savefig(args.output_path + '/confusion_matrix_step_{}_{}.png'.format("VALID", args.data_source))
     plt.close()
     logger.info("Confusion matrix saved")
 
@@ -247,13 +250,13 @@ def get_class_map(labels, conv_out, weights, seq_len, seq_width, number2use=200)
     :param im_width: The length of the input sample
     :return: class map
     """
-    conv_out = np.expand_dims(conv_out, 2)
+    # conv_out = np.expand_dims(conv_out, 2)
     channels = conv_out.shape[-1]
     num_samples = min(conv_out.shape[0], number2use)
     classmaps = []
     labels_int = np.argmax(labels, axis=1)
     conv_resized = tf.image.resize_nearest_neighbor(conv_out, [seq_len, seq_width])
-    rand_inds = np.random.choice(conv_out.shape[0], num_samples)
+    rand_inds = np.random.choice(conv_out.shape[0], min(num_samples, conv_out.shape[0]))
     for ind, label in enumerate(labels_int[rand_inds]):
         label_w = tf.gather(tf.transpose(weights), label)
         label_w = tf.reshape(label_w, [-1, channels, 1])
@@ -265,7 +268,8 @@ def get_class_map(labels, conv_out, weights, seq_len, seq_width, number2use=200)
 
 
 def plot_class_activation_map(sess, class_activation_map,
-                              samples_test, labels_test, pred_labels, global_step,
+                              samples_test, labels_test,
+                              pred_labels, global_step,
                               args):
     """TODO, the labels are all stacked not like test_conv is only the first batch
     Plot the class activation
@@ -309,13 +313,16 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, sa
         att_c = 'deepskyblue' if label == pred else 'r'
         axs[j // col, np.mod(j, col)].plot(np.arange(ori.size), ori, 'darkorchid', label='original', linewidth=0.8)
         axs[j // col + 1, np.mod(j, col)].plot(np.arange(vis.size), vis, '-.', color=att_c, label="attention")
-        axs[0, 0].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=3, numpoints=3)  # [x, y, width, height]
-        axs[0, col-1].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=3, numpoints=3)  # [x, y, width, height]
+        axs[0, 0].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=1, numpoints=3)  # [x, y, width, height]
+        axs[1, col-1].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=1, numpoints=3)  # [x, y, width, height]
+        if np.mod(j, col) > 0:
+            plt.setp(axs[j // col + 1, np.mod(j, col)].get_yticklabels(), visible=False)
+            plt.setp(axs[j // col, np.mod(j, col)].get_yticklabels(), visible=False)
     plt.tight_layout()
     plt.subplots_adjust(top=0.90)
     fig.subplots_adjust(hspace=0)
     fig.subplots_adjust(wspace=0)
-    plt.savefig(save_dir + '/class_activity_map-step-test{}-class{}_{}.png'.format(global_step, class_id, box_position), format='png')
+    plt.savefig(save_dir + '/class_activity_map-step-test{:.1f}-class{}.png'.format(global_step, class_id), format='png')
     plt.close()
     
     ## Plot the mean attention
@@ -326,7 +333,8 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, sa
     plt.errorbar(np.arange(288), mean, yerr=std, fmt='--o', ecolor='deepskyblue', label='mean attention')
     plt.plot(samples_plot[0], 'darkorchid', label='original', linewidth=0.8)
     plt.legend(loc="best")
-    plt.savefig(save_dir + '/mean_class_activity_map-step-test{}-class{}_{}.png'.format(global_step, class_id, box_position),
+    plt.title("Mean attention for class {}".format(class_id))
+    plt.savefig(save_dir + '/mean_class_activity_map-step-{:.1f}-class{}.png'.format(global_step, class_id),
                 format='png')
     plt.close()
 

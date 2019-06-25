@@ -10,13 +10,12 @@ import plot
 import tensorflow as tf
 import scipy.io
 import random
-# from sklearn.model_selection import train_test_split
 from collections import Counter
 import ipdb
 logger = log.getLogger("classifier")
 
 
-def get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=0):
+def get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=0, fold=0):
     """
     Get fixed ratio of val data from different numbers of each class
     :param labels: array
@@ -31,7 +30,7 @@ def get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=0
 
     indices = np.where(labels == class_id)[0]
     random.shuffle(indices)
-    val_inds = indices[0: np.int(num_val)]
+    val_inds = indices[fold*np.int(num_val): (fold+1)*np.int(num_val)]
     train_test_inds = indices[np.int(num_val):]
     train_test["features"] = np.vstack((train_test["features"], spectra[train_test_inds, :]))
     train_test["labels"] = np.append(train_test["labels"], labels[train_test_inds])
@@ -125,39 +124,40 @@ def split_data_for_val(args):
     spectra = mat[:, 2:]
     labels = mat[:, 1]
     ids = mat[:, 0]
-    train_test = {}
-    validate = {}
-    validate["features"] = np.empty((0, 288))
-    validate["labels"] = np.empty((0))
-    validate["ids"] = np.empty((0))
-    train_test["features"]= np.empty((0, 288))
-    train_test["labels"] = np.empty((0))
-    train_test["ids"] = np.empty((0))
 
     num_val = ids.size // 10   # leave 100 samples from each class out
-    if args.num_classes == 2:
-        for class_id in range(args.num_classes):
-            train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id)
+    for fold in range(10):
+        train_test = {}
+        validate = {}
+        validate["features"] = np.empty((0, 288))
+        validate["labels"] = np.empty((0))
+        validate["ids"] = np.empty((0))
+        train_test["features"] = np.empty((0, 288))
+        train_test["labels"] = np.empty((0))
+        train_test["ids"] = np.empty((0))
 
-    elif args.num_classes == 6:
-        for class_id in range(args.num_classes):
-            train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id)
-    elif args.num_classes == 3: # ()
-        for class_id in range(args.num_classes):
-            train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id)
-    ### ndData
-    val_mat = {}
-    train_test_mat = {}
-    val_mat["DATA"] = np.zeros((validate["labels"].size, 290))
-    val_mat["DATA"][:, 0] = validate["ids"]
-    val_mat["DATA"][:, 1] = validate["labels"]
-    val_mat["DATA"][:, 2:] = validate["features"]
-    train_test_mat["DATA"] = np.zeros((train_test["labels"].size, 290))
-    train_test_mat["DATA"][:, 0] = train_test["ids"]
-    train_test_mat["DATA"][:, 1] = train_test["labels"]
-    train_test_mat["DATA"][:, 2:] = train_test["features"]
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_val_rand_data.mat'.format(args.num_classes, num_val), val_mat)
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_train_test_rand_data.mat'.format(args.num_classes, num_val), train_test_mat)
+        if args.num_classes == 2:
+            for class_id in range(args.num_classes):
+                train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id, fold=fold)
+        elif args.num_classes == 6:
+            for class_id in range(args.num_classes):
+                train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id, fold=fold)
+        elif args.num_classes == 3: # ()
+            for class_id in range(args.num_classes):
+                train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id, fold=fold)
+        ### ndData
+        val_mat = {}
+        train_test_mat = {}
+        val_mat["DATA"] = np.zeros((validate["labels"].size, 290))
+        val_mat["DATA"][:, 0] = validate["ids"]
+        val_mat["DATA"][:, 1] = validate["labels"]
+        val_mat["DATA"][:, 2:] = validate["features"]
+        train_test_mat["DATA"] = np.zeros((train_test["labels"].size, 290))
+        train_test_mat["DATA"][:, 0] = train_test["ids"]
+        train_test_mat["DATA"][:, 1] = train_test["labels"]
+        train_test_mat["DATA"][:, 2:] = train_test["features"]
+        scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_val_rand_data{}.mat'.format(args.num_classes, fold), val_mat)
+        scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_train_test_rand_data{}.mat'.format(args.num_classes, fold), train_test_mat)
 
 
 
@@ -184,27 +184,31 @@ def get_data(args):
         labels = labels[need_inds]
         ids = ids[need_inds]
 
-    temp_rand = np.arange(len(labels))
-    np.random.shuffle(temp_rand)
-    spectra_rand = spectra[temp_rand]
-    labels_rand = labels[temp_rand]
-    ids_rand = ids[temp_rand]
+    if args.test_or_train == 'train':
+        temp_rand = np.arange(len(labels))
+        np.random.shuffle(temp_rand)
+        spectra_rand = spectra[temp_rand]
+        labels_rand = labels[temp_rand]
+        ids_rand = ids[temp_rand]
+    elif args.test_or_train == 'test':   # In test, don't shuffle
+        spectra_rand = spectra
+        labels_rand = labels
+        ids_rand = ids
     assert args.num_classes != np.max(labels), "The number of class doesn't match the data!"
     args.num_train = int(((100 - args.test_ratio) * spectra_rand.shape[0]) // 100)
     train_data["spectra"] = spectra_rand[0:args.num_train].astype(np.float32)
-    # train_data["spectra"] = (train_temp - np.expand_dims(np.min(train_temp, axis=1), 1)) / (
-    #             np.expand_dims(np.max(train_temp, axis=1), 1) - np.expand_dims(np.min(train_temp, axis=1), 1))
     train_data["labels"] = np.squeeze(labels_rand[0:args.num_train]).astype(np.int32)
     train_data["ids"] = np.squeeze(ids_rand[0:args.num_train]).astype(np.int32)
+
     test_data["spectra"] = spectra_rand[args.num_train:].astype(np.float32)
-    # test_data["spectra"] = (test_temp - np.expand_dims(np.min(test_temp, axis=1), 1)) / (
-    #         np.expand_dims(np.max(test_temp, axis=1), 1) - np.expand_dims(np.min(test_temp, axis=1), 1))
     test_data["labels"] = np.squeeze(labels_rand[args.num_train:]).astype(np.int32)
     test_data["ids"] = np.squeeze(ids_rand[args.num_train:]).astype(np.int32)
 
     test_count = dict(Counter(list(test_data["ids"])))  # count the num of samples of each id
     sorted_count = sorted(test_count.items(), key=lambda kv: kv[1])
     np.savetxt(os.path.join(args.output_path, "test_ids_count.csv"), np.array(sorted_count), fmt='%d', delimiter=',')
+    np.savetxt(os.path.join(args.output_path, "original_labels.csv"), np.array(test_data["labels"]), fmt='%d', delimiter=',')
+
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
         train_data = oversample_train(train_data, args.num_classes)
@@ -229,7 +233,7 @@ def oversample_train(train_data, num_classes):
     
     return train_data
     
-    
+
 ## Get batches of data in tf.dataset
 # @param args the arguments passed to the software
 # @param train_data dict, "features", "labels"
@@ -337,22 +341,19 @@ def copy_save_all_files(args):
     :param args:
     :return:
     """
-    src_dir = '../src'  ## the dir of original files
+    src_dir = '../src'
     save_dir = os.path.join(args.model_save_dir, 'src')
     if not os.path.exists(save_dir):  # if subfolder doesn't exist, should make the directory and then save file.
         os.makedirs(save_dir)
-
+    req_extentions = ['py', 'json']
     for filename in os.listdir(src_dir):
-        src_file_name = os.path.join(src_dir, filename)
-        target_file_name = os.path.join(save_dir, filename)
-        try:
+        exten = filename.split('.')[-1]
+        if exten in req_extentions:
+            src_file_name = os.path.join(src_dir, filename)
+            target_file_name = os.path.join(save_dir, filename)
             with open(src_file_name, 'r') as file_src:
                 with open(target_file_name, 'w') as file_dst:
                     for line in file_src:
                         file_dst.write(line)
-        except:
-            print('WithCopy Failed!')
-        finally:
-            print('Done WithCopy File!')
-            
+    print('Done WithCopy File!')
 
