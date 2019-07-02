@@ -27,7 +27,7 @@
             "number_of_epochs": 251,
             "test_freq": 1,
             "test_every": null,
-            "input_data": "../data/20190325/2class_train_test_rand_data0.mat",
+            "input_data": "../data/20190325/20190325-3class_lout40_val_data5-human.mat",
             "test_ratio": 10,
             "learning_rate": 0.0005,
             "restore_from": null,

@@ -361,6 +361,140 @@ class CNN_CAM:
         return out
 
 
+class Res_ECG:
+    ## Constructor
+    # construct a CNN: cnn 8*3*1-pool2*1-cnn 16*3*1-pool2*1-cnn 32 3*1-pool2*1-fnn--softmax(class)
+    #  @param args arguments passed to the command line
+    def __init__(self, args):
+        logger.debug("Defining CNN")
+        self.data_len = args.data_len
+        self.out_channels = args.out_channels  # Starting num of channels
+        self.num_layers_in_res = args.num_layers_in_res  # Starting num of channels
+        self.num_res_blocks = args.num_res_blocks
+        self.kernel_size = args.kernel_size  # repeat for all the cnn
+        self.pool_size = args.pool_size  # repeat for all the cnn
+        self.strides = args.strides  # repeat for all the cnn
+        self.drop_cnn = args.drop_cnn  # repeat for all the cnn
+        self.drop_fnn = args.drop_fnn  # repeat for all the cnn
+        self.num_classes = args.num_classes
+        self.num_res_blocks = args.num_res_blocks
+
+
+    def __call__(self, features, training=False):
+        out = {}
+        inp = tf.reshape(features, [-1, self.data_len, 1])
+        self._net_constructed_once = True
+        out["conv"] = self.construct_res_ecg(inp, training)
+        # GAP layer - global average pooling
+        with tf.variable_scope('GAP', reuse=tf.AUTO_REUSE) as scope:
+            net_gap = tf.reduce_mean(out["conv"],
+                                     (1))  # get the mean of axis 1 and 2 resulting in shape [batch_size, filters]
+            print("gap shape", net_gap.shape.as_list())
+
+            gap_w = tf.get_variable('W_gap', shape=[net_gap.get_shape().as_list()[-1], self.num_classes],
+                                    initializer=tf.random_normal_initializer(0., 0.01))
+            logits = tf.nn.softmax(tf.matmul(net_gap, gap_w))
+
+        out["logits"] = logits
+        out["gap_w"] = gap_w
+        return out
+
+    def construct_res_ecg(self, inp, training):
+        """
+        Construct the whole cnn layers
+        :param inp:
+        :param training:
+        :return:
+        """
+        layer_number = 1
+        out = inp
+        for (out_ch, bn, activation, drop, num_l) in zip(self.out_channels, self.bn_cnn, self.activations_cnn,
+                                                         self.drop_cnn, self.num_layers):
+            out = self._make_cnn_layer(out, out_ch, bn, activation, drop, layer_number, num_l, training)
+            layer_number += 1
+
+        return out
+
+    def construct_fnn_layers(self, inp, training):
+        """
+        Construct the whole fully-connected layers
+        :param inp: input tensors
+        :param training: bool
+        :return: output tensors of the layers
+        """
+        layer_number = 1
+        out = tf.layers.flatten(inp)
+        for (out_dim, bn, activation, drop) in zip(self.fc_dims, self.bn_cnn, self.activations_cnn, self.drop_cnn):
+            out = self._make_fnn_layer(out, out_dim, bn, activation, drop, layer_number, training)
+            layer_number += 1
+
+        return out
+
+    def _make_cnn_layer(self, inp, out_ch, bn, activation, drop, layer_number, num_layers, training):
+        """
+        To creat CNN block
+        :param inp:
+        :param out_ch: int, num of filters to use
+        :param bn: bool
+        :param activation: tf function
+        :param drop: float, drop rate
+        :param layer_number: int
+        :param num_layers: int, how many layers in one CNN block, like VGG
+        :param training:
+        :return:
+        """
+        _to_format = [out_ch, bn, drop, activation, training]
+        layer_name = "cnn_layer_{}".format(layer_number)
+        logger.debug("Creating new layer:")
+        string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
+        logger.debug(string.format(*_to_format))
+        out = inp
+        with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+            print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
+            if self.kernel_size >= 100:
+                kernel_size = inp.get_shape().as_list()[
+                                  1] // 2  # later layers, the filter size should be adjusted by the input
+            else:
+                kernel_size = self.kernel_size
+            out = tf.layers.conv1d(out, out_ch,
+                                   kernel_size, 1,
+                                   kernel_initializer=initializer,
+                                   padding='SAME')
+            # if np.mod(layer_number, 2) == 1:  # only pool after odd number layer
+            #     out = tf.layers.max_pooling1d(out, self.pool_size, self.strides, padding="SAME")
+            out = tf.layers.max_pooling1d(out, self.pool_size, self.pool_size, padding="SAME")
+            out = tf.layers.batch_normalization(
+                out, training=training) if bn else out
+            out = out if activation is None else activation(out)
+            out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
+        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
+
+        return out
+
+    ## Private function for adding fully-connected layers to the network
+    # @param inp input tensor
+    # @param out_size size of the new layer
+    # @param batch_norm bool stating if batch normalization should be used
+    # @param dropout droupout probability. Set to 0 to disable
+    # @param activation activation function
+    def _make_fnn_layer(self, inp, out_dim, bn, activation, drop, layer_number, training):
+        _to_format = [out_dim, bn, drop, activation, training]
+        layer_name = "fc_layer_{}".format(layer_number)
+        logger.debug("Creating new layer:")
+        string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
+        logger.debug(string.format(*_to_format))
+        with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+            print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_dim))
+            out = tf.layers.dense(inp, out_dim,
+                                  kernel_initializer=initializer,
+                                  activation=activation)
+            out = tf.layers.batch_normalization(
+                out, training=training) if bn else out
+            out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
+        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
+        return out
+
+# --------------------------utile functions-----------------------------------
 ## Computes the loss tensor according to the arguments passed to the software
 # @param args arguments passed to the command line
 # @param net the network object

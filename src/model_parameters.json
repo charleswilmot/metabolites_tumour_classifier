@@ -14,12 +14,12 @@
                 },
                 "CNN_CAM":{
                     "model_name": "CNN_CAM",
-                    "out_channels": [64, 128, 256],
+                    "out_channels": [8, 16, 32],
                     "num_layers": [1, 1, 1],
-                    "pool_size": 2,
-                    "strides": 2,
-                    "kernel_size": 178,
-                    "dropout_probs": [0.15, 0.15, 0.15],
+                    "pool_size": 3,
+                    "strides": 3,
+                    "kernel_size": 288,
+                    "dropout_probs": [0.3, 0.3, 0.3],
                     "batch_norms":[true, true, true],
                     "activations":["relu", "relu", "relu"]
 
@@ -31,6 +31,18 @@
                     "batch_norms": [true, true, true],
                     "activations": ["lrelu", "lrelu", "softmax"]
 
+                },
+                "Res_ECG": {
+                    "model_name": "Res_ECG",
+                    "out_channels": 16,
+                    "num_layers_in_res": 2,
+                    "num_res_blocks": 10,
+                    "pool_size": [2, 1],
+                    "stride": [2, 1],
+                    "filter_size": [32, 1],
+                    "fc": [500],
+                    "drop_cnn": 0.2,
+                    "drop_fnn": 0.5
                 }
 
 

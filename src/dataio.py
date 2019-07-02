@@ -10,13 +10,12 @@ import plot
 import tensorflow as tf
 import scipy.io
 import random
-# from sklearn.model_selection import train_test_split
 from collections import Counter
 import ipdb
 logger = log.getLogger("classifier")
 
 
-def get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=0):
+def get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=0, fold=0):
     """
     Get fixed ratio of val data from different numbers of each class
     :param labels: array
@@ -31,7 +30,7 @@ def get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=0
 
     indices = np.where(labels == class_id)[0]
     random.shuffle(indices)
-    val_inds = indices[0: np.int(num_val)]
+    val_inds = indices[fold*np.int(num_val): (fold+1)*np.int(num_val)]
     train_test_inds = indices[np.int(num_val):]
     train_test["features"] = np.vstack((train_test["features"], spectra[train_test_inds, :]))
     train_test["labels"] = np.append(train_test["labels"], labels[train_test_inds])
@@ -121,42 +120,44 @@ def split_data_for_val(args):
     :return: save two .mat files
     """
     mat = scipy.io.loadmat(args.input_data)["DATA"]
+    np.random.shuffle(mat)   # shuffle the data
     spectra = mat[:, 2:]
     labels = mat[:, 1]
     ids = mat[:, 0]
-    train_test = {}
-    validate = {}
-    validate["features"] = np.empty((0, 288))
-    validate["labels"] = np.empty((0))
-    validate["ids"] = np.empty((0))
-    train_test["features"]= np.empty((0, 288))
-    train_test["labels"] = np.empty((0))
-    train_test["ids"] = np.empty((0))
 
-    num_val = 1000   # leave num_val samples from each class out
-    if args.num_classes == 2:
-        for class_id in range(args.num_classes):
-            train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id)
+    num_val = ids.size // 10   # leave 100 samples from each class out
+    for fold in range(10):
+        train_test = {}
+        validate = {}
+        validate["features"] = np.empty((0, 288))
+        validate["labels"] = np.empty((0))
+        validate["ids"] = np.empty((0))
+        train_test["features"] = np.empty((0, 288))
+        train_test["labels"] = np.empty((0))
+        train_test["ids"] = np.empty((0))
 
-    elif args.num_classes == 6:
-        for class_id in range(args.num_classes):
-            train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id)
-    elif args.num_classes == 3: # ()
-        for class_id in range(args.num_classes):
-            train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id)
-    ### ndData
-    val_mat = {}
-    train_test_mat = {}
-    val_mat["DATA"] = np.zeros((validate["labels"].size, 290))
-    val_mat["DATA"][:, 0] = validate["ids"]
-    val_mat["DATA"][:, 1] = validate["labels"]
-    val_mat["DATA"][:, 2:] = validate["features"]
-    train_test_mat["DATA"] = np.zeros((train_test["labels"].size, 290))
-    train_test_mat["DATA"][:, 0] = train_test["ids"]
-    train_test_mat["DATA"][:, 1] = train_test["labels"]
-    train_test_mat["DATA"][:, 2:] = train_test["features"]
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_val_rand_data.mat'.format(args.num_classes, num_val), val_mat)
-    scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_train_test_rand_data.mat'.format(args.num_classes, num_val), train_test_mat)
+        if args.num_classes == 2:
+            for class_id in range(args.num_classes):
+                train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id, fold=fold)
+        elif args.num_classes == 6:
+            for class_id in range(args.num_classes):
+                train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id, fold=fold)
+        elif args.num_classes == 3: # ()
+            for class_id in range(args.num_classes):
+                train_test, validate = get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=class_id, fold=fold)
+        ### ndData
+        val_mat = {}
+        train_test_mat = {}
+        val_mat["DATA"] = np.zeros((validate["labels"].size, 290))
+        val_mat["DATA"][:, 0] = validate["ids"]
+        val_mat["DATA"][:, 1] = validate["labels"]
+        val_mat["DATA"][:, 2:] = validate["features"]
+        train_test_mat["DATA"] = np.zeros((train_test["labels"].size, 290))
+        train_test_mat["DATA"][:, 0] = train_test["ids"]
+        train_test_mat["DATA"][:, 1] = train_test["labels"]
+        train_test_mat["DATA"][:, 2:] = train_test["features"]
+        scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_val_rand_data{}.mat'.format(args.num_classes, fold), val_mat)
+        scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_train_test_rand_data{}.mat'.format(args.num_classes, fold), train_test_mat)
 
 
 
@@ -190,7 +191,6 @@ def get_data(args):
     ids_rand = ids[temp_rand]
     assert args.num_classes != np.max(labels), "The number of class doesn't match the data!"
     args.num_train = int(((100 - args.test_ratio) * spectra_rand.shape[0]) // 100)
-    # train_temp = spectra_rand[0:args.num_train].astype(np.float32)
     train_data["spectra"] = spectra_rand[0:args.num_train].astype(np.float32)
     # train_data["spectra"] = (train_temp - np.expand_dims(np.min(train_temp, axis=1), 1)) / (
     #             np.expand_dims(np.max(train_temp, axis=1), 1) - np.expand_dims(np.min(train_temp, axis=1), 1))

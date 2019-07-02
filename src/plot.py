@@ -308,7 +308,6 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, sa
     for j, vis, ori, label, pred in zip(counts, class_maps_plot, samples_plot, labels_plot, pred_plot):
         att_c = 'deepskyblue' if label == pred else 'r'
         axs[j // col, np.mod(j, col)].plot(np.arange(ori.size), ori, 'darkorchid', label='original', linewidth=0.8)
-        # axs[j // col, np.mod(j, col)].plot(np.array(vis), np.repeat(ori.max(), vis.size), '.', color=att_c, label="attention")
         axs[j // col + 1, np.mod(j, col)].plot(np.arange(vis.size), vis, '-.', color=att_c, label="attention")
         axs[0, 0].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=3, numpoints=3)  # [x, y, width, height]
         axs[0, col-1].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=3, numpoints=3)  # [x, y, width, height]
@@ -463,4 +462,4 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
         plt.title("True label {} - pred as {} / (in total {} voxels for id {})".format(label_of_id, pred_of_id, id_inds.size, id))
         plt.tight_layout()
         plt.savefig(output_dir + '/prob_distri_of_id_{}.png'.format(id), format="png")
-		plt.close()
+        plt.close()
