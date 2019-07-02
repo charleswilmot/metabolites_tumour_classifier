@@ -91,7 +91,7 @@ def plot_auc_curve(args, data, epoch=0):
     plt.ylabel("True positive rate")
     f.savefig(args.output_path + '/AUC_curve_step_{:.2f}-auc_{:.4}-{}.png'.format(epoch, auc, args.data_source))
     np.savetxt(args.output_path + '/AUC_curve_step_{:.2f}-auc_{:.4}-{}.csv'.format(epoch, auc, args.data_source),
-               np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_pred"][:, 1].reshape(-1,1))), fmt="%.3f", delimiter=',', header="labels,pred[:,1]")
+               np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_pred"][:, 1].reshape(-1,1))), fmt="%.8f", delimiter=',', header="labels,pred[:,1]")
     plt.close()
 
 def accuracy_loss_figure(args, data, training=False, epoch=0):

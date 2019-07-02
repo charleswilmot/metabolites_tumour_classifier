@@ -17,7 +17,7 @@
             "model_save_dir": null,
             "restore_from": null,
 
-            "model_name": "CNN_CAM",
+            "model_name": "Res_ECG_CAM",
             "optimizer_type": "adam",
             "loss_type": "softmax_ce",
             "learning_rate": 0.0005

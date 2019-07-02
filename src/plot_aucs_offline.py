@@ -99,8 +99,7 @@ def plot_auc_curve(labels_hot, pred, epoch=0, save_dir='./results'):
 
 data_dir = "../data/20190325"
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
-model_results = "../results/2019-06-24T16-45-02-data-20190325-3class_lout40_val_data5-2class_human_performance844_with_labels-class-2-Res_ECG_CAM-test/AUC_curve_step_0.00-auc_0.7257-labels.csv"
-
+model_results = "../results/2019-07-02T14-05-36-data-20190325-3class_lout40_val_data5-2class_human_performance844_with_labels-class-2-Res_ECG_CAM-test/AUC_curve_step_0.00-auc_0.7257-labels.csv"
 human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
 human_indi_rating = "../data/20190325/doctor_ratings_individual.mat"
 
@@ -145,8 +144,9 @@ for i in range(indi_ratings.shape[1]):
 
     indi_model_fpr, indi_model_tpr, _ = metrics.roc_curve(true_indi_lbs[key], model_indi_lbs[key])
     indi_model_score = metrics.roc_auc_score(true_indi_lbs[key], model_indi_lbs[key])
-    plt.plot(indi_fpr[1], indi_tpr[1], color=colors[i], marker="*")
-    plt.plot(indi_model_fpr, indi_model_tpr, color=colors[i], label='model-human {} AUC:  {:.3f}-{:.3f}'.format(i+1, indi_model_score, indi_score))
+    plt.plot(indi_fpr[1], indi_tpr[1], color="royalblue", marker="*")
+    plt.plot(indi_model_fpr, indi_model_tpr, color=colors[i], label='model {} AUC:  {:.3f}'.format(i+1, indi_model_score))
+plt.plot(indi_fpr[1], indi_tpr[1], color="royalblue", marker="*", label="individual radiologists")
 plt.title("ROC", fontsize=20)
 plt.xlim([-0.02, 1.02])
 plt.ylim([-0.02, 1.02])
@@ -172,7 +172,7 @@ plt.ylim([-0.02, 1.02])
 plt.legend(loc=4)
 plt.ylabel('true positive rate', fontsize=18)
 plt.xlabel('false positive rate', fontsize=18)
-# plt.savefig(os.path.join(data_dir, "model_with_human_rating.pdf"), format='pdf')
+plt.savefig(os.path.join(data_dir, "model_with_human_rating.pdf"), format='pdf')
 # plt.savefig(os.path.join(data_dir, "model_with_human_rating.eps"), format='eps')
-plt.savefig(os.path.join(data_dir, "model_with_human_rating.png"), format='png')
+plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively.png"), format='png')
 plt.close()
