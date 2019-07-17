@@ -348,6 +348,7 @@ def training(sess, args, graph, saver):
 # @param input_data training and testing data
 def main_train(sess, args, graph):
     saver = tf.train.Saver()
+    saver = tf.train.Saver()
     if args.restore_from:
         global_step = load_model(saver, sess, args.restore_from)
         logger.info("Restore model Done! Global step is {}".format(global_step))
@@ -357,8 +358,14 @@ def main_train(sess, args, graph):
         sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
     if args.test_or_train == 'train':
         initialize(sess, graph, test_only=False)
-        return training(sess, args, graph, saver)
+        output_data = training(sess, args, graph, saver)
+        dataio.save_plots(sess, args, output_data, training=True)
     else:
         initialize(sess, graph, test_only=True)
-        return testing(sess, graph)
+        output_data = testing(sess, graph)
+        with open(args.output_path + '/Data{}_class{}_model{}_test_return_data_acc_{:.3f}.txt'.format(
+                    args.data_source, args.num_classes, args.model_name,
+                    output_data["test_accuracy"]), 'wb') as ff:
+            pickle.dump({key: output_data[key]}, ff)
+        dataio.save_plots(sess, args, output_data, training=False)
         

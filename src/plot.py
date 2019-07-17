@@ -70,7 +70,7 @@ def accuracy_figure(args, data, training=False, epoch=0):
     f = plt.figure()
     ax = f.add_subplot(111)
     max_acc = accuracy_plot(ax, data, training=training)
-    f.savefig(args.output_path + '/accuracy_step_{}_acc_{:.4f}.png'.format(epoch, max_acc))
+    f.savefig(args.output_path + '/accuracy_step_{}_acc_{:.4f}_{}.png'.format(epoch, max_acc, args.data_source))
     plt.close()
     logger.info("Accuracy plot saved")
 
@@ -116,7 +116,7 @@ def all_figures(sess, args, data, training=False, epoch=0):
     plot_confusion_matrix(args, data, ifnormalize=True, training=training)
     plot_auc_curve(args, data, epoch=epoch)
     if not training:
-        if args.model_name == 'CNN_CAM':
+        if 'CAM' in args.model_name:
             class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.data_len, 1, number2use=1000)
             plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], np.argmax(data["test_pred"][rand_inds], 1), epoch, args)
         # plot_wrong_examples(args, data, training=training)
@@ -334,7 +334,7 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, sa
     plt.plot(samples_plot[0], 'darkorchid', label='original', linewidth=0.8)
     plt.legend(loc="best")
     plt.title("Mean attention for class {}".format(class_id))
-    plt.savefig(save_dir + '/mean_class_activity_map-step-{:.1f}-class{}.png'.format(global_step, class_id),
+    plt.savefig(save_dir + '/mean_class_activity_map-step-{:.1f}-class{}-{}.png'.format(global_step, class_id, args.data_source),
                 format='png')
     plt.close()
 

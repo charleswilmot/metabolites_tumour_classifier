@@ -97,82 +97,139 @@ def plot_auc_curve(labels_hot, pred, epoch=0, save_dir='./results'):
 
 # ------------------------------------------------
 
-data_dir = "../data/20190325"
+
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
-model_results = "../results/2019-07-02T14-05-36-data-20190325-3class_lout40_val_data5-2class_human_performance844_with_labels-class-2-Res_ECG_CAM-test/AUC_curve_step_0.00-auc_0.7257-labels.csv"
-human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
-human_indi_rating = "../data/20190325/doctor_ratings_individual.mat"
 
-# GET original labels
-mat = scipy.io.loadmat(original)["DATA"]
-true_label = mat[:, 1]
-true_features = mat[:, 2:]
+plot_name = "indi_rating_with_model"
 
-# Get individual rater's prediction
-true_indi_lbs = {}
-human_indi_lbs = {}
-model_indi_lbs = {}
-indi_mat = scipy.io.loadmat(human_indi_rating)['a1']
-indi_ratings = np.array(indi_mat)
+if plot_name == "indi_rating_with_model":
+    data_dir = "../data/20190325"
+    model_results = "../results/2019-07-02T14-05-36-data-20190325-3class_lout40_val_data5-2class_human_performance844_with_labels-class-2-Res_ECG_CAM-test/AUC_curve_step_0.00-auc_0.7257-labels.csv"
+    human_indi_rating = "../data/20190325/lout40-data5-doctor_ratings_individual.mat"
+    # Get individual rater's prediction
+    true_indi_lbs = {}
+    human_indi_lbs = {}
+    model_indi_lbs = {}
+    indi_mat = scipy.io.loadmat(human_indi_rating)['a']
+    indi_ratings = np.array(indi_mat)
 
-# Get model's prediction
-model_auc = pd.read_csv(model_results, header=0).values
-label = model_auc[:, 0].astype(np.int)
-pred_logits = model_auc[:, 1]
-pred_lb = np.argmax(pred_logits, axis=0)
+    # Get model's prediction
+    model_auc = pd.read_csv(model_results, header=0).values
+    label = model_auc[:, 0].astype(np.int)
+    pred_logits = model_auc[:, 1]
+    pred_lb = np.argmax(pred_logits, axis=0)
+    start = 0
+    plt.figure(figsize=[12, 10])
+    colors = pylab.cm.cool(np.linspace(0, 1, 8))
+    mean_fpr = []
+    mean_tpr = []
+    mean_score = []
+    base_fpr = np.linspace(0, 1, 20)
+    tpr_model = []
+    for i in range(indi_ratings.shape[1]):
+        key = "{}".format(i)
+        true_indi_lbs[key] = true_label[start: start+len(indi_ratings[0, i])]
 
-# Get human's total labels
-hum_whole = scipy.io.loadmat(human_rating)["data_ratings"]
-human_lb = hum_whole[:, 0]
-human_features = hum_whole[:, 1:]
-hum_fpr, hum_tpr, _ = metrics.roc_curve(true_label, human_lb)
-hum_score = metrics.roc_auc_score(true_label, human_lb)
+        human_indi_lbs[key] = indi_ratings[0, i][:, 0]
+        model_indi_lbs[key] = pred_logits[start: start+len(indi_ratings[0, i])]
+        start = start + len(indi_ratings[0, i])
 
-start = 0
-plt.figure()
-colors = pylab.cm.cool(np.linspace(0, 1, 8))
-for i in range(indi_ratings.shape[1]):
-    key = "{}".format(i)
-    true_indi_lbs[key] = true_label[start: start+len(indi_ratings[0, i])]
+        indi_fpr, indi_tpr, _ = metrics.roc_curve(true_indi_lbs[key], human_indi_lbs[key])
+        indi_score = metrics.roc_auc_score(true_indi_lbs[key], human_indi_lbs[key])
+        mean_fpr.append(indi_fpr)
+        mean_tpr.append(indi_tpr)
+        mean_score.append(indi_score)
 
-    human_indi_lbs[key] = indi_ratings[0, i][:, 0]
-    model_indi_lbs[key] = pred_logits[start: start+len(indi_ratings[0, i])]
-    start = start + len(indi_ratings[0, i])
+        indi_model_fpr, indi_model_tpr, _ = metrics.roc_curve(true_indi_lbs[key], model_indi_lbs[key])
+        indi_model_score = metrics.roc_auc_score(true_indi_lbs[key], model_indi_lbs[key])
+        tpr_temp = interp(base_fpr, indi_model_fpr, indi_model_tpr)
+        tpr_model.append(tpr_temp)
 
-    indi_fpr, indi_tpr, _ = metrics.roc_curve(true_indi_lbs[key], human_indi_lbs[key])
-    indi_score = metrics.roc_auc_score(true_indi_lbs[key], human_indi_lbs[key])
+        plt.plot(indi_fpr[1], indi_tpr[1], color="m", marker="*", alpha=0.35)
+        plt.plot(indi_model_fpr, indi_model_tpr, color='royalblue', alpha=0.25, label='model {} AUC:  {:.3f}'.format(i+1, indi_model_score))
+    mean_model_tpr = np.mean(np.array(tpr_model), axis=0)
+    std_model_tpr = np.std(np.array(tpr_model), axis=0)
+    mean_model_score = metrics.auc(base_fpr, mean_model_tpr)
 
-    indi_model_fpr, indi_model_tpr, _ = metrics.roc_curve(true_indi_lbs[key], model_indi_lbs[key])
-    indi_model_score = metrics.roc_auc_score(true_indi_lbs[key], model_indi_lbs[key])
-    plt.plot(indi_fpr[1], indi_tpr[1], color="royalblue", marker="*")
-    plt.plot(indi_model_fpr, indi_model_tpr, color=colors[i], label='model {} AUC:  {:.3f}'.format(i+1, indi_model_score))
-plt.plot(indi_fpr[1], indi_tpr[1], color="royalblue", marker="*", label="individual radiologists")
-plt.title("ROC", fontsize=20)
-plt.xlim([-0.02, 1.02])
-plt.ylim([-0.02, 1.02])
-plt.legend(loc=4)
-plt.ylabel('true positive rate', fontsize=18)
-plt.xlabel('false positive rate', fontsize=18)
-# plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual.pdf"), format='pdf')
-plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual.png"), format='png')
-plt.close()
+    plt.plot(indi_fpr[1], indi_tpr[1], alpha=0.35, color="m", marker="*", label="individual radiologists")
+    plt.plot(np.mean(np.array(mean_fpr)[:, 1]), np.mean(np.array(mean_tpr)[:, 1]), color="m", marker="d", markersize=6, label='human average AUC:  {:.3f}'.format(np.mean(np.array(mean_score))))
+    plt.plot(base_fpr, mean_model_tpr, color="royalblue", linewidth=3.0, label='model average AUC:  {:.3f}'.format(mean_model_score))
 
-# PLot human average rating
-plt.figure()
-plt.plot(hum_fpr[1], hum_tpr[1], 'purple', marker="*", markersize=4, label='human average AUC: {:.3f}'.format(hum_score))
+    plt.title("ROC", fontsize=20)
+    plt.xlim([-0.02, 1.02])
+    plt.ylim([-0.02, 1.02])
+    plt.legend(loc=4)
+    plt.ylabel('true positive rate', fontsize=18)
+    plt.xlabel('false positive rate', fontsize=18)
+    plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual.png"), format='png')
+    plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual.pdf"), format='pdf')
+    plt.close()
+elif plot_name == "human_whole_with_model":
+    data_dir = "../data/20190325"
+    human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
+    # Get model's prediction
+    model_auc = pd.read_csv(model_results, header=0).values
+    label = model_auc[:, 0].astype(np.int)
+    pred_logits = model_auc[:, 1]
+    pred_lb = np.argmax(pred_logits, axis=0)
 
-# Plot trained model prediction
-fpr, tpr, _ = metrics.roc_curve(label, pred_logits)
-score = metrics.roc_auc_score(label, pred_logits)
-plt.plot(fpr, tpr, 'royalblue', linewidth=2, label='model AUC: {:.3f}'.format(score))
+    # Get human's total labels
+    hum_whole = scipy.io.loadmat(human_rating)["data_ratings"]
+    human_lb = hum_whole[:, 0]
+    human_features = hum_whole[:, 1:]
+    hum_fpr, hum_tpr, _ = metrics.roc_curve(true_label, human_lb)
+    hum_score = metrics.roc_auc_score(true_label, human_lb)
 
-plt.title("ROC", fontsize=20)
-plt.xlim([-0.02, 1.02])
-plt.ylim([-0.02, 1.02])
-plt.legend(loc=4)
-plt.ylabel('true positive rate', fontsize=18)
-plt.xlabel('false positive rate', fontsize=18)
-plt.savefig(os.path.join(data_dir, "model_with_human_rating.pdf"), format='pdf')
-# plt.savefig(os.path.join(data_dir, "model_with_human_rating.eps"), format='eps')
-plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively.png"), format='png')
-plt.close()
+    # PLot human average rating
+    plt.figure()
+    plt.plot(hum_fpr[1], hum_tpr[1], 'purple', marker="*", markersize=4, label='human AUC: {:.3f}'.format(hum_score))
+
+    # Plot trained model prediction
+    fpr, tpr, _ = metrics.roc_curve(label, pred_logits)
+    score = metrics.roc_auc_score(label, pred_logits)
+    plt.plot(fpr, tpr, 'royalblue', linewidth=2, label='model AUC: {:.3f}'.format(score))
+
+    plt.title("ROC", fontsize=20)
+    plt.xlim([-0.02, 1.02])
+    plt.ylim([-0.02, 1.02])
+    plt.legend(loc=4)
+    plt.ylabel('true positive rate', fontsize=18)
+    plt.xlabel('false positive rate', fontsize=18)
+    plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively.pdf"), format='pdf')
+    # plt.savefig(os.path.join(data_dir, "model_with_human_rating.eps"), format='eps')
+    plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively.png"), format='png')
+    plt.close()
+elif plot_name == "all_ROCs":
+    data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/1-20190325-data-trained-models/TEST/Res_CNN_CAM-LOUT40"
+    files = find_files(data_dir, pattern="AUC_curve_step_0.00-auc*.csv")
+    plt.figure(figsize=[10, 6.8])
+    base_fpr = np.linspace(0, 1, 20)
+    tprs = []
+    for ind, fn in enumerate(files):
+        values = pd.read_csv(fn, header=0).values
+        true_lbs = values[:, 0]
+        prob_1 = values[:, 1]
+        fpr, tpr, _ = metrics.roc_curve(true_lbs, prob_1)
+        score = metrics.roc_auc_score(true_lbs, prob_1)
+        plt.plot(fpr, tpr, 'royalblue', alpha=0.35, label='cross val {} AUC: {:.3f}'.format(ind, score))
+
+        tpr_temp = interp(base_fpr, fpr, tpr)
+        tprs.append(tpr_temp)
+        print("ok")
+    mean_model_tpr = np.mean(np.array(tprs), axis=0)
+    std_model_tpr = np.std(np.array(tprs), axis=0)
+    mean_model_score = metrics.auc(base_fpr, mean_model_tpr)
+
+    plt.plot(base_fpr, mean_model_tpr, 'violet', linewidth=4.0, label='average AUC: {:.3f}'.format(mean_model_score))
+    plt.title("ROC curves in cross validation test trials", fontsize=20)
+    plt.xlim([-0.02, 1.02])
+    plt.ylim([-0.02, 1.02])
+    plt.legend(loc="best")
+    plt.ylabel('true positive rate', fontsize=18)
+    plt.xlabel('false positive rate', fontsize=18)
+    plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.png"), format='png')
+    plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.pdf"), format='pdf')
+    plt.close()
+
+
+

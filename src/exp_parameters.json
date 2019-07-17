@@ -27,7 +27,7 @@
             "number_of_epochs": 251,
             "test_freq": 1,
             "test_every": null,
-            "input_data": "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat",
+            "input_data": "../data/20190325/20190325-3class_lout40_val_data0.mat",
             "data_source": "lout40-data5-for-human",
 
             "test_ratio": 10,
@@ -38,7 +38,7 @@
         },
 
         "test":{
-            "input_data": "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat",
+            "input_data": "../data/20190325/20190325-3class_lout40_val_data6.mat",
 
             "test_ratio": 100,
             "number_of_epochs": 2
