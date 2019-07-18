@@ -6,8 +6,8 @@
 #  python3 classifier.py train -h\n
 #  python3 classifier.py test -h\n
 #  example: python3 classifier.py -b 20 -s 17845 train ../data/ ../results/ -e 100
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 import sys
 sys.path.append("..")
 import graph
@@ -30,6 +30,8 @@ if args.seed is not None:
 
 # if args.seed != 2594:   # every time change the random seed should save the data again
 ## get leave-out train and test sets: dataio.split_data_for_lout_val(args)\ dataio.split_data_for_val(args)
+# Get augmentation of the data
+
 data_tensors, args = dataio.get_data_tensors(args)
 
 graph = graph.get_graph(args, data_tensors)

@@ -11,6 +11,7 @@ import tensorflow as tf
 import scipy.io
 import random
 from collections import Counter
+from scipy.stats import zscore
 import ipdb
 logger = log.getLogger("classifier")
 
@@ -174,6 +175,7 @@ def get_data(args):
     ids = mat[:, 0]
     train_data = {}
     test_data = {}
+    spectra = zscore(spectra, axis=1)
     ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
     if args.num_classes-1 < np.max(labels):
         need_inds = np.empty((0))
@@ -211,6 +213,7 @@ def get_data(args):
 
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
+        train_data = augment_data(train_data, args.num_classes)
         train_data = oversample_train(train_data, args.num_classes)
         train_count = dict(Counter(list(train_data["ids"])))  # count the num of samples of each id
         sorted_count = sorted(train_count.items(), key=lambda kv: kv[1])
@@ -233,6 +236,51 @@ def oversample_train(train_data, num_classes):
     
     return train_data
     
+
+def augment_data(train_data, num_classes):
+    """Get the augmentation based on mean of subset. ONly do it on train spectra"""
+    spec = train_data["spectra"]
+    true_labels = train_data["labels"]
+    true_ids = train_data["ids"]
+
+    spec_aug = spec
+    aug_folds = 9
+    labels_aug = true_labels
+    ids_aug = true_ids
+    for class_id in range(num_classes):
+        # find all the samples from this class
+        inds = np.where(true_labels == class_id)[0]
+
+        # randomly select 100 groups of 100 samples each and get mean
+        aug_inds = np.random.choice(inds, aug_folds*100, replace=True).reshape(aug_folds, 100)  # the inds for computing the aug mean
+        mean_batch = np.mean(spec[aug_inds], axis=1)
+
+        new_mean = (mean_batch - np.max(mean_batch, axis=1)[:, np.newaxis]) / (np.max(mean_batch, axis=1) - np.min(mean_batch, axis=1))[:, np.newaxis]
+        rec_inds = np.random.choice(inds, aug_folds*100, replace=True).reshape(aug_folds, 100)  # aug receiver inds
+        for fold in range(aug_folds):
+            aug_zspec = spec[inds] + new_mean[fold] * 0.1
+            spec_aug = np.vstack((spec_aug, aug_zspec))
+            labels_aug = np.append(labels_aug, true_labels[inds])
+            ids_aug = np.append(ids_aug, true_ids[inds])
+            print("aug size", spec_aug.shape[0], "label", labels_aug.size, "ids", ids_aug.size)
+
+
+    train_data["spectra"] = spec_aug
+    train_data["labels"] = labels_aug
+    train_data["ids"] = ids_aug
+
+    return train_data
+
+
+
+
+
+
+
+
+
+
+
 
 ## Get batches of data in tf.dataset
 # @param args the arguments passed to the software

@@ -19,8 +19,8 @@ params = {'legend.fontsize': base-8,
          'axes.labelsize': base-4,
          #'weight' : 'bold',
          'axes.titlesize':base,
-         'xtick.labelsize':base-6,
-         'ytick.labelsize':base-6}
+         'xtick.labelsize':base-8,
+         'ytick.labelsize':base-8}
 pylab.rcParams.update(params)
 
 logger = log.getLogger("classifier")
@@ -292,10 +292,10 @@ def plot_class_activation_map(sess, class_activation_map,
 
     # PLot samples from different classes seperately
     for class_id in range(args.num_classes):
-        plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step)
+        plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step, postfix=args.data_source)
         # plot_class_maps_in1(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, box_position=(0.15, 1.05, 0.7, 0.1), class_id=class_id, global_step=global_step)
 
-def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), class_id=0, global_step=0):
+def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), class_id=0, global_step=0, postfix="data1"):
     inds = np.where(labels_int == class_id)[0]
     class_maps_plot = np.array(classmap_high)[inds]
     samples_plot = samples_test[inds]
@@ -312,9 +312,9 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, sa
     for j, vis, ori, label, pred in zip(counts, class_maps_plot, samples_plot, labels_plot, pred_plot):
         att_c = 'deepskyblue' if label == pred else 'r'
         axs[j // col, np.mod(j, col)].plot(np.arange(ori.size), ori, 'darkorchid', label='original', linewidth=0.8)
-        axs[j // col + 1, np.mod(j, col)].plot(np.arange(vis.size), vis, '-.', color=att_c, label="attention")
-        axs[0, 0].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=1, numpoints=3)  # [x, y, width, height]
-        axs[1, col-1].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=1, numpoints=3)  # [x, y, width, height]
+        axs[j // col + 1, np.mod(j, col)].plot(np.arange(vis.size), vis, '--', color=att_c, label="attention")
+        axs[0, 0].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=1)  # [x, y, width, height]
+        # axs[1, col-1].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=1)  # [x, y, width, height]
         if np.mod(j, col) > 0:
             plt.setp(axs[j // col + 1, np.mod(j, col)].get_yticklabels(), visible=False)
             plt.setp(axs[j // col, np.mod(j, col)].get_yticklabels(), visible=False)
@@ -334,8 +334,7 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, sa
     plt.plot(samples_plot[0], 'darkorchid', label='original', linewidth=0.8)
     plt.legend(loc="best")
     plt.title("Mean attention for class {}".format(class_id))
-    plt.savefig(save_dir + '/mean_class_activity_map-step-{:.1f}-class{}-{}.png'.format(global_step, class_id, args.data_source),
-                format='png')
+    plt.savefig(save_dir + '/mean_class_activity_map-step-{:.1f}-class{}-{}.png'.format(global_step, class_id, postfix), format='png')
     plt.close()
 
 

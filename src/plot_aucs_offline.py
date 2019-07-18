@@ -115,17 +115,19 @@ if plot_name == "indi_rating_with_model":
 
     # Get model's prediction
     model_auc = pd.read_csv(model_results, header=0).values
-    label = model_auc[:, 0].astype(np.int)
+    true_label = model_auc[:, 0].astype(np.int)
     pred_logits = model_auc[:, 1]
     pred_lb = np.argmax(pred_logits, axis=0)
-    start = 0
-    plt.figure(figsize=[12, 10])
-    colors = pylab.cm.cool(np.linspace(0, 1, 8))
+
     mean_fpr = []
     mean_tpr = []
     mean_score = []
     base_fpr = np.linspace(0, 1, 20)
     tpr_model = []
+
+    start = 0
+    plt.figure(figsize=[12, 10])
+    colors = pylab.cm.cool(np.linspace(0, 1, 8))
     for i in range(indi_ratings.shape[1]):
         key = "{}".format(i)
         true_indi_lbs[key] = true_label[start: start+len(indi_ratings[0, i])]
@@ -164,6 +166,7 @@ if plot_name == "indi_rating_with_model":
     plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual.png"), format='png')
     plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual.pdf"), format='pdf')
     plt.close()
+
 elif plot_name == "human_whole_with_model":
     data_dir = "../data/20190325"
     human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"

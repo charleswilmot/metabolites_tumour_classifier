@@ -279,7 +279,6 @@ params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from
 params.test_or_train = args.test_or_train
 params.resume_training = (args.restore_from != None)
-params.data_source = params.input_data.split("_")[-1][0:6]
 
 # Make the output directory
 dataio.make_output_dir(params)

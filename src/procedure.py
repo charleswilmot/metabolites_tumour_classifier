@@ -6,7 +6,7 @@ import tensorflow as tf
 from tqdm import tqdm
 from dataio import save_my_model, load_model, save_plots
 import plot as plot
-
+import dataio
 logger = log.getLogger("classifier")
 initializer = tf.glorot_uniform_initializer()
 
