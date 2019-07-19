@@ -12,6 +12,7 @@ import scipy.io
 import random
 from collections import Counter
 from scipy.stats import zscore
+import matplotlib.pyplot as plt
 import ipdb
 logger = log.getLogger("classifier")
 
@@ -196,6 +197,7 @@ def get_data(args):
         spectra_rand = spectra
         labels_rand = labels
         ids_rand = ids
+        print("data labels: ", labels_rand)
     assert args.num_classes != np.max(labels), "The number of class doesn't match the data!"
     args.num_train = int(((100 - args.test_ratio) * spectra_rand.shape[0]) // 100)
     train_data["spectra"] = spectra_rand[0:args.num_train].astype(np.float32)
@@ -205,6 +207,8 @@ def get_data(args):
     test_data["spectra"] = spectra_rand[args.num_train:].astype(np.float32)
     test_data["labels"] = np.squeeze(labels_rand[args.num_train:]).astype(np.int32)
     test_data["ids"] = np.squeeze(ids_rand[args.num_train:]).astype(np.int32)
+    test_data["num_samples"] = len(test_data["labels"])
+    print("num_samples: ", test_data["num_samples"])
 
     test_count = dict(Counter(list(test_data["ids"])))  # count the num of samples of each id
     sorted_count = sorted(test_count.items(), key=lambda kv: kv[1])
@@ -213,8 +217,13 @@ def get_data(args):
 
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
-        train_data = augment_data(train_data, args.num_classes)
+        train_data = augment_data(train_data, args.num_classes, aug_scale=args.aug_scale, aug_method="mean")
+        print("After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]), "num of train class 1: ",
+              len(np.where(train_data["labels"] == 1)[0]))
         train_data = oversample_train(train_data, args.num_classes)
+        print("After oversampling--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]), "num of train class 1: ", len(np.where(train_data["labels"] == 1)[0]))
+        train_data["num_samples"] = len(train_data["labels"])
+
         train_count = dict(Counter(list(train_data["ids"])))  # count the num of samples of each id
         sorted_count = sorted(train_count.items(), key=lambda kv: kv[1])
         np.savetxt(os.path.join(args.output_path, "train_ids_count.csv"), np.array(sorted_count), fmt='%d', delimiter=',')
@@ -237,50 +246,107 @@ def oversample_train(train_data, num_classes):
     return train_data
     
 
-def augment_data(train_data, num_classes):
+def augment_data(train_data, num_classes, aug_scale=0.2, aug_method="noise"):
     """Get the augmentation based on mean of subset. ONly do it on train spectra"""
     spec = train_data["spectra"]
     true_labels = train_data["labels"]
     true_ids = train_data["ids"]
 
     spec_aug = spec
-    aug_folds = 9
+    aug_folds = 9    # expand the data to 9+1 folds
     labels_aug = true_labels
     ids_aug = true_ids
+    if aug_method == "mean":
+        ids_aug, labels_aug, spec_aug = augment_with_batch_mean(aug_folds,
+                                                                aug_scale,
+                                                                ids_aug,
+                                                                labels_aug,
+                                                                num_classes,
+                                                                spec, spec_aug,
+                                                                true_ids,
+                                                                true_labels)
+    elif aug_method == "noise":
+        ids_aug, labels_aug, spec_aug = augment_with_random_noise(aug_folds,
+                                                                  aug_scale,
+                                                                  ids_aug,
+                                                                  labels_aug,
+                                                                  num_classes,
+                                                                  spec, spec_aug,
+                                                                  true_ids,
+                                                                  true_labels)
+
+    print("Augmentation number of class 0", np.where(labels_aug == 0)[0].size, "number of class 1", np.where(labels_aug == 1)[0].size)
+    train_data["spectra"] = spec_aug.astype(np.float32)
+    train_data["labels"] = labels_aug.astype(np.int32)
+    train_data["ids"] = ids_aug.astype(np.int32)
+
+    return train_data
+
+
+def augment_with_batch_mean(aug_folds, aug_scale,
+                            ids_aug, labels_aug,
+                            num_classes, spec,
+                            spec_aug, true_ids,
+                            true_labels):
+    """
+    Augment the original spectra with the mini-mini-same-class-batch mean
+    :param aug_folds:
+    :param aug_scale:
+    :param ids_aug:
+    :param labels_aug:
+    :param num_classes:
+    :param spec:
+    :param spec_aug:
+    :param true_ids:
+    :param true_labels:
+    :return:
+    """
     for class_id in range(num_classes):
         # find all the samples from this class
         inds = np.where(true_labels == class_id)[0]
 
         # randomly select 100 groups of 100 samples each and get mean
-        aug_inds = np.random.choice(inds, aug_folds*100, replace=True).reshape(aug_folds, 100)  # the inds for computing the aug mean
+        aug_inds = np.random.choice(inds, aug_folds * 100, replace=True).reshape(aug_folds, 100)  # the inds for computing the aug mean
         mean_batch = np.mean(spec[aug_inds], axis=1)
 
-        new_mean = (mean_batch - np.max(mean_batch, axis=1)[:, np.newaxis]) / (np.max(mean_batch, axis=1) - np.min(mean_batch, axis=1))[:, np.newaxis]
-        rec_inds = np.random.choice(inds, aug_folds*100, replace=True).reshape(aug_folds, 100)  # aug receiver inds
+        new_mean = (mean_batch - np.max(mean_batch, axis=1)[:, np.newaxis]) / (np.max(mean_batch, axis=1) - np.min(
+            mean_batch, axis=1))[:, np.newaxis]
+        rec_inds = np.random.choice(inds, aug_folds * 100, replace=True).reshape(aug_folds, 100)  # aug receiver inds
+
         for fold in range(aug_folds):
-            aug_zspec = spec[inds] + new_mean[fold] * 0.1
+            aug_zspec = spec[inds] + new_mean[fold] * aug_scale
             spec_aug = np.vstack((spec_aug, aug_zspec))
             labels_aug = np.append(labels_aug, true_labels[inds])
             ids_aug = np.append(ids_aug, true_ids[inds])
-            print("aug size", spec_aug.shape[0], "label", labels_aug.size, "ids", ids_aug.size)
+    return ids_aug, labels_aug, spec_aug
 
 
-    train_data["spectra"] = spec_aug
-    train_data["labels"] = labels_aug
-    train_data["ids"] = ids_aug
+def augment_with_random_noise(aug_folds, aug_scale,
+                              ids_aug, labels_aug,
+                              num_classes, spec,
+                              spec_aug, true_ids,
+                              true_labels):
+    """
+    Add random noise on the original spectra
+    :param aug_folds:
+    :param aug_scale:
+    :param ids_aug:
+    :param labels_aug:
+    :param num_classes:
+    :param spec:
+    :param spec_aug:
+    :param true_ids:
+    :param true_labels:
+    :return:
+    """
+    noise = aug_scale * np.random.uniform(size=[aug_folds, true_labels.size, spec.shape[-1]])
 
-    return train_data
-
-
-
-
-
-
-
-
-
-
-
+    for fold in range(aug_folds):
+        aug_zspec = spec + noise[fold]
+        spec_aug = np.vstack((spec_aug, aug_zspec))
+        labels_aug = np.append(labels_aug, true_labels)
+        ids_aug = np.append(ids_aug, true_ids)
+    return ids_aug, labels_aug, spec_aug
 
 ## Get batches of data in tf.dataset
 # @param args the arguments passed to the software
@@ -291,7 +357,7 @@ def get_data_tensors(args):
     train_data, test_data = get_data(args)
     
     test_spectra, test_labels, test_ids = tf.constant(test_data["spectra"]), tf.constant(test_data["labels"]), tf.constant(test_data["ids"])
-    test_ds = tf.data.Dataset.from_tensor_slices((test_spectra, test_labels, test_ids)).batch(args.batch_size)
+    test_ds = tf.data.Dataset.from_tensor_slices((test_spectra, test_labels, test_ids)).batch(args.test_bs)
     
     iter_test = test_ds.make_initializable_iterator()
     data["test_initializer"] = iter_test.initializer
@@ -299,6 +365,9 @@ def get_data_tensors(args):
     data["test_features"] = batch_test[0]
     data["test_labels"] = tf.one_hot(batch_test[1], args.num_classes)
     data["test_ids"] = batch_test[2]
+    data["test_num_samples"] = test_data["num_samples"]
+    data["test_batches"] = test_data["num_samples"] // args.test_bs
+    print("test samples: ", test_data["num_samples"], "num_batches: ", data["test_batches"])
     if args.test_or_train == 'train':
         train_spectra, train_labels = tf.constant(train_data["spectra"]), tf.constant(train_data["labels"])
         train_ds = tf.data.Dataset.from_tensor_slices((train_spectra, train_labels)).shuffle(buffer_size=10000).repeat().batch(
@@ -308,6 +377,8 @@ def get_data_tensors(args):
         data["train_features"] = batch_train[0]
         data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
         data["train_initializer"] = iter_train.initializer
+        data["train_num_samples"] = train_data["num_samples"]
+        data["train_batches"] = train_data["num_samples"] // args.batch_size
         args.test_every = train_labels.get_shape().as_list()[0] // (args.test_freq * args.batch_size)
         # test_freq: how many times to test in one training epoch
 

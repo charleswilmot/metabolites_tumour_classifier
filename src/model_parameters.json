@@ -34,15 +34,15 @@
                 },
                 "Res_ECG_CAM": {
                     "model_name": "Res_ECG_CAM",
-                    "out_channels": 8,
+                    "out_channels": 16,
                     "num_layers_in_res": 2,
                     "num_res_blocks": 11,
                     "pool_size": 2,
                     "stride": 2,
-                    "filter_size": 64,
+                    "filter_size": 16,
                     "fc": [500],
                     "bn": true,
-                    "drop_cnn": 0.20,
+                    "drop_cnn": 0.5,
                     "drop_fnn": 0.5
                 }
 

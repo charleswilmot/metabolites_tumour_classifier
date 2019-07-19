@@ -9,9 +9,10 @@ import logging as log
 
 logger = log.getLogger("classifier")
 
-regularizer = tf.keras.regularizers.l2(l=0.01)
-DTYPE = tf.float32
-initializer = tf.keras.initializers.he_normal(seed=458)
+# regularizer = tf.contrib.layers.l2_regularizer(l=0.01)
+# python3
+initializer = tf.keras.initializers.he_normal(seed=589)
+# initializer = tf.compat.v1.initializers.he_normal()
 
 def convert_activation(acti_names):
     acti_funcs = []
@@ -457,7 +458,7 @@ class Res_ECG_CAM:
                                     strides = [1, 1],
                                     padding = 'SAME',
                                     kernel_initializer = initializer,
-                                    kernel_regularizer = regularizer,
+                                    # kernel_regularizer = regularizer,
                                     activation = None)
 
             out = tf.layers.batch_normalization(
@@ -488,7 +489,7 @@ class Res_ECG_CAM:
                 strides=[self.stride, 1],   # reduce the height, because shortcut also reduce the height
                 padding='SAME',
                 kernel_initializer=initializer,
-                kernel_regularizer=regularizer,
+                # kernel_regularizer=regularizer,
                 activation=None
             )
             out = tf.layers.batch_normalization(out, training=training)
@@ -500,7 +501,7 @@ class Res_ECG_CAM:
                 kernel_size=[self.kernel_size, 1],
                 padding='SAME',
                 kernel_initializer=initializer,
-                kernel_regularizer=regularizer,
+                # kernel_regularizer=regularizer,
                 activation=None
             )
             shortcut = tf.layers.max_pooling2d(inp, pool_size=[self.pool_size, 1],
@@ -540,7 +541,7 @@ class Res_ECG_CAM:
                     padding='SAME',
                     strides=[stride, 1] if j == 0 else [1, 1],
                     kernel_initializer=initializer,
-                    kernel_regularizer=regularizer,
+                    # kernel_regularizer=regularizer,
                     activation=None
                 )
 
@@ -641,6 +642,7 @@ def get_graph(args, data_tensors):
         graph["test_conv"] = net_out["conv"]
         graph["test_gap_w"] = net_out["gap_w"]
     graph["test_batch_size"] = tf.shape(graph["test_out"])[0]
+    graph["test_num_batches"] = graph["test_num_samples"] // args.test_bs
     graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], data_tensors["test_labels"])
     graph["test_ncorrect"], graph["test_wrong_inds"] = get_ncorrect(graph["test_out"], data_tensors["test_labels"])
     graph["test_confusion"] = get_confusion_matrix(graph["test_out"], data_tensors["test_labels"], args.num_classes)

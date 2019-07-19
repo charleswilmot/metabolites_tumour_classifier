@@ -110,11 +110,13 @@ def accuracy_loss_figure(args, data, training=False, epoch=0):
 
 
 def all_figures(sess, args, data, training=False, epoch=0):
-    # loss_figure(args, data, training=training)
+    print("labels: ", np.argmax(data["test_labels"], axis=1))
+    print("accuracy: ", data["test_accuracy"], "auc: ", metrics.roc_auc_score(np.argmax(data["test_labels"], axis=1), data["test_pred"][:, 1]))
     accuracy_figure(args, data, training=training, epoch=epoch)
     # accuracy_loss_figure(args, data, training=training, epoch=epoch)
-    plot_confusion_matrix(args, data, ifnormalize=True, training=training)
+    # plot_confusion_matrix(args, data, ifnormalize=True, training=training)
     plot_auc_curve(args, data, epoch=epoch)
+
     if not training:
         if 'CAM' in args.model_name:
             class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.data_len, 1, number2use=1000)

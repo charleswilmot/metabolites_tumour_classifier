@@ -6,10 +6,11 @@ import tensorflow as tf
 from tqdm import tqdm
 from dataio import save_my_model, load_model, save_plots
 import plot as plot
+import pickle
 import dataio
 logger = log.getLogger("classifier")
-initializer = tf.glorot_uniform_initializer()
-
+# initializer = tf.glorot_uniform_initializer()
+initializer = tf.keras.initializers.he_normal(seed=845)
 ## Processes the output of compute (cf See also) to calculate the average loss and accuracy
 # @param ret dictionary containing the keys "ncorrect", "loss_sum" and "batch_size"
 # @param N number of examples computed by compute
@@ -44,8 +45,8 @@ def compute(sess, fetches, max_batches=None, learning_rate=0.0005):
     # return loss / accuracy for the complete set
     ret = []
     tape_end = False
-    # for i in tqdm(range(max_batches)):
-    for _ in limit(max_batches):
+    temp = 0
+    for ii in tqdm(range(max_batches)):
         try:
             if "train_op" in fetches.keys():
                 ret.append(sess.run(fetches, feed_dict={fetches["learning_rate_op"]: learning_rate}))
@@ -109,6 +110,8 @@ def concat_data(ret, key="labels"):
         interest = np.empty((0))
         for b in ret:
             interest = np.append(interest, b[key])
+    print("compute", key, interest.shape)
+
     return np.array(interest).astype(np.float32)
 
 
@@ -175,10 +178,10 @@ def testing(sess, graph):
         "test_out": graph["test_out"],
         "test_conv": graph["test_conv"],
         "test_gap_w": graph["test_gap_w"],
-        "test_wrong_inds": graph["test_wrong_inds"],
+        "test_wrong_inds": graph["test_wrong_inds"]
     }
     initialize(sess, graph, test_only=True)
-    ret, tape_end = compute(sess, fetches)
+    ret, tape_end = compute(sess, fetches, max_batches=graph["test_batches"])
     loss, accuracy = reduce_mean_loss_accuracy(ret)
     confusion = sum_confusion(ret)
     wrong_features, wrong_labels = get_wrong_examples(ret)
@@ -281,9 +284,9 @@ def training(sess, args, graph, saver):
     num_trained = 0
     lr = args.learning_rate
 
-    while condition(end, output_data, epoch, args.number_of_epochs):
+    # while condition(end, output_data, epoch, args.number_of_epochs):
+    for epoch in range(args.number_of_epochs):
         # train phase
-
         if len(output_data["test_accuracy"]) > 4:  # if the test_acc keeps dropping for 3 steps, reduce the learning rate
             lr = reduce_lr_on_plateu(
                 lr,
@@ -291,7 +294,7 @@ def training(sess, args, graph, saver):
                 factor=0.5, patience=3,
                 epsilon=1e-04, min_lr=10e-8)
 
-        if epoch > 200 and epoch % 20 == 0:
+        if epoch > 20 and epoch % 20 == 0:
             print("Epoch: ", epoch)
         ret_train = train_phase(sess, graph, args.test_every, epoch, lr=lr)
 
@@ -338,6 +341,7 @@ def training(sess, args, graph, saver):
                                                epoch, args)
 
     logger.info("Training procedure done")
+    save_plots(sess, args, output_data, training=True, epoch=epoch)
     return output_data
 
 
@@ -363,9 +367,10 @@ def main_train(sess, args, graph):
     else:
         initialize(sess, graph, test_only=True)
         output_data = testing(sess, graph)
+
         with open(args.output_path + '/Data{}_class{}_model{}_test_return_data_acc_{:.3f}.txt'.format(
                     args.data_source, args.num_classes, args.model_name,
                     output_data["test_accuracy"]), 'wb') as ff:
-            pickle.dump({key: output_data[key]}, ff)
+            pickle.dump({"output_data": output_data}, ff)
         dataio.save_plots(sess, args, output_data, training=False)
         
