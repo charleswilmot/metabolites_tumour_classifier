@@ -273,7 +273,7 @@ params.update(json_path, mode=params.model_name) # update params with the model 
 time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
 
 params.output_path = os.path.join(params.output_path,
-                                time_str + "data-{}-class-{}-{}-{}".format(os.path.basename(params.input_data[0:-4]), params.num_classes, params.model_name, args.test_or_train))
+                                time_str + "data-{}-class-{}-{}-{}-{}".format(os.path.basename(params.input_data[0:-4]), params.num_classes, params.model_name, params.postfix, args.test_or_train))
 params.model_save_dir = os.path.join(params.output_path, "network")
 params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from
@@ -281,7 +281,7 @@ params.test_or_train = args.test_or_train
 params.resume_training = (args.restore_from != None)
 
 # Make the output directory
-dataio.make_output_dir(params)
+dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples"])
 
 
 # Verbosity level:

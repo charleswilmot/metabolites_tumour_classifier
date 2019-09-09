@@ -26,24 +26,24 @@
                 },
                 "MLP":{
                     "model_name": "MLP",
-                    "layer_dims": [288, 500, 100, 2],
-                    "dropout_probs": [0.20, 0.2, 0.2],
-                    "batch_norms": [true, true, true],
-                    "activations": ["lrelu", "lrelu", "softmax"]
+                    "layer_dims": [288, 100, 100, 100, 20, 2],
+                    "dropout_probs": [0.3, 0.35, 0.4, 0.45, 0.5],
+                    "batch_norms": [true, true, true, true, true],
+                    "activations": ["lrelu", "lrelu", "lrelu", "lrelu", "softmax"]
 
                 },
                 "Res_ECG_CAM": {
                     "model_name": "Res_ECG_CAM",
                     "out_channels": 16,
                     "num_layers_in_res": 2,
-                    "num_res_blocks": 11,
+                    "num_res_blocks": 7,
                     "pool_size": 2,
                     "stride": 2,
-                    "filter_size": 16,
+                    "filter_size": 144,
                     "fc": [500],
                     "bn": true,
-                    "drop_cnn": 0.5,
-                    "drop_fnn": 0.5
+                    "drop_cnn": 0.55,
+                    "drop_fnn": 0.55
                 }
 
 

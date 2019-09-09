@@ -100,7 +100,7 @@ def plot_auc_curve(labels_hot, pred, epoch=0, save_dir='./results'):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "indi_rating_with_model"
+plot_name = "average_models"
 
 if plot_name == "indi_rating_with_model":
     data_dir = "../data/20190325"
@@ -233,6 +233,21 @@ elif plot_name == "all_ROCs":
     plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.png"), format='png')
     plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.pdf"), format='pdf')
     plt.close()
+elif plot_name == "average_models":
+    file_dirs = ["/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-27-42-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.7176-lout40-data5.csv", "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-27-11-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.6669-lout40-data5.csv", "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-23-45-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.6662-lout40-data5.csv"]
+    predictions = {}
+
+    for ind, fn in enumerate(file_dirs):
+        values = pd.read_csv(fn, header=0).values
+        true_lbs = values[:, 0]
+        predictions["{}".format(ind)] = values[:, 1]
+        if ind == 0:
+            agg_pred = values[:, 1]
+        else:
+            agg_pred += values[:, 1]
+    print("ok")
+
+
 
 
 

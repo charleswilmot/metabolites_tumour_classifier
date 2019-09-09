@@ -5,8 +5,8 @@
             "exp_config": "./exp_parameters.json",
             "model_config": "./model_parameters.json",
             "num_classes": 2,
-            "batch_size": 32,
-            "test_bs": 64,
+            "batch_size": 64,
+            "test_bs": 128,
             "seed": 2594,
 
             "out_format": "m",
@@ -21,8 +21,11 @@
             "optimizer_type": "adam",
             "loss_type": "softmax_ce",
             "learning_rate": 0.0005,
-            "data_source": "lout40-data5-filter16-ch16-aug0.35-mean",
-            "aug_scale": 0.35
+            "data_source": "lout40-data5",
+            "postfix": "-filter144-bl7-ch16-ops_mean0.35",
+            "aug_scale": 0.35,
+            "aug_method": "ops_mean",
+            "aug_folds": 5
         },
 
         "train": {

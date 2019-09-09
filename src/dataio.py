@@ -217,7 +217,8 @@ def get_data(args):
 
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
-        train_data = augment_data(train_data, args.num_classes, aug_scale=args.aug_scale, aug_method="mean")
+        train_data = augment_data(train_data, args.num_classes, aug_scale=args.aug_scale, aug_method=args.aug_method)
+        args.num_train = int(((100 - args.test_ratio) * train_data["spectra"].shape[0]) // 100)
         print("After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]), "num of train class 1: ",
               len(np.where(train_data["labels"] == 1)[0]))
         train_data = oversample_train(train_data, args.num_classes)
@@ -246,25 +247,35 @@ def oversample_train(train_data, num_classes):
     return train_data
     
 
-def augment_data(train_data, num_classes, aug_scale=0.2, aug_method="noise"):
-    """Get the augmentation based on mean of subset. ONly do it on train spectra"""
+def augment_data(train_data, num_classes, aug_scale=0.2, aug_folds=2, aug_method="noise"):
+    """
+    Get the augmentation based on mean of subset. ONly do it on train spectra
+
+    :param train_data:
+    :param num_classes:
+    :param aug_scale:
+    :param aug_folds: expand the data to aug_folds+1(original) folds
+    :param aug_method:
+    :return:
+    """
     spec = train_data["spectra"]
     true_labels = train_data["labels"]
     true_ids = train_data["ids"]
 
     spec_aug = spec
-    aug_folds = 9    # expand the data to 9+1 folds
+    #
     labels_aug = true_labels
     ids_aug = true_ids
-    if aug_method == "mean":
+    if "mean" in aug_method:
         ids_aug, labels_aug, spec_aug = augment_with_batch_mean(aug_folds,
                                                                 aug_scale,
-                                                                ids_aug,
+                                                                ids_aug,   # need this for placeholder
                                                                 labels_aug,
                                                                 num_classes,
-                                                                spec, spec_aug,
+                                                                spec, spec_aug, # need this for placeholder
                                                                 true_ids,
-                                                                true_labels)
+                                                                true_labels,
+                                                                aug_method=aug_method)
     elif aug_method == "noise":
         ids_aug, labels_aug, spec_aug = augment_with_random_noise(aug_folds,
                                                                   aug_scale,
@@ -287,37 +298,41 @@ def augment_with_batch_mean(aug_folds, aug_scale,
                             ids_aug, labels_aug,
                             num_classes, spec,
                             spec_aug, true_ids,
-                            true_labels):
+                            true_labels, aug_method="ops-mean"):
     """
     Augment the original spectra with the mini-mini-same-class-batch mean
-    :param aug_folds:
-    :param aug_scale:
-    :param ids_aug:
+    :param aug_folds: how many folds to augment the data
+    :param aug_scale: what is the scale of the mean/noise to add for augmentation
+    :param ids_aug: also perserve the patient ids. Augmented ids
     :param labels_aug:
     :param num_classes:
     :param spec:
     :param spec_aug:
-    :param true_ids:
+    :param true_ids: true patient ids
     :param true_labels:
     :return:
     """
     for class_id in range(num_classes):
         # find all the samples from this class
-        inds = np.where(true_labels == class_id)[0]
+        if aug_method == "ops_mean":
+            inds = np.where(true_labels == num_classes-1-class_id)[0]
+        else:
+            inds = np.where(true_labels == class_id)[0]
 
         # randomly select 100 groups of 100 samples each and get mean
-        aug_inds = np.random.choice(inds, aug_folds * 100, replace=True).reshape(aug_folds, 100)  # the inds for computing the aug mean
-        mean_batch = np.mean(spec[aug_inds], axis=1)
+        aug_inds = np.random.choice(inds, 20000, replace=True).reshape(-1, 2)  # random pick 10000 samples and take mean every 2 samples
+        mean_batch = np.mean(spec[aug_inds], axis=1)   # get a batch of spectra to get the mean for aug
 
-        new_mean = (mean_batch - np.max(mean_batch, axis=1)[:, np.newaxis]) / (np.max(mean_batch, axis=1) - np.min(
-            mean_batch, axis=1))[:, np.newaxis]
+        new_mean = (mean_batch - np.mean(mean_batch, axis=1)[:, np.newaxis]) / np.std(mean_batch, axis=1)[:, np.newaxis]
+        # new_mean = (mean_batch - np.max(mean_batch, axis=1)[:, np.newaxis]) / (np.max(mean_batch, axis=1) - np.min(mean_batch, axis=1))[:, np.newaxis]
         rec_inds = np.random.choice(inds, aug_folds * 100, replace=True).reshape(aug_folds, 100)  # aug receiver inds
 
         for fold in range(aug_folds):
-            aug_zspec = spec[inds] + new_mean[fold] * aug_scale
+            aug_zspec = spec[inds] + new_mean[np.random.choice(new_mean.shape[0], inds.size)] * aug_scale
             spec_aug = np.vstack((spec_aug, aug_zspec))
             labels_aug = np.append(labels_aug, true_labels[inds])
             ids_aug = np.append(ids_aug, true_ids[inds])
+        print("original spec shape class : ", class_id, spec.shape, "augment spec shape: ", spec_aug.shape)
     return ids_aug, labels_aug, spec_aug
 
 
@@ -387,13 +402,15 @@ def get_data_tensors(args):
 
 ## Make the output dir
 # @param args the arguments passed to the software
-def make_output_dir(args):
+def make_output_dir(args, sub_folders=["CAMs"]):
     if os.path.isdir(args.output_path):
         logger.critical("Output path already exists. Please use an other path.")
         raise FileExistsError("Output path already exists.")
     else:
         os.makedirs(args.output_path)
         os.makedirs(args.model_save_dir)
+        for sub in sub_folders:
+            os.makedirs(os.path.join(args.output_path, sub))
         # copy and save all the files
         copy_save_all_files(args)
         print(args.input_data)

@@ -69,8 +69,10 @@ def loss_figure(args, data, training=False):
 def accuracy_figure(args, data, training=False, epoch=0):
     f = plt.figure()
     ax = f.add_subplot(111)
+    auc = metrics.roc_auc_score(data["test_labels"], data["test_pred"])
     max_acc = accuracy_plot(ax, data, training=training)
-    f.savefig(args.output_path + '/accuracy_step_{}_acc_{:.4f}_{}.png'.format(epoch, max_acc, args.data_source))
+
+    f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}.png'.format(epoch, max_acc, auc, args.data_source))
     plt.close()
     logger.info("Accuracy plot saved")
 
@@ -89,8 +91,8 @@ def plot_auc_curve(args, data, epoch=0):
     plt.legend(loc=4)
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
-    f.savefig(args.output_path + '/AUC_curve_step_{:.2f}-auc_{:.4}-{}.png'.format(epoch, auc, args.data_source))
-    np.savetxt(args.output_path + '/AUC_curve_step_{:.2f}-auc_{:.4}-{}.csv'.format(epoch, auc, args.data_source),
+    f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.png'.format(epoch, auc, args.data_source))
+    np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.csv'.format(epoch, auc, args.data_source),
                np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_pred"][:, 1].reshape(-1,1))), fmt="%.8f", delimiter=',', header="labels,pred[:,1]")
     plt.close()
 
@@ -110,18 +112,20 @@ def accuracy_loss_figure(args, data, training=False, epoch=0):
 
 
 def all_figures(sess, args, data, training=False, epoch=0):
-    print("labels: ", np.argmax(data["test_labels"], axis=1))
+    # print("labels: ", np.argmax(data["test_labels"], axis=1))
     print("accuracy: ", data["test_accuracy"], "auc: ", metrics.roc_auc_score(np.argmax(data["test_labels"], axis=1), data["test_pred"][:, 1]))
     accuracy_figure(args, data, training=training, epoch=epoch)
     # accuracy_loss_figure(args, data, training=training, epoch=epoch)
     # plot_confusion_matrix(args, data, ifnormalize=True, training=training)
     plot_auc_curve(args, data, epoch=epoch)
+    plot_wrong_examples(args, data, training=training)
 
     if not training:
         if 'CAM' in args.model_name:
             class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.data_len, 1, number2use=1000)
-            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], np.argmax(data["test_pred"][rand_inds], 1), epoch, args)
-        # plot_wrong_examples(args, data, training=training)
+
+            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], data["test_pred"][rand_inds], epoch, args)
+        plot_wrong_examples(args, data, training=training)
         # plot_prob_distr_on_ids(data, args.output_path)
 
     # plot_tsne(args, data)
@@ -183,9 +187,9 @@ def plot_wrong_examples(args, data, training=False):
         axs[i].legend(loc="best")
     f.subplots_adjust(hspace=0)
     if training:
-        f.savefig(args.output_path + '/{}-class_wrong_examples_{}.png'.format(num_classes, data["current_step"]))
+        f.savefig(args.output_path + '/wrong_examples/{}-class_wrong_examples_{}.png'.format(num_classes, data["current_step"]))
     else:
-        f.savefig(args.output_path + '/{}-class_wrong_examples_{}.png'.format(num_classes, "VALID"))
+        f.savefig(args.output_path + '/wrong_examples/{}-class_wrong_examples_{}.png'.format(num_classes, "VALID"))
     plt.close()
     logger.info("Mistakes plot saved")
 
@@ -271,7 +275,7 @@ def get_class_map(labels, conv_out, weights, seq_len, seq_width, number2use=200)
 
 def plot_class_activation_map(sess, class_activation_map,
                               samples_test, labels_test,
-                              pred_labels, global_step,
+                              predictions, global_step,
                               args):
     """TODO, the labels are all stacked not like test_conv is only the first batch
     Plot the class activation
@@ -280,7 +284,7 @@ def plot_class_activation_map(sess, class_activation_map,
     :param top_conv:
     :param samples_test:
     :param labels_test:
-    :param pred_labels:
+    :param predictions: softmax output
     :param global_step:
     :param args:
     :param rand_inds:
@@ -294,15 +298,31 @@ def plot_class_activation_map(sess, class_activation_map,
 
     # PLot samples from different classes seperately
     for class_id in range(args.num_classes):
-        plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step, postfix=args.data_source)
+        plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step, postfix=args.data_source)
         # plot_class_maps_in1(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, box_position=(0.15, 1.05, 0.7, 0.1), class_id=class_id, global_step=global_step)
 
-def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), class_id=0, global_step=0, postfix="data1"):
+def plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), class_id=0, global_step=0, postfix="data1"):
+    """
+    PLot class maps grouped by class ids
+    :param labels_int:
+    :param classmap_high:
+    :param samples_test:
+    :param predictions: softmax output
+    :param save_dir:
+    :param row:
+    :param box_position:
+    :param class_id:
+    :param global_step:
+    :param postfix:
+    :return:
+    """
     inds = np.where(labels_int == class_id)[0]
     class_maps_plot = np.array(classmap_high)[inds]
     samples_plot = samples_test[inds]
     labels_plot = labels_int[inds]
-    pred_plot = pred_labels[inds]
+
+    pred_plot = np.argmax(predictions, axis=1)[inds]
+    auc = metrics.roc_auc_score(labels_int, predictions[:, 1])
     if not row:
         row = np.int(np.sqrt(len(inds)))
     else:
@@ -321,10 +341,8 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, sa
             plt.setp(axs[j // col + 1, np.mod(j, col)].get_yticklabels(), visible=False)
             plt.setp(axs[j // col, np.mod(j, col)].get_yticklabels(), visible=False)
     plt.tight_layout()
-    plt.subplots_adjust(top=0.90)
-    fig.subplots_adjust(hspace=0)
-    fig.subplots_adjust(wspace=0)
-    plt.savefig(save_dir + '/class_activity_map-step-test{:.1f}-class{}.png'.format(global_step, class_id), format='png')
+    plt.subplots_adjust(top=0.90, hspace=0.01, wspace=0.01)
+    plt.savefig(save_dir + '/CAMs/class_activity_map-step-test{:.1f}-auc-{:.3f}-class{}.png'.format(global_step, auc, class_id), format='png')
     plt.close()
     
     ## Plot the mean attention
@@ -336,7 +354,7 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, sa
     plt.plot(samples_plot[0], 'darkorchid', label='original', linewidth=0.8)
     plt.legend(loc="best")
     plt.title("Mean attention for class {}".format(class_id))
-    plt.savefig(save_dir + '/mean_class_activity_map-step-{:.1f}-class{}-{}.png'.format(global_step, class_id, postfix), format='png')
+    plt.savefig(save_dir + '/CAMs/mean/mean_class_activity_map-step-{:.1f}-auc-{:.3f}-class{}-{}.png'.format(global_step, auc, class_id, postfix), format='png')
     plt.close()
 
 
@@ -370,18 +388,31 @@ def plot_class_maps_in1(labels_int, classmap_high, samples_test, pred_labels, sa
     ax.legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=3, numpoints=3)  # [x, y, width, height]
     plt.tight_layout()
     plt.subplots_adjust(top=0.85)
-    plt.savefig(save_dir + '/class_activity_map-step-test{}-class{}_{}-all-in-one.png'.format(global_step, class_id, box_position),
+    plt.savefig(save_dir + '/CAMs/class_activity_map-step-test{}-class{}_{}-all-in-one.png'.format(global_step, class_id, box_position),
                 format='png')
     plt.close()
 
-def plot_random_class_maps(labels_int, classmap_answer, classmap_high, samples_test, pred_labels, args, global_step=0, num_images=20):
+def plot_random_class_maps(labels_int, classmap_answer, classmap_high, samples_test, predictions, args, global_step=0, num_images=20):
+    """
+    Plot class maps randomly
+    :param labels_int:
+    :param classmap_answer:
+    :param classmap_high:
+    :param samples_test:
+    :param predictions:
+    :param args:
+    :param global_step:
+    :param num_images:
+    :return:
+    """
     plots_per_fig = 10
     counts = np.arange(plots_per_fig)
     rand_inds = np.random.choice(np.arange(len(classmap_answer)), num_images)
     classmap_high = np.array(classmap_high)[rand_inds]
     samples_plot = samples_test[rand_inds]
     labels_plot = labels_int[rand_inds]
-    pred_plot = pred_labels[rand_inds]
+    pred_plot = np.argmax(predictions, axis=1)[inds]
+    auc = metrics.roc_auc_score(labels_int, predictions[:, 1])
     row = plots_per_fig//2
     col = 2
     fig, axs = plt.subplots(row, col, 'col')
@@ -401,7 +432,7 @@ def plot_random_class_maps(labels_int, classmap_answer, classmap_high, samples_t
 
         plt.tight_layout()
         plt.subplots_adjust(top=0.90)
-        plt.savefig(args.output_path + '/class_activity_map-step-test{}-count{}.pdf'.format(global_step, j), format='pdf')
+        plt.savefig(args.output_path + '/CAMs/class_activity_map-step-test{:1f}-auc-{:.3f}-count{}.pdf'.format(global_step, auc, j), format='pdf')
         plt.close()#
 
 

@@ -8,6 +8,8 @@ from dataio import save_my_model, load_model, save_plots
 import plot as plot
 import pickle
 import dataio
+import ipdb
+from sklearn import metrics
 logger = log.getLogger("classifier")
 # initializer = tf.glorot_uniform_initializer()
 initializer = tf.keras.initializers.he_normal(seed=845)
@@ -103,6 +105,7 @@ def concat_data(ret, key="labels"):
     if len(ret[0][key].shape) > 1:
         sh = np.array(ret[0][key].shape)
         sh[0] = 0
+
         interest = np.empty((sh))
         for b in ret:
             interest = np.vstack((interest, b[key]))
@@ -110,7 +113,7 @@ def concat_data(ret, key="labels"):
         interest = np.empty((0))
         for b in ret:
             interest = np.append(interest, b[key])
-    print("compute", key, interest.shape)
+    # print("compute", key, interest.shape)
 
     return np.array(interest).astype(np.float32)
 
@@ -158,6 +161,22 @@ def reduce_lr_on_plateu(lr, acc_history, factor=0.1, patience=4,
         new_lr = lr
     return new_lr
 
+
+def get_fetches(model_aspect, names, train_or_test='test'):
+    """
+    Get fetches given key-words
+    :param model_aspect: with all the train and test attributes
+    :param names: the short key word from the attributes
+    :param train_or_test: str, indicate which phase it is in
+    :return: fetches, dict
+    """
+    fetches = {}
+    for key in names:
+        if key == 'train_op':
+            fetches[key] = model_aspect[key]
+        else:
+            fetches[key] = model_aspect["{}_".format(train_or_test) + key]
+    return fetches
 ########################################################################
 
 ## Testing phase
@@ -165,7 +184,7 @@ def reduce_lr_on_plateu(lr, acc_history, factor=0.1, patience=4,
 # @param graph the graph (cf See also)
 # @return a dictionary containing the average loss and accuracy on the data
 # @see get_graph
-def testing(sess, graph):
+def testing(sess, graph, model_name):
     # return loss / accuracy for the complete set
     fetches = {
         "ncorrect": graph["test_ncorrect"],
@@ -176,10 +195,11 @@ def testing(sess, graph):
         "test_ids": graph["test_ids"],
         "test_features": graph["test_features"],
         "test_out": graph["test_out"],
-        "test_conv": graph["test_conv"],
-        "test_gap_w": graph["test_gap_w"],
         "test_wrong_inds": graph["test_wrong_inds"]
     }
+    if "CAM" in model_name:
+        fetches.update({"test_conv": graph["test_conv"],
+                        "test_gap_w": graph["test_gap_w"]})
     initialize(sess, graph, test_only=True)
     ret, tape_end = compute(sess, fetches, max_batches=graph["test_batches"])
     loss, accuracy = reduce_mean_loss_accuracy(ret)
@@ -190,20 +210,30 @@ def testing(sess, graph):
     test_ids = concat_data(ret, key="test_ids")
     test_pred = concat_data(ret, key="test_out")
     test_features = concat_data(ret, key="test_features")
-    test_conv = concat_data(ret, key="test_conv")
-    test_gap_w = ret[0]["test_gap_w"]
-
-    return {"test_accuracy": accuracy,
-            "test_loss": loss,
-            "test_confusion": confusion,
-            "test_wrong_features": wrong_features,
-            "test_wrong_labels": wrong_labels,
-            "test_labels": test_labels,
-            "test_ids": test_ids,
-            "test_features": test_features,
-            "test_conv": test_conv,
-            "test_gap_w": test_gap_w,
-            "test_pred": test_pred}
+    if "CAM" in model_name:
+        test_conv = concat_data(ret, key="test_conv")
+        test_gap_w = ret[0]["test_gap_w"]
+        return {"test_accuracy": accuracy,
+                "test_loss": loss,
+                "test_confusion": confusion,
+                "test_wrong_features": wrong_features,
+                "test_wrong_labels": wrong_labels,
+                "test_labels": test_labels,
+                "test_ids": test_ids,
+                "test_features": test_features,
+                "test_conv": test_conv,
+                "test_gap_w": test_gap_w,
+                "test_pred": test_pred}
+    else:
+        return {"test_accuracy": accuracy,
+                "test_loss": loss,
+                "test_confusion": confusion,
+                "test_wrong_features": wrong_features,
+                "test_wrong_labels": wrong_labels,
+                "test_labels": test_labels,
+                "test_ids": test_ids,
+                "test_features": test_features,
+                "test_pred": test_pred}
 
 
 test_phase = testing
@@ -308,7 +338,7 @@ def training(sess, args, graph, saver):
         logger.debug("Training phase done")
         
         # test phase
-        ret_test = test_phase(sess, graph)
+        ret_test = test_phase(sess, graph, model_name=args.model_name)
         output_data["test_loss"].append(ret_test["test_loss"])
         output_data["test_accuracy"].append(ret_test["test_accuracy"])
         output_data["test_confusion"] = ret_test["test_confusion"]
@@ -325,7 +355,7 @@ def training(sess, args, graph, saver):
 
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:
-            print("Epoch {:0.1f} Best test accuracy {}\n Test Confusion:\n{}".format(epoch, output_data["test_accuracy"][-1], ret_test["test_confusion"]))
+            print("Epoch {:0.1f} Best test accuracy {}, test AUC {}\n Test Confusion:\n{}".format(epoch, output_data["test_accuracy"][-1], metrics.roc_auc_score(ret_test["test_labels"], ret_test["test_pred"]), ret_test["test_confusion"]))
             best_accuracy = output_data["test_accuracy"][-1]
             save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
             save_plots(sess, args, output_data, training=True, epoch=epoch)
@@ -337,7 +367,7 @@ def training(sess, args, graph, saver):
                 plot.plot_class_activation_map(sess, class_maps,
                                                ret_test["test_features"][rand_inds],
                                                ret_test["test_labels"][rand_inds],
-                                               np.argmax(ret_test["test_pred"], 1)[rand_inds],
+                                               ret_test["test_pred"][rand_inds],
                                                epoch, args)
 
     logger.info("Training procedure done")

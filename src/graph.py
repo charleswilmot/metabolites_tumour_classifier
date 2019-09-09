@@ -6,7 +6,7 @@
 import tensorflow as tf
 import numpy as np
 import logging as log
-
+import ipdb
 logger = log.getLogger("classifier")
 
 # regularizer = tf.contrib.layers.l2_regularizer(l=0.01)
@@ -94,20 +94,19 @@ class MLP:
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
-        W = self.weights[layer_number]
-        B = self.biases[layer_number]
-        print("-------Building network-----------")
-        with tf.variable_scope(layer_name):
 
-            net = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
-            net = tf.layers.batch_normalization(
-                net,
-                training=training,
-                reuse=self._net_constructed_once,
-                name=layer_name) if batch_norm else net
-            net = net if activation is None else activation(net)
+        # W = self.weights[layer_number]
+        # B = self.biases[layer_number]
+        print("-------Building network-----------")
+        with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+            net = tf.layers.dense(inp, out_size,
+                                  kernel_initializer=initializer,
+                                  activation=activation)
+            # net = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
+            net = tf.layers.batch_normalization(net, training=training) if batch_norm else net
+            # net = net if activation is None else activation(net)
             net = tf.layers.dropout(net, rate=dropout, training=training) if dropout != 0 else net
-            print("layer: {}, in_size:{}, out_size:{}".format(layer_name, W.get_shape().as_list()[0], W.get_shape().as_list()[1]))
+            print("layer: {}, in_size:{}, out_size:{}".format(layer_name, inp.get_shape().as_list(), net.get_shape().as_list()))
             return net
 
 
@@ -375,6 +374,7 @@ class Res_ECG_CAM:
         self.drop_cnn = args.drop_cnn  # repeat for all the cnn
         self.bn = args.bn
         self.num_classes = args.num_classes
+        self.increase_interval = min(self.num_res_blocks // 3, 4)
 
     def __call__(self, features, training=False):
         ret = {}
@@ -414,11 +414,11 @@ class Res_ECG_CAM:
         out = inp
         channel = self.channel_start
         k = 0
-        strides = [2 if (i+1) % 4 == 0 else 1 for i in range(self.num_res_blocks)]   # downsizing in every 4 blocks
+        strides = [2 if (i+1) % self.increase_interval == 0 else 1 for i in range(self.num_res_blocks)]   # downsizing in every 4 blocks
         block_ids = np.arange(self.num_res_blocks)
 
         for bl_id, s in zip(block_ids, strides):
-            if (bl_id + 1) % 4 == 0 and bl_id > 0:
+            if (bl_id + 1) % self.increase_interval == 0 and bl_id > 0:
                 k += 1
                 channel = self.channel_start * np.power(2, k)
 
@@ -521,7 +521,7 @@ class Res_ECG_CAM:
         :return: bn relu  conv bn relu drop conv
         """
         out = x
-        if (layer_id + 1) % 4 == 0 and layer_id > 0:  # only every 4 blocks increase the number of channels and decrease the height
+        if (layer_id + 1) % self.increase_interval == 0 and layer_id > 0:  # only every 4 blocks increase the number of channels and decrease the height
             zeros_x = tf.zeros_like(x)
             concat_long_ch = tf.concat([x, zeros_x], axis=3)
             x = concat_long_ch
