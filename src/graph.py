@@ -9,7 +9,7 @@ import logging as log
 import ipdb
 logger = log.getLogger("classifier")
 
-# regularizer = tf.contrib.layers.l2_regularizer(l=0.01)
+regularizer = tf.keras.regularizers.l2(l=0.01)
 # python3
 initializer = tf.keras.initializers.he_normal(seed=589)
 # initializer = tf.compat.v1.initializers.he_normal()
@@ -447,14 +447,10 @@ class Res_ECG_CAM:
         out = inp
         with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
-            if self.kernel_size >= 100:
-                kernel_size = inp.get_shape().as_list()[
-                                  1] // 2  # later layers, the filter size should be adjusted by the input
-            else:
-                kernel_size = self.kernel_size
+            kernel_size = min(self.kernel_size, inp.get_shape().as_list()[1])
             out = tf.layers.conv2d(inputs = out,
                                     filters = out_ch,
-                                    kernel_size = [self.kernel_size, 1],
+                                    kernel_size = [kernel_size, 1],
                                     strides = [1, 1],
                                     padding = 'SAME',
                                     kernel_initializer = initializer,
@@ -549,6 +545,104 @@ class Res_ECG_CAM:
             output = tf.nn.relu(shortcut + out)
             print("ResiBlock{}-output pooling shape".format(layer_id), out.shape.as_list())
             return output
+
+
+class Inception_v3:
+    """
+    COnstructor
+    Make an inception model
+    """
+    def __init__(self, args):
+        logger.debug("Defining Inception model")
+        self.data_len = args.data_len
+        self.num_classes = args.num_classes
+        self.channel_start = args.out_channels
+        self.bn = self.bn
+        self.activations = self.activations
+        self.drop_fnn = self.drop_fnn
+        self.drop_cnn = self.drop_cnn
+        self.incep_fs = self.incep_filter_size
+        self.filter_size = self.filter_size
+        self.num_incep_blocks = self.num_incep_blocks
+
+
+    def build_inception_block(self, args):
+        """
+        Build the inception block
+        :param args:
+        :return:
+        """
+
+    def _make_cnn_layer(self, inp, out_ch, bn, drop, layer_number, training=True):
+        """
+        To creat CNN block
+        :param inp:
+        :param out_ch: int, num of filters to use
+        :param bn: bool
+        :param activation: tf function
+        :param drop: float, drop rate
+        :param layer_number: int
+        :param training:
+        :return:
+        """
+        _to_format = [out_ch, bn, drop, training]
+        layer_name = "cnn_layer_{}".format(layer_number)
+        logger.debug("Creating new layer:")
+        string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\t (training = {})"
+        logger.debug(string.format(*_to_format))
+        out = inp
+        with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+            print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
+            kernel_size = min(self.kernel_size, inp.get_shape().as_list()[1])
+            out = tf.layers.conv2d(inputs = out,
+                                    filters = out_ch,
+                                    kernel_size = [kernel_size, 1],
+                                    strides = [1, 1],
+                                    padding = 'SAME',
+                                    kernel_initializer = initializer,
+                                    kernel_regularizer = regularizer,
+                                    activation = None)
+
+            out = tf.layers.batch_normalization(
+                out, training=training) if bn else out
+            out = tf.nn.relu(out)
+            # out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
+        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
+
+        return out
+
+
+    def __call__(self, features, training=False):
+        ret = {}
+        if len(features.get_shape().as_list()) < 3:
+            inp = tf.reshape(features, [-1, self.data_len, 1, 1])
+        else:
+            inp = tf.expand_dims(features, axis=3)
+        self._net_constructed_once = True
+
+        out = self._make_cnn_layer(inp, self.channel_start,
+                                   self.bn, self.drop_cnn,
+                                   1, training = True)
+
+        for bl in range(self.num_incep_blocks):
+            out = self.build_inception_block(out, training=training)
+
+        # GAP layer - global average pooling
+        with tf.variable_scope('fc', reuse=tf.AUTO_REUSE) as scope:
+            flat_net = tf.layers.flatten(out) # get the mean of axis 1 and 2 resulting in shape [batch_size, filters]
+
+            print("flatten feature map shape", flat_net.get_shape().as_list())
+
+            logits = tf.layers.dense(flat_net, self.num_classes,
+                                  kernel_initializer=initializer,
+                                  activation=self.activation)
+
+        ret["logits"] = logits
+
+        return ret
+
+
+
 
 # --------------------------utile functions-----------------------------------
 ## Computes the loss tensor according to the arguments passed to the software

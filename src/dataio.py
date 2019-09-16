@@ -217,7 +217,7 @@ def get_data(args):
 
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
-        train_data = augment_data(train_data, args.num_classes, aug_scale=args.aug_scale, aug_method=args.aug_method)
+        train_data = augment_data(train_data, args.num_classes, aug_scale=args.aug_scale, aug_method=args.aug_method, aug_folds=args.aug_folds)
         args.num_train = int(((100 - args.test_ratio) * train_data["spectra"].shape[0]) // 100)
         print("After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]), "num of train class 1: ",
               len(np.where(train_data["labels"] == 1)[0]))
@@ -263,7 +263,6 @@ def augment_data(train_data, num_classes, aug_scale=0.2, aug_folds=2, aug_method
     true_ids = train_data["ids"]
 
     spec_aug = spec
-    #
     labels_aug = true_labels
     ids_aug = true_ids
     if "mean" in aug_method:
@@ -312,6 +311,7 @@ def augment_with_batch_mean(aug_folds, aug_scale,
     :param true_labels:
     :return:
     """
+    num2average = 10
     for class_id in range(num_classes):
         # find all the samples from this class
         if aug_method == "ops_mean":
@@ -320,12 +320,12 @@ def augment_with_batch_mean(aug_folds, aug_scale,
             inds = np.where(true_labels == class_id)[0]
 
         # randomly select 100 groups of 100 samples each and get mean
-        aug_inds = np.random.choice(inds, 20000, replace=True).reshape(-1, 2)  # random pick 10000 samples and take mean every 2 samples
+        aug_inds = np.random.choice(inds, 10000*num2average, replace=True).reshape(-1, num2average)  # random pick 10000 samples and take mean every 2 samples
         mean_batch = np.mean(spec[aug_inds], axis=1)   # get a batch of spectra to get the mean for aug
 
         new_mean = (mean_batch - np.mean(mean_batch, axis=1)[:, np.newaxis]) / np.std(mean_batch, axis=1)[:, np.newaxis]
         # new_mean = (mean_batch - np.max(mean_batch, axis=1)[:, np.newaxis]) / (np.max(mean_batch, axis=1) - np.min(mean_batch, axis=1))[:, np.newaxis]
-        rec_inds = np.random.choice(inds, aug_folds * 100, replace=True).reshape(aug_folds, 100)  # aug receiver inds
+        # rec_inds = np.random.choice(inds, aug_folds * 100, replace=True).reshape(aug_folds, 100)  # aug receiver inds
 
         for fold in range(aug_folds):
             aug_zspec = spec[inds] + new_mean[np.random.choice(new_mean.shape[0], inds.size)] * aug_scale

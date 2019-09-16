@@ -22,8 +22,8 @@
             "loss_type": "softmax_ce",
             "learning_rate": 0.0005,
             "data_source": "lout40-data5",
-            "postfix": "-filter144-bl7-ch16-ops_mean0.35",
-            "aug_scale": 0.35,
+            "postfix": "-filter144-bl7-ch16-ops_mean0.2*5",
+            "aug_scale": 0.2,
             "aug_method": "ops_mean",
             "aug_folds": 5
         },

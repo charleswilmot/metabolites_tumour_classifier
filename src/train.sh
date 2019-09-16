@@ -38,6 +38,6 @@ srun -p sleuths -w jetski --mem=20000 --reservation triesch-shared --gres gpu:rt
 
 srun -p sleuths -w jetski --mem=20000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py train
 
-srun -p sleuths -w jetski --mem=20000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py test /home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T16-21-58-data-20190325-3class_lout40_train_test_data5-class-2-MLP--MLP-100*3-ops_mean-train/network
+srun -p sleuths -w jetski --mem=20000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py test /home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T17-02-47-data-20190325-3class_lout40_train_test_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-ops_mean-train/network
 
 srun -p x-men python --pty env PYTHONPATH=~software/tensorflow-py3-amd64-gpu  classifier.py test /home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-07-19T15-42-14-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM-train/network

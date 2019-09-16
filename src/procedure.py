@@ -355,7 +355,7 @@ def training(sess, args, graph, saver):
 
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:
-            print("Epoch {:0.1f} Best test accuracy {}, test AUC {}\n Test Confusion:\n{}".format(epoch, output_data["test_accuracy"][-1], metrics.roc_auc_score(ret_test["test_labels"], ret_test["test_pred"]), ret_test["test_confusion"]))
+            print("Epoch {:0.1f} Best test accuracy {}, test AUC {}\n Test Confusion:\n{}\n, saved_dir: {}".format(epoch, output_data["test_accuracy"][-1], metrics.roc_auc_score(ret_test["test_labels"], ret_test["test_pred"]), ret_test["test_confusion"], args.output_path))
             best_accuracy = output_data["test_accuracy"][-1]
             save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
             save_plots(sess, args, output_data, training=True, epoch=epoch)
@@ -396,7 +396,7 @@ def main_train(sess, args, graph):
         dataio.save_plots(sess, args, output_data, training=True)
     else:
         initialize(sess, graph, test_only=True)
-        output_data = testing(sess, graph)
+        output_data = testing(sess, graph, model_name=args.model_name)
 
         with open(args.output_path + '/Data{}_class{}_model{}_test_return_data_acc_{:.3f}.txt'.format(
                     args.data_source, args.num_classes, args.model_name,
