@@ -14,6 +14,7 @@ from collections import Counter
 from scipy.stats import zscore
 import matplotlib.pyplot as plt
 import ipdb
+from plot import plot_aug_examples
 logger = log.getLogger("classifier")
 
 
@@ -162,7 +163,6 @@ def split_data_for_val(args):
         scipy.io.savemat(os.path.dirname(args.input_data) + '/{}class_train_test_rand_data{}.mat'.format(args.num_classes, fold), train_test_mat)
 
 
-
 def get_data(args):
     """
     Load self_saved data. A dict, data["features"], data["labels"]. See the save function in split_data_for_val()
@@ -215,9 +215,11 @@ def get_data(args):
     np.savetxt(os.path.join(args.output_path, "test_ids_count.csv"), np.array(sorted_count), fmt='%d', delimiter=',')
     np.savetxt(os.path.join(args.output_path, "original_labels.csv"), np.array(test_data["labels"]), fmt='%d', delimiter=',')
 
+
+
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
-        train_data = augment_data(train_data, args.num_classes, aug_scale=args.aug_scale, aug_method=args.aug_method, aug_folds=args.aug_folds)
+        train_data = augment_data(train_data, args)
         args.num_train = int(((100 - args.test_ratio) * train_data["spectra"].shape[0]) // 100)
         print("After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]), "num of train class 1: ",
               len(np.where(train_data["labels"] == 1)[0]))
@@ -247,15 +249,12 @@ def oversample_train(train_data, num_classes):
     return train_data
     
 
-def augment_data(train_data, num_classes, aug_scale=0.2, aug_folds=2, aug_method="noise"):
+def augment_data(train_data, args):
     """
     Get the augmentation based on mean of subset. ONly do it on train spectra
 
     :param train_data:
-    :param num_classes:
-    :param aug_scale:
-    :param aug_folds: expand the data to aug_folds+1(original) folds
-    :param aug_method:
+    :param args
     :return:
     """
     spec = train_data["spectra"]
@@ -265,22 +264,17 @@ def augment_data(train_data, num_classes, aug_scale=0.2, aug_folds=2, aug_method
     spec_aug = spec
     labels_aug = true_labels
     ids_aug = true_ids
-    if "mean" in aug_method:
-        ids_aug, labels_aug, spec_aug = augment_with_batch_mean(aug_folds,
-                                                                aug_scale,
+    if "mean" in args.aug_method:
+        ids_aug, labels_aug, spec_aug = augment_with_batch_mean(args,
                                                                 ids_aug,   # need this for placeholder
                                                                 labels_aug,
-                                                                num_classes,
                                                                 spec, spec_aug, # need this for placeholder
                                                                 true_ids,
-                                                                true_labels,
-                                                                aug_method=aug_method)
-    elif aug_method == "noise":
-        ids_aug, labels_aug, spec_aug = augment_with_random_noise(aug_folds,
-                                                                  aug_scale,
+                                                                true_labels)
+    elif args.aug_method == "noise":
+        ids_aug, labels_aug, spec_aug = augment_with_random_noise(args,
                                                                   ids_aug,
                                                                   labels_aug,
-                                                                  num_classes,
                                                                   spec, spec_aug,
                                                                   true_ids,
                                                                   true_labels)
@@ -293,11 +287,10 @@ def augment_data(train_data, num_classes, aug_scale=0.2, aug_folds=2, aug_method
     return train_data
 
 
-def augment_with_batch_mean(aug_folds, aug_scale,
+def augment_with_batch_mean(args,
                             ids_aug, labels_aug,
-                            num_classes, spec,
-                            spec_aug, true_ids,
-                            true_labels, aug_method="ops-mean"):
+                            spec, spec_aug, true_ids,
+                            true_labels):
     """
     Augment the original spectra with the mini-mini-same-class-batch mean
     :param aug_folds: how many folds to augment the data
@@ -311,29 +304,33 @@ def augment_with_batch_mean(aug_folds, aug_scale,
     :param true_labels:
     :return:
     """
-    num2average = 10
-    for class_id in range(num_classes):
+    num2average = 1
+    for class_id in range(args.num_classes):
         # find all the samples from this class
-        if aug_method == "ops_mean":
-            inds = np.where(true_labels == num_classes-1-class_id)[0]
-        else:
+        if args.aug_method == "ops_mean":
+            inds = np.where(true_labels == args.num_classes-1-class_id)[0]
+        elif args.aug_method == "mean":
+            inds = np.where(true_labels == class_id)[0]
+        elif args.aug_method == "compose":
             inds = np.where(true_labels == class_id)[0]
 
         # randomly select 100 groups of 100 samples each and get mean
-        aug_inds = np.random.choice(inds, 10000*num2average, replace=True).reshape(-1, num2average)  # random pick 10000 samples and take mean every 2 samples
+        aug_inds = np.random.choice(inds, inds.size*num2average, replace=True).reshape(-1, num2average)  # random pick 10000 samples and take mean every 2 samples
         mean_batch = np.mean(spec[aug_inds], axis=1)   # get a batch of spectra to get the mean for aug
 
         new_mean = (mean_batch - np.mean(mean_batch, axis=1)[:, np.newaxis]) / np.std(mean_batch, axis=1)[:, np.newaxis]
         # new_mean = (mean_batch - np.max(mean_batch, axis=1)[:, np.newaxis]) / (np.max(mean_batch, axis=1) - np.min(mean_batch, axis=1))[:, np.newaxis]
         # rec_inds = np.random.choice(inds, aug_folds * 100, replace=True).reshape(aug_folds, 100)  # aug receiver inds
+        plot_aug_examples(new_mean, num2average, spec, true_labels, args)
 
-        for fold in range(aug_folds):
-            aug_zspec = spec[inds] + new_mean[np.random.choice(new_mean.shape[0], inds.size)] * aug_scale
+        for fold in range(args.aug_folds):
+            aug_zspec = (1 - args.aug_scale) * spec[inds] + new_mean[np.random.choice(new_mean.shape[0], inds.size)] * args.aug_scale
             spec_aug = np.vstack((spec_aug, aug_zspec))
             labels_aug = np.append(labels_aug, true_labels[inds])
             ids_aug = np.append(ids_aug, true_ids[inds])
         print("original spec shape class : ", class_id, spec.shape, "augment spec shape: ", spec_aug.shape)
     return ids_aug, labels_aug, spec_aug
+
 
 
 def augment_with_random_noise(aug_folds, aug_scale,
@@ -362,6 +359,7 @@ def augment_with_random_noise(aug_folds, aug_scale,
         labels_aug = np.append(labels_aug, true_labels)
         ids_aug = np.append(ids_aug, true_ids)
     return ids_aug, labels_aug, spec_aug
+
 
 ## Get batches of data in tf.dataset
 # @param args the arguments passed to the software

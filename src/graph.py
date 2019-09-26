@@ -524,6 +524,7 @@ class Res_ECG_CAM:
 
         with tf.variable_scope("res_block" + str(layer_id), reuse=tf.AUTO_REUSE):
             for j in range(self.num_layers_in_res):  # there are two conv layers in one block
+                print(training)
                 out = tf.layers.batch_normalization(out, training=training)
                 out = tf.nn.relu(out)
                 if not (layer_id == 0 and j == 0):

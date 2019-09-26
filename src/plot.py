@@ -12,6 +12,7 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
 from sklearn import metrics
 import tensorflow as tf
+import os
 
 base = 22
 params = {'legend.fontsize': base-8,
@@ -503,3 +504,51 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
         plt.tight_layout()
         plt.savefig(output_dir + '/prob_distri_of_id_{}.png'.format(id), format="png")
         plt.close()
+
+
+def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
+    row, col = 4, 1
+    plt.figure()
+    rand_inds = np.random.choice(spec.shape[0], row * col)
+    f, axs = plt.subplots(row, col, 'col')
+    colors = ["royalblue", "darkviolet"]
+    class_names = ["healthy", "tumor"]
+    num_to_plot = 30
+    for jj, ind in enumerate(rand_inds):
+        start = np.random.choice((len(new_mean) - 40))
+        end = start + num_to_plot
+        NEW = args.aug_scale * new_mean[start:end] + np.tile((1 - args.aug_scale) * spec[ind], (num_to_plot, 1))
+        axs[jj].plot(NEW.T, alpha=0.65, linewidth=0.8)
+        axs[jj].plot(spec[ind], colors[true_labels[ind]], label=class_names[true_labels[ind]])
+        axs[jj].legend(loc="best")
+
+    f.text(0.5, 0.05, 'index', fontsize=16),
+    f.text(0.05, 0.5, 'Normalized amplitude', fontsize=16, rotation=90, verticalalignment='center'),
+    f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale, num2average)), format="png")
+    plt.close()
+
+
+def plot_mean_of_each_class(train_spec, train_lbs, test_spec, test_args):
+    row, col = 2, 2
+    plt.figure()
+    num_to_plot = 50
+    rand_inds = np.random.choice(test_spec.shape[0], num_to_plot)
+    f, axs = plt.subplots(row, col, 'col')
+    colors = ["royalblue", "darkviolet"]
+    class_names = ["healthy", "tumor"]
+    mean_train = np.mean(train_spec, axis=0)
+    mean_test = np.mean(test_spec, axis=0)
+    for class_id in range(args.num_classes):
+        inds = np.where()
+    for jj, ind in enumerate(rand_inds):
+        NEW = args.aug_scale * new_mean[start:end] + np.tile((1 - args.aug_scale) * spec[ind], (num_to_plot, 1))
+        axs[jj].plot(NEW.T, alpha=0.65, linewidth=0.8)
+        axs[jj].plot(mean_train, colors[true_labels[ind]], label=class_names[true_labels[ind]])
+        axs[jj].legend(loc="best")
+
+    f.text(0.5, 0.05, 'index', fontsize=16),
+    f.text(0.05, 0.5, 'Normalized amplitude', fontsize=16, rotation=90, verticalalignment='center'),
+    f.savefig(os.path.join(args.output_path,
+                           "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale,
+                                                                               num2average)), format="png")
+    plt.close()

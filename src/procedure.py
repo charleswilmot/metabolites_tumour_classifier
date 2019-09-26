@@ -382,14 +382,15 @@ def training(sess, args, graph, saver):
 # @param input_data training and testing data
 def main_train(sess, args, graph):
     saver = tf.train.Saver()
-    saver = tf.train.Saver()
     if args.restore_from:
+        print("restore_from", args.restore_from)
         global_step = load_model(saver, sess, args.restore_from)
         logger.info("Restore model Done! Global step is {}".format(global_step))
     else:
         # raise(NotImplementedError("Initialize train iterator here..."))
         logger.info("Initializing network with random weights")
         sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
+
     if args.test_or_train == 'train':
         initialize(sess, graph, test_only=False)
         output_data = training(sess, args, graph, saver)
