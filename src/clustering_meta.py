@@ -214,23 +214,6 @@ def normal_kmeans_fit(features, num_clusters=5, seed=589):
     return model
 
 
-def pqkmeans_fit(features, encoder, num_clusters=5):
-    """
-    Apply unsupervised PQkmeans clustering method to get clusters
-    :param features:
-    :param num_clusters:
-    :param save_folder:
-    :param seed:
-    :return:"""
-    t1 = time.time()
-    print("PQ Cluster {}".format(num_clusters))
-    model_enc = pqkmeans.clustering.PQKMeans(encoder=encoder, k=num_clusters)
-    model_enc.fit(features)
-    print("PQ {} cluster fitting, {} time".format(num_clusters, time.time() - t1))
-
-    return model_enc
-
-
 def plot_inertias(inert, plot_range, num_clusters=3, save_folder="KMeans/"):
     """
 
@@ -248,7 +231,7 @@ def plot_inertias(inert, plot_range, num_clusters=3, save_folder="KMeans/"):
 def get_crosstab(features, labels, mod,
                  num_clusters=3, save_folder='KMeans/',
                  postfix='test', sorted_index=None,
-                 train_bg=None):
+                 train_bg=None, if_sort_clusters=False):
     """
 
     :param features:
@@ -279,11 +262,17 @@ def get_crosstab(features, labels, mod,
     # print("{} cluster cross_tabular \n{}".format(num_clusters, ct))
     # ct.plot.bar(stacked=False, title="Crosstabular on {} set".format(postfix))
     if "train" in postfix:
-        sorted_cluster = sorted(zip(ct['Healthy'].values, ct['Tumor'].values), key=lambda x: x[1]/x[0])
-        ratio = ct['Tumor'].values / ct['Healthy'].values
-        sorted_index = np.argsort(ratio)
-        np.savetxt(os.path.join(save_folder, "sorted_indices_with_tumor2healthy_ratio.txt"), sorted_index, fmt='%d', delimiter=',')
-        np.savetxt(os.path.join(save_folder, "sorted_indices_with_tumor2healthy ratio_percent_in_the_cluster.txt"), sorted_cluster, fmt='%.6f', delimiter=',')
+        if if_sort_clusters:
+            sorted_cluster = sorted(zip(ct['Healthy'].values, ct['Tumor'].values), key=lambda x: x[1]/x[0])
+            ratio = ct['Tumor'].values / ct['Healthy'].values
+            sorted_index = np.argsort(ratio)
+            sort_postfix = "sorted"
+        else:
+            sorted_index = np.arange(num_clusters)
+            sort_postfix = "not_sorted"
+
+        np.savetxt(os.path.join(save_folder, "sorted_indices_{}.txt".format(sort_postfix)), sorted_index, fmt='%d', delimiter=',')
+        np.savetxt(os.path.join(save_folder, "sorted_indices_{}_percent_in_the_cluster.txt".format(sort_postfix)), sorted_cluster, fmt='%.6f', delimiter=',')
     else:
         assert len(sorted_index) != 0, "Need to pass in sorted index!"
         # assert len(train_bg) != 0, "Need to pass the train background histogram!"
@@ -475,7 +464,8 @@ def evaluate_clusters(features, labels, mod, num_clusters=4,
                       save_folder='/results',
                       postfix='test', if_save_data=False,
                       sorted_index=None,
-                      train_bg=None):
+                      train_bg=None,
+                      if_sort_clusters=False):
     """
     :param features: array
     :param labels: array,
@@ -487,6 +477,7 @@ def evaluate_clusters(features, labels, mod, num_clusters=4,
     :param freq: 1d array, the freq space to plot
     :param if_save_data: bool
     :param sorted_index: 1d array, how to arrange the clusters in the crosstab
+    :param if_sort_clusters: bool, whether to order the cluster by some creteriion
     :return:
     """
 
@@ -497,7 +488,8 @@ def evaluate_clusters(features, labels, mod, num_clusters=4,
                                                 save_folder=save_folder,
                                                 postfix=postfix,
                                                 sorted_index=sorted_index,
-                                                train_bg=train_bg)
+                                                train_bg=train_bg,
+                                                if_sort_clusters=False)
 
 
     # Save data in the cluster
@@ -700,7 +692,8 @@ def get_anno_for_one_file(filename, seg_anno, save_dir='results/'):
 
 
 def train_clustering(features, labels, start=10, end=11,
-                     seed=589, save_folder='KMeans/'):
+                     seed=589, save_folder='KMeans/',
+                     if_sort_clusters=False):
 
     """
     The whole training process in clustering
@@ -745,7 +738,8 @@ def train_clustering(features, labels, start=10, end=11,
                               save_folder=k_cluster_folder,
                               postfix="train",
                               if_save_data=False,
-                              sorted_index=None)
+                              sorted_index=None,
+                              if_sort_clusters=False)
 
         plot_cluster_examples(features, labels, crosstabs,
                               predictions,
@@ -872,115 +866,6 @@ def load_and_test(data_dir, pkl_dir="/results"):
     print("Done")
 
 
-def evaluate_data_in_batches_of_files(model, files, data_mode="log-spectra",
-                                      n_clusters=6, nonoverlap=2560,
-                                      win=2560, save_dir="results/",
-                                      postfix="1227",
-                                      sorted_cluster=[2,3,4],
-                                      sorted_index=[2,3,4]):
-    for batch in range(len(files) // 20):
-        features, labels = get_slide_seg_from_files([files[batch * 20: (batch + 1) * 20]], win=win, nonoverlap=nonoverlap)
-        test_data_batch = \
-            transform_features(features, labels, data_mode=data_mode)
-
-        predictions, crosstabs, _ = \
-            evaluate_clusters(test_data_batch[0],
-                              test_data_batch[1],
-                              model,
-                              num_clusters=n_clusters,
-                              seed=589,
-                              save_folder=save_dir,
-                              postfix='test-{}-batch_{}'.format(postfix, batch),
-                              if_save_data=False,
-                              sorted_index=sorted_index,
-                              train_bg=sorted_cluster)
-    return crosstabs, predictions
-
-
-def evaluate_data_from_pickles(data_mode, features, model,
-                               n_clusters, pred_lbs,
-                               save_dir, sorted_index,
-                               test_f_with_l, true_lbs):
-    for fn in test_f_with_l:  # get the distribution for individual file
-        with open(fn, 'rb') as f:
-            data = pickle.load(f)
-            fea = data["original_data"]
-            true = data['true_labels']
-            pred = data['pred_labels']
-
-            features = np.vstack((features, fea))
-            true_lbs = np.append(true_lbs, true).astype(np.int)
-            pred_lbs = np.append(pred_lbs, pred).astype(np.int)
-    # Get data
-    print("Got all data", features.shape, 'label shape:', true_lbs.shape)
-    # features, true_lbs = get_slide_seg_from_files(train_f_with_l, window, stride)   # when we need the sliding window to get the features
-    predictions, crosstabs, sorted_inds = \
-        evaluate_clusters(test_data[0], test_data[1], model,
-                          num_clusters=n_clusters,
-                          save_folder=save_dir,
-                          postfix="test-control",
-                          if_save_data=False,
-                          sorted_index=sorted_index,
-                          train_bg=None)
-    return crosstabs, predictions, test_data
-
-
-def cluster_certain_examples_individually(win=2560, nonoverlap=2560):
-    """
-    CLuster the presaved certain examples from each the rat individually and get mean.
-    :param win:
-    :param nonoverlap:
-    :return:
-    """
-    num_seg = (3600 * 512 - win) // nonoverlap + 1
-    data_dir = "results/1-experiment-PPS-1EPG/certain_examples"
-    pattern = 'certain_examples*.txt'
-    # Training with different numbers of clusters
-    inertias = []
-    random_seed = 589
-    models = {}
-    data_mode = 'log-spectra'
-    hours2use = 'indi-7rats-certain-samples-save-mean'
-    postfix = 'train'
-    root_folder = 'KMeans/win_{}-stride_{}-{}-{}/' \
-        .format(win, nonoverlap, data_mode, postfix)
-    train_f_with_l = find_files(data_dir, pattern=pattern, withlabel=False)
-    # Get the certain samples from the pickle files
-    features = np.empty((0, 2560))
-    true_lbs = np.empty((0))
-    pred_lbs = np.empty((0))
-    for fn in train_f_with_l:
-        loutID = os.path.basename(fn).split('-')[2].split("_")[0]
-        each_lout_folder = os.path.join(root_folder,
-                                        "lout{}_randseed_{}_{}_{}".format(loutID, random_seed, postfix, "certain"))
-
-        check_make_dir(each_lout_folder, [])
-
-        with open(fn, 'rb') as f:
-            data = pickle.load(f)
-            fea = data["original_data"]
-            true = data['true_labels']
-            pred = data['pred_labels']
-
-            features = np.vstack((features, fea))
-            true_lbs = np.append(true_lbs, true).astype(np.int)
-            pred_lbs = np.append(pred_lbs, pred).astype(np.int)
-
-        # Get data
-        print("Got all data", fea.shape, 'label shape:', true.shape)
-        # features, true_lbs = get_slide_seg_from_files(train_f_with_l, window, stride)   # when we need the sliding window to get the features
-        train_data = transform_features(fea, true, data_mode=data_mode)
-
-        # Run clustering with k=5 clusters.
-        print("loutID", loutID, "saving foler: ", each_lout_folder)
-        train_clustering(train_data[0], train_data[1], raw_features=train_data[3],
-                         win=win, nonoverlap=nonoverlap, kmeans_mode='normal',
-                         data_mode=data_mode, encoder=None,
-                         start=3, end=20,
-                         freq=train_data[2], seed=589,
-                         save_folder=each_lout_folder)
-    print("clustering is Done!")
-
 
 def load_data(data_dir, num_classes=2):
 	mat = scipyio.loadmat(data_dir)["DATA"]
@@ -1018,17 +903,18 @@ def cluster_spectra(data_dir):
 
     train_clustering(spec, lbs,
                      start=2, end=20, seed=589,
-                     save_folder=root_folder)
+                     save_folder=root_folder,
+                     if_sort_clusters=False)
     print("clustering is Done!")
 
 #######################################################################################
 if __name__ == "__main__":
     process = "test"
 
-
     if process == "train":
         data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
         cluster_spectra(data_dir)
+
     elif process == "test":
         data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat"
         pkl_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/KMeans/metabolites_clustering-spec-lout40-5/2019-09-26T18-13-57/7-cluster/7_cluster_model-random_seed589.pkl"

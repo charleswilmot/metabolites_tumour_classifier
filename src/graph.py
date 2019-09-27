@@ -554,6 +554,7 @@ class Inception_v3:
     Make an inception model
     """
     def __init__(self, args):
+        "https://mohitjain.me/2018/06/09/googlenet/"
         logger.debug("Defining Inception model")
         self.data_len = args.data_len
         self.num_classes = args.num_classes
@@ -565,14 +566,54 @@ class Inception_v3:
         self.incep_fs = self.incep_filter_size
         self.filter_size = self.filter_size
         self.num_incep_blocks = self.num_incep_blocks
+        self.conv_1_size = args.conv_1_size
+        self.conv_3_size = args.conv_3_size
+        self.conv_3_reduced_size = args.conv_3_reduced_size
+        self.conv_5_reduced_size = args.conv_5_reduced_size
+        self.conv_5_size = args.conv_5_size
+        self.pool_size = args.pool_size
+        self.stride = args.stride
 
 
-    def build_inception_block(self, args):
+    def build_inception_block(self, inp, block_id=0, training=False):
         """
         Build the inception block
-        :param args:
+        :param inp:
+        :param block_id: int
+        :param training: bool
         :return:
         """
+        out = inp
+        with tf.variable_scope("incep_{}".format(block_id), reuse=tf.AUTO_REUSE):
+            out = tf.layers.conv2d(
+                inputs=out,
+                filters=self.channel_start,
+                kernel_size=[self.kernel_size, 1],
+                strides=[self.stride, 1],  # reduce the height, because shortcut also reduce the height
+                padding='SAME',
+                kernel_initializer=initializer,
+                # kernel_regularizer=regularizer,
+                activation=None
+            )
+            out = tf.layers.batch_normalization(out, training=training)
+            out = tf.nn.relu(out)
+            out = tf.layers.dropout(out, self.drop_cnn, training=training)
+            out = tf.layers.conv2d(
+                inputs=out,
+                filters=self.channel_start,
+                kernel_size=[self.kernel_size, 1],
+                padding='SAME',
+                kernel_initializer=initializer,
+                # kernel_regularizer=regularizer,
+                activation=None
+            )
+            shortcut = tf.layers.max_pooling2d(inp, pool_size=[self.pool_size, 1],
+                                               strides=[self.stride, 1],
+                                               padding='same')
+            output = tf.nn.relu(shortcut + out)
+            print("ResiBlock_start-output pooling shape", out.shape.as_list())
+            return output
+
 
     def _make_cnn_layer(self, inp, out_ch, bn, drop, layer_number, training=True):
         """
@@ -613,6 +654,61 @@ class Inception_v3:
         return out
 
 
+    def conv_layer(self, x, filter_height, filter_width,
+                   num_filters, name, stride=1, padding='SAME'):
+
+        """Create a convolution layer."""
+
+        # Get number of input channels
+        input_channels = int(x.get_shape()[-1])
+
+        with tf.variable_scope(name) as scope:
+            # Create tf variables for the weights and biases of the conv layer
+            W = tf.get_variable('weights', shape=[filter_height, filter_width, input_channels, num_filters],
+                                initializer=tf.random_normal_initializer(mean=0.0, stddev=0.01))
+
+            b = tf.get_variable('biases', shape=[num_filters], initializer=tf.constant_initializer(0.0))
+
+            # Perform convolution.
+            conv = tf.nn.conv2d(x, W, strides=[1, stride, stride, 1], padding=padding)
+            # Add the biases.
+            z = tf.nn.bias_add(conv, b)
+            # Apply ReLu non linearity.
+            a = tf.nn.relu(z)
+
+            return a
+
+
+    def inception_layer(x, conv_1_size, conv_3_reduce_size,
+                        conv_3_size, conv_5_reduce_size,
+                        conv_5_size, pool_proj_size,
+                        name='inception'):
+
+        """ Create an Inception Layer """
+
+        with tf.variable_scope(name) as scope:
+            conv_1 = self.conv_layer(x, filter_height=1, filter_width=1,
+                                num_filters=conv_1_size, name='{}_1x1'.format(name))
+
+            conv_3_reduce = self.conv_layer(x, filter_height=1, filter_width=1,
+                                       num_filters=conv_3_reduce_size, name='{}_3x3_reduce'.format(name))
+
+            conv_3 = self.conv_layer(conv_3_reduce, filter_height=3, filter_width=3,
+                                num_filters=conv_3_size, name='{}_3x3'.format(name))
+
+            conv_5_reduce = self.conv_layer(x, filter_height=1, filter_width=1,
+                                       num_filters=conv_5_reduce_size, name='{}_5x5_reduce'.format(name))
+
+            conv_5 = self.conv_layer(conv_5_reduce, filter_height=5, filter_width=5,
+                                num_filters=conv_5_size, name='{}_5x5'.format(name))
+
+            pool =  tf.layers.max_pooling1d(x, self.pool_size, self.stride, padding="SAME")
+            pool_proj = self.conv_layer(pool, filter_height=1, filter_width=1,
+                                   num_filters=pool_proj_size, name='{}_pool_proj'.format(name))
+
+            return tf.concat([conv_1, conv_3, conv_5, pool_proj], axis=3, name='{}_concat'.format(name))
+
+
     def __call__(self, features, training=False):
         ret = {}
         if len(features.get_shape().as_list()) < 3:
@@ -626,7 +722,7 @@ class Inception_v3:
                                    1, training = True)
 
         for bl in range(self.num_incep_blocks):
-            out = self.build_inception_block(out, training=training)
+            out = self.build_inception_block(out, block_id=bl, training=training)
 
         # GAP layer - global average pooling
         with tf.variable_scope('fc', reuse=tf.AUTO_REUSE) as scope:
