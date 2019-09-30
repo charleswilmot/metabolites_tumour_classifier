@@ -372,7 +372,7 @@ def get_data_tensors(args):
     test_spectra, test_labels, test_ids = tf.constant(test_data["spectra"]), tf.constant(test_data["labels"]), tf.constant(test_data["ids"])
     test_ds = tf.data.Dataset.from_tensor_slices((test_spectra, test_labels, test_ids)).batch(args.test_bs)
     
-    iter_test = test_ds.make_initializable_iterator()
+    iter_test = tf.compat.v1.data.make_initializable_iterator(test_ds)
     data["test_initializer"] = iter_test.initializer
     batch_test = iter_test.get_next()
     data["test_features"] = batch_test[0]

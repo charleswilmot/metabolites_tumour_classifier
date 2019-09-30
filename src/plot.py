@@ -522,6 +522,8 @@ def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
         axs[jj].plot(spec[ind], colors[true_labels[ind]], label=class_names[true_labels[ind]])
         axs[jj].legend(loc="best")
 
+    plt.plot(all1.T, linewidth=0.7), plt.plot(mean1, "violet", linewidth=2), plt.title("Tumor samples and mean"), plt.savefig("mean1.png"), plt.close()
+
     f.text(0.5, 0.05, 'index', fontsize=16),
     f.text(0.05, 0.5, 'Normalized amplitude', fontsize=16, rotation=90, verticalalignment='center'),
     f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale, num2average)), format="png")

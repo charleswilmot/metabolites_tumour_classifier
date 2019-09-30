@@ -49,21 +49,43 @@
                     "model_name": "Inception",
                     "out_channels": 32,
                     "num_incep_blocks": 7,
-                    "incep_filter_size": [1, 3, 5, 7],
+                    "incep_filter_size": [
+                        1,
+                        3,
+                        5,
+                        7
+                    ],
                     "filter_size": 144,
                     "conv_1_size": 3,
                     "conv_3_size": 9,
                     "conv_3_reduced_size": 9,
                     "conv_5_reduced_size": 32,
-                    "conv_5_size":64,
-                    "pool_size": 2,
+                    "conv_5_size": 64,
+                    "pool_size": 3,
                     "stride": 2,
+                    "fc": [
+                        500
+                    ],
+                    "bn": true,
+                    "drop_cnn": 0.55,
+                    "drop_fnn": 0.55,
+                    "activations": [
+                        "lrelu",
+                        "softmax"
+                    ]
+                },
+                "RNN": {
+                    "model_name": "RNN",
                     "fc": [500],
                     "bn": true,
                     "drop_cnn": 0.55,
                     "drop_fnn": 0.55,
-                    "activations": ["lrelu", "softmax"]
-                        }
+                    "num_layers": 1,
+                    "rnn_dims": [64],
+                    "drop_rnn": 0.5,
+                    "drop_fc": 0.65
+                    }
+
 
 
     }
