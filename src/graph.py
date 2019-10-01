@@ -42,40 +42,26 @@ class MLP:
     #  @param args arguments passed to the command line
     def __init__(self, args):
         logger.debug("Defining multilayer perceptron")
-        self.layer_dims = np.array(args.layer_dims)
-        self.batch_norms = np.array(args.batch_norms)
-        self.activations = convert_activation(args.activations)
-        self.dropout_probs = np.array(args.dropout_probs)
-        assert(self.layer_dims[-1] == args.num_classes), "Softmax output does not match number of classes"
-        assert(self.layer_dims[0] == args.data_len), "Dim of first layer should be the same as the data length"
-        assert(len(self.batch_norms) ==
-               len(self.activations) ==
-               len(self.dropout_probs) ==
-               len(self.layer_dims) - 1), "Passed in dims of batch norms or activations or drop do not match"
-        self.n_layers = len(self.batch_norms)
-        self._net_constructed_once = False
-        self._define_variables()
-
-    def _define_variables(self):
-        self.weights = []
-        self.biases = []
-        initializer = tf.contrib.layers.xavier_initializer()
-        for in_size, out_size, batch_norm in zip(self.layer_dims[0:-1], self.layer_dims[1:], self.batch_norms):
-            # random = tf.truncated_normal(stddev=0.01, shape=(in_size, out_size))
-            W = tf.Variable(initializer((in_size, out_size)), dtype=tf.float32)
-            B = None if batch_norm else tf.Variable(tf.zeros(shape=(1, out_size)))
-            self.weights.append(W)
-            self.biases.append(B)
+        self.layer_dims = args.layer_dims
+        self.drop_fc = args.drop_fc
+        self.batch_norm = args.batch_norm
+        self.num_classes = args.num_classes
 
     def __call__(self, features, training=False):
         out = {}
         net = features
-        for i in range(self.n_layers - 1):
-            net = self._make_layer(net, i, training)
+        for ind, dim in enumerate(self.layer_dims):
+            net = self._make_layer(net, ind, self.drop_fc[ind], training)
         activity = net
-        net = self._make_layer(net, i+1, training)
-        out["logits"] = net
-        self._net_constructed_once = True
+
+        with tf.compat.v1.variable_scope("logits", reuse=tf.AUTO_REUSE):
+            net = tf.layers.dense(net, self.num_classes,
+                                      kernel_initializer=initializer,
+                                      activation=None)
+            net = tf.layers.batch_normalization(net, training=training) if self.batch_norm else net
+            logits = tf.nn.softmax(net)
+        out["logits"] = logits
+        out["activity"] = activity
         return out
 
     ## Private function for adding layers to the network
@@ -84,15 +70,13 @@ class MLP:
     # @param batch_norm bool stating if batch normalization should be used
     # @param dropout droupout probability. Set to 0 to disable
     # @param activation activation function
-    def _make_layer(self, inp, layer_number, training):
-        out_size = self.layer_dims[layer_number + 1]
-        batch_norm = self.batch_norms[layer_number]
-        dropout = self.dropout_probs[layer_number]
-        activation = self.activations[layer_number]
-        _to_format = [out_size, batch_norm, dropout, activation, training]
-        layer_name = "layer_{}".format(layer_number + 1)
+    def _make_layer(self, inp, layer_number, dropout, training):
+        out_size = self.layer_dims[layer_number]
+
+        _to_format = [out_size, dropout, training]
+        layer_name = "layer_{}".format(layer_number)
         logger.debug("Creating new layer:")
-        string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
+        string = "Output size = {}\tDropout prob = {}\t(training = {})"
         logger.debug(string.format(*_to_format))
 
         # W = self.weights[layer_number]
@@ -101,9 +85,10 @@ class MLP:
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
             net = tf.layers.dense(inp, out_size,
                                   kernel_initializer=initializer,
-                                  activation=activation)
+                                  activation=None)
             # net = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
-            net = tf.layers.batch_normalization(net, training=training) if batch_norm else net
+            net = tf.layers.batch_normalization(net, training=training) if self.batch_norm else net
+            net = tf.nn.leaky_relu(net)
             # net = net if activation is None else activation(net)
             net = tf.layers.dropout(net, rate=dropout, training=training) if dropout != 0 else net
             print("layer: {}, in_size:{}, out_size:{}".format(layer_name, inp.get_shape().as_list(), net.get_shape().as_list()))
@@ -757,16 +742,17 @@ class RNN(object):
     def __init__(self, args):
         self.num_layers = args.num_layers
         self.rnn_dims = args.rnn_dims
-        self.drop_rnn = args.drop_rnn
+        self.drop_rnn = args.drop_rnn  # to drop for the linear transformation of the recurrent state.
+        self.drop_rnn_ln = args.drop_rnn_ln  # to drop for the linear transformation of the inputs.
         self.drop_fc = args.drop_fc
+        self.fc_dim = args.fc_dim
         self.data_len = args.data_len
         self.num_classes = args.num_classes
 
     def build_rnn(self, inp, units):
         inputs = tf.unstack(tf.expand_dims(inp, axis=2), axis=1)
 
-        self.rnn_cell = tf.keras.layers.LSTMCell(units, recurrent_dropout=0.5, dropout=0.5,
-                                                 kernel_regularizer=regularizer)
+        self.rnn_cell = tf.keras.layers.LSTMCell(units, recurrent_dropout=self.drop_rnn, dropout=self.drop_rnn_ln, kernel_regularizer=regularizer)
         rnn_outputs, rnn_state = tf.nn.static_rnn(self.rnn_cell, inputs, dtype=tf.float32)
         # enc_ouputs = tf.stack(rnn_outputs, axis=0)
 
@@ -778,7 +764,7 @@ class RNN(object):
         net = tf.reshape(features, [-1, self.data_len])   # make sure each sample is one time serie dat
 
         with tf.compat.v1.variable_scope("FCb4RNN", reuse=tf.AUTO_REUSE):
-            for unit in [128, 64]:
+            for unit in self.fc_dim:
                 net = tf.layers.dense(net, unit,
                                       kernel_initializer=initializer,
                                       activation=None)

@@ -17,15 +17,15 @@
             "model_save_dir": null,
             "restore_from": null,
 
-            "model_name": "RNN",
+            "model_name": "MLP",
             "optimizer_type": "adam",
             "loss_type": "softmax_ce",
             "learning_rate": 0.0005,
             "data_source": "lout40-data5",
-            "postfix": "-fc128-64-dr0.75",
-            "aug_scale": 0.5,
+            "postfix": "-",
+            "aug_scale": 0.9,
             "aug_method": "ops_mean",
-            "aug_folds": 5
+            "aug_folds": 1
         },
 
         "train": {

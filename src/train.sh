@@ -38,6 +38,8 @@ srun -p sleuths -w jetski --mem=20000 --reservation triesch-shared --gres gpu:rt
 
 srun -p sleuths -w jetski --mem=20000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py train
 
+srun -p sleuths -w jetski --mem=6000 --reservation triesch-shared python3 classifier.py train
+
 srun -p sleuths -w jetski --mem=20000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 vae_metabolite.py
 
 

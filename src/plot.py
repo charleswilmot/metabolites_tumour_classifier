@@ -200,18 +200,18 @@ def plot_tsne(args, data):
     :param args: contains hyperparams
     :param acti: dict,
     :return:
+    #
+    # colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
+    # markers = np.random.choice(['o', '*', '^', 'D', 's', 'p'], args.num_classes)
+    # target_names = ["label {}".format(i) for i in range(args.num_classes)]
     """
     f = plt.figure()
     acti = data["test_activity"].astype(np.float64)
     labels = np.argmax(data["test_labels"], axis=1).astype(np.int)
     tsne_results = tsne.bh_sne(acti, d=2)
-    #
-    # colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
-    # markers = np.random.choice(['o', '*', '^', 'D', 's', 'p'], args.num_classes)
-    # target_names = ["label {}".format(i) for i in range(args.num_classes)]
     colors = ["orchid", "deepskyblue"]
     markers = ['o', '^']
-    target_names = ["label {}".format(i) for i in [1, 3]] # np.arange(args.num_classes)
+    target_names = ["label {}".format(i) for i in [1, 3]] #
 
     ax = f.add_subplot(111)
     for color, marker, i, target_name in zip(colors, markers, [1, 3], target_names):
@@ -521,9 +521,6 @@ def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
         axs[jj].plot(NEW.T, alpha=0.65, linewidth=0.8)
         axs[jj].plot(spec[ind], colors[true_labels[ind]], label=class_names[true_labels[ind]])
         axs[jj].legend(loc="best")
-
-    plt.plot(all1.T, linewidth=0.7), plt.plot(mean1, "violet", linewidth=2), plt.title("Tumor samples and mean"), plt.savefig("mean1.png"), plt.close()
-
     f.text(0.5, 0.05, 'index', fontsize=16),
     f.text(0.05, 0.5, 'Normalized amplitude', fontsize=16, rotation=90, verticalalignment='center'),
     f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale, num2average)), format="png")

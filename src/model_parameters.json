@@ -26,10 +26,9 @@
                 },
                 "MLP":{
                     "model_name": "MLP",
-                    "layer_dims": [288, 100, 100, 100, 20, 2],
-                    "dropout_probs": [0.3, 0.35, 0.4, 0.45, 0.5],
-                    "batch_norms": [true, true, true, true, true],
-                    "activations": ["lrelu", "lrelu", "lrelu", "lrelu", "softmax"]
+                    "layer_dims": [100, 100, 100, 20],
+                    "drop_fc": [0.55, 0.55, 0.55, 0.55],
+                    "batch_norm": true
 
                 },
                 "Res_ECG_CAM": {
@@ -76,14 +75,13 @@
                 },
                 "RNN": {
                     "model_name": "RNN",
-                    "fc": [500],
                     "bn": true,
-                    "drop_cnn": 0.55,
-                    "drop_fnn": 0.55,
-                    "num_layers": 1,
+                    "num_layers": 2,
                     "rnn_dims": [64],
-                    "drop_rnn": 0.5,
-                    "drop_fc": 0.65
+                    "fc_dim": [128],
+                    "drop_rnn": 0.7,
+                    "drop_rnn_ln": 0.5,
+                    "drop_fc": 0.8
                     }
 
 

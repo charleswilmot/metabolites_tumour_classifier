@@ -1,7 +1,7 @@
 
 #### read EEG recording and plot it
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 # import pqkmeans
 import numpy as np
 from scipy import signal
@@ -17,12 +17,11 @@ import time
 import fnmatch
 import scipy.io as scipyio
 from sklearn.cluster import KMeans
-from sklearn.manifold import t_sne
+from sklearn.manifold import TSNE
 import datetime
 from scipy.stats import zscore
 import ipdb
 from collections import Counter
-
 
 
 base_size = 24
@@ -252,6 +251,9 @@ def get_crosstab(features, labels, mod,
 
     df = pd.DataFrame({"clusters": pred, "true": np.array(names)[labels]})
     ct = pd.crosstab(df["clusters"], df["true"], normalize='columns')
+    t2h_ratio = ct['Tumor'].values / ct['Healthy'].values
+    sorted_t2h_ratio = np.argsort(t2h_ratio)
+
     with open(save_folder + '/pred_lbs-true_lbs-for-crosstabs-cluster{}-{}-{}.txt'.format(num_clusters, postfix, sorted_index),
               'wb') as f:
         pickle.dump({"pred_lbs": pred,
@@ -263,6 +265,7 @@ def get_crosstab(features, labels, mod,
     # ct.plot.bar(stacked=False, title="Crosstabular on {} set".format(postfix))
     if "train" in postfix:
         if if_sort_clusters:
+            # sort the cluster by the tumor/healthy ratio from left->right
             sorted_cluster = sorted(zip(ct['Healthy'].values, ct['Tumor'].values), key=lambda x: x[1]/x[0])
             ratio = ct['Tumor'].values / ct['Healthy'].values
             sorted_index = np.argsort(ratio)
@@ -270,9 +273,10 @@ def get_crosstab(features, labels, mod,
         else:
             sorted_index = np.arange(num_clusters)
             sort_postfix = "not_sorted"
+            sorted_cluster = np.vstack((ct['Healthy'][sorted_index].values, ct['Tumor'][sorted_index].values)).T
 
-        np.savetxt(os.path.join(save_folder, "sorted_indices_{}.txt".format(sort_postfix)), sorted_index, fmt='%d', delimiter=',')
-        np.savetxt(os.path.join(save_folder, "sorted_indices_{}_percent_in_the_cluster.txt".format(sort_postfix)), sorted_cluster, fmt='%.6f', delimiter=',')
+        np.savetxt(os.path.join(save_folder, "indices_{}.txt".format(sort_postfix)), sorted_index, fmt='%d', delimiter=',')
+        np.savetxt(os.path.join(save_folder, "crosstab_values_{}_in_the_cluster.txt".format(sort_postfix)), sorted_cluster, fmt='%.6f', delimiter=',')
     else:
         assert len(sorted_index) != 0, "Need to pass in sorted index!"
         # assert len(train_bg) != 0, "Need to pass the train background histogram!"
@@ -289,7 +293,8 @@ def get_crosstab(features, labels, mod,
                 sorted_cluster = np.vstack((np.zeros((classification.size)), classification)).T
         else:
             sorted_cluster = np.vstack((ct['Healthy'][sorted_index].values, ct['Tumor'][sorted_index].values)).T
-    plt.figure(figsize=[12, 8])
+
+    plt.figure(figsize=[15, 11])
     plt.bar(np.arange(len(sorted_cluster)), np.array(sorted_cluster)[:, 0],
             facecolor=colors[0], edgecolor='k', label='Healthy', width=0.4)
     plt.bar(np.arange(len(sorted_cluster)), -np.array(sorted_cluster)[:, 1],
@@ -313,9 +318,9 @@ def get_crosstab(features, labels, mod,
     plt.yticks(()),
     plt.ylabel("frequency [%]", fontsize=base_size-2)
     plt.xlabel("cluster IDs", fontsize=base_size-2)
-    plt.title("Frequency count among all cluster IDs")
+    plt.title("Frequency count. Healthy to tumor {}".format(sorted_t2h_ratio))
     plt.xlim(-.5, len(sorted_cluster))
-    plt.legend(fontsize=base_size-1)
+    plt.legend(fontsize=base_size-1, loc="best")
     plt.xticks(np.arange(len(sorted_cluster)), np.array(sorted_index), fontsize=base_size-2)
     plt.savefig(save_folder+"/cluster_{}_crosstab_{}_{}.png".format(num_clusters, postfix, sorted_index))
     # plt.savefig(os.path.join(save_folder, "cluster_{}_crosstab_{}_EPG{}.pdf".format(num_clusters, postfix, sorted_index)), format="pdf")
@@ -460,6 +465,20 @@ def get_slide_seg_from_one_file(filename, label, win=2056, nonoverlap=2056):
     return slide_features, slide_labels
 
 
+def k_mean_distance(data, center, i_centroid, cluster_labels):
+    """
+    Get the distance of data towards a cluster center
+    :param data:
+    :param center:
+    :param i_centroid:
+    :param cluster_labels:
+    :return:
+    """
+    # distances = [np.sqrt((x - cx) ** 2 + (y - cy) ** 2) for (x, y) in data[cluster_labels == i_centroid]]
+    distances = np.linalg.norm(data-center)
+    return distances
+
+
 def evaluate_clusters(features, labels, mod, num_clusters=4,
                       save_folder='/results',
                       postfix='test', if_save_data=False,
@@ -489,7 +508,7 @@ def evaluate_clusters(features, labels, mod, num_clusters=4,
                                                 postfix=postfix,
                                                 sorted_index=sorted_index,
                                                 train_bg=train_bg,
-                                                if_sort_clusters=False)
+                                                if_sort_clusters=if_sort_clusters)
 
 
     # Save data in the cluster
@@ -739,7 +758,7 @@ def train_clustering(features, labels, start=10, end=11,
                               postfix="train",
                               if_save_data=False,
                               sorted_index=None,
-                              if_sort_clusters=False)
+                              if_sort_clusters=if_sort_clusters)
 
         plot_cluster_examples(features, labels, crosstabs,
                               predictions,
@@ -808,14 +827,46 @@ def load_and_test(data_dir, pkl_dir="/results"):
     """
     n_clusters = os.path.basename(pkl_dir).split("_")[0]
     model = load_pickle_model(pkl_dir)
-    sorted_index = np.loadtxt(os.path.join(os.path.dirname(pkl_dir), "sorted_indices_with_tumor2healthy_ratio.txt")).astype(np.int)
-    sorted_cluster = np.loadtxt(os.path.join(os.path.dirname(pkl_dir), "sorted_indices_with_tumor2healthy ratio_percent_in_the_cluster.txt"), delimiter=',')
+    sorted_index = np.loadtxt(os.path.join(os.path.dirname(pkl_dir), "indices_not_sorted.txt")).astype(np.int)
+    sorted_cluster = np.loadtxt(os.path.join(os.path.dirname(pkl_dir), "crosstab_values_not_sorted_in_the_cluster.txt"), delimiter=',')
 
     save_dir = os.path.dirname(pkl_dir) + '/{0:%Y-%m-%dT%H-%M-%S}-test'.format(datetime.datetime.now())
     check_make_dir(save_dir, ['data', 'plots'])
 
     # evaluate files ordered with time and save the predicted
     spec, lbs, ids = load_data(data_dir, num_classes=2)
+
+    ## Get distances of data to cluster centeres
+    centroids = model.cluster_centers_
+    distances = []
+    sub_dist = []
+    for i, center in enumerate(centroids):
+        mean_distance = np.linalg.norm(spec-center, axis=1)
+        sub_dist.append(mean_distance)
+    distances = np.array(sub_dist).T
+    np.savetxt(os.path.join(save_dir, "distances_to_centroids.csv"), distances, delimiter=",", fmt="%.5f")
+
+    # tsne vis. the distance to two typical clusters
+    dist2 = np.vstack((distances[0], distances[3])).T
+    ind0 = np.where(lbs == 0)[0]
+    ind1 = np.where(lbs == 1)[0]
+    plt.figure(figsize=[12, 10])
+    plt.scatter(distances[0][ind0], distances[3][ind0], color="royalblue", label="healthy")
+    plt.scatter(distances[0][ind1], distances[3][ind1], color="violet", label="tumor")
+    plt.legend()
+    plt.savefig(save_dir + '/distances_healthy_tumor.png', format="png")
+    plt.close()
+
+    X_embedded = TSNE(n_components=3).fit_transform(dist2)
+    from mpl_toolkits.mplot3d import Axes3D
+    markers = ["o", "^"]
+    fig = plt.figure(figsize=[12, 10])
+    ax = fig.add_subplot(111)
+    ax.scatter(X_embedded[:, 0][ind0], X_embedded[:, 1][ind0], X_embedded[:, 2][ind0], color="royalblue", alpha=0.5, marker="o")
+    ax.scatter(X_embedded[:, 0][ind1], X_embedded[:, 1][ind1], X_embedded[:, 2][ind1], color="violet", alpha=0.5, marker="^")
+    plt.savefig(save_dir + '/tsne_distances_3d.png', format="png")
+
+
 
     predictions, crosstabs, _ = \
         evaluate_clusters(spec,
@@ -902,7 +953,7 @@ def cluster_spectra(data_dir):
     print("Got all data", spec.shape, 'label shape:', lbs.shape, '\n save_foler: ', root_folder)
 
     train_clustering(spec, lbs,
-                     start=2, end=20, seed=589,
+                     start=7, end=8, seed=589,
                      save_folder=root_folder,
                      if_sort_clusters=False)
     print("clustering is Done!")
@@ -917,7 +968,7 @@ if __name__ == "__main__":
 
     elif process == "test":
         data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat"
-        pkl_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/KMeans/metabolites_clustering-spec-lout40-5/2019-09-26T18-13-57/7-cluster/7_cluster_model-random_seed589.pkl"
+        pkl_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/KMeans/metabolites_clustering-spec-lout40-5/2019-10-01T11-58-13/7-cluster/7_cluster_model-random_seed589.pkl"
         load_and_test(data_dir, pkl_dir=pkl_dir)
 
 

@@ -216,6 +216,17 @@ plt.legend(),
 plt.savefig(os.path.join(save_dir, "RF_exaple_train.png"))
 plt.close()
 
+
+fig = plt.figure()
+ax = fig.add_subplot(111)
+jet = colors.Colormap('jet')
+cNorm  = colors.Normalize(vmin=0, vmax=287)
+scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=jet)
+lines = []
+for ind, idx in enumerate(import_inds):
+    ax.scatter(import_inds[ind], importance[import_inds[ind]], color=scalarMap.to_rgba(ind))
+plt.savefig(os.path.join(save_dir, "RF_importance.png")),
+
 # Visualising the val set results
 
 X_Set, Y_Set = new_val, Y_val
