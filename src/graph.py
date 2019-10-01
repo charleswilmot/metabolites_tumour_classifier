@@ -64,13 +64,16 @@ class MLP:
         out["activity"] = activity
         return out
 
-    ## Private function for adding layers to the network
-    # @param inp input tensor
-    # @param out_size size of the new layer
-    # @param batch_norm bool stating if batch normalization should be used
-    # @param dropout droupout probability. Set to 0 to disable
-    # @param activation activation function
+
     def _make_layer(self, inp, layer_number, dropout, training):
+        """
+        Make dense layer
+        :param inp:
+        :param layer_number:
+        :param dropout:
+        :param training:
+        :return:
+        """
         out_size = self.layer_dims[layer_number]
 
         _to_format = [out_size, dropout, training]
@@ -79,17 +82,13 @@ class MLP:
         string = "Output size = {}\tDropout prob = {}\t(training = {})"
         logger.debug(string.format(*_to_format))
 
-        # W = self.weights[layer_number]
-        # B = self.biases[layer_number]
         print("-------Building network-----------")
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
             net = tf.layers.dense(inp, out_size,
                                   kernel_initializer=initializer,
                                   activation=None)
-            # net = tf.matmul(tf.squeeze(inp), W) if B is None else tf.matmul(tf.squeeze(inp), W) + B
             net = tf.layers.batch_normalization(net, training=training) if self.batch_norm else net
-            net = tf.nn.leaky_relu(net)
-            # net = net if activation is None else activation(net)
+            net = tf.nn.relu(net)
             net = tf.layers.dropout(net, rate=dropout, training=training) if dropout != 0 else net
             print("layer: {}, in_size:{}, out_size:{}".format(layer_name, inp.get_shape().as_list(), net.get_shape().as_list()))
             return net

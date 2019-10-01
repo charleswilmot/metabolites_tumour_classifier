@@ -22,10 +22,10 @@
             "loss_type": "softmax_ce",
             "learning_rate": 0.0005,
             "data_source": "lout40-data5",
-            "postfix": "-",
-            "aug_scale": 0.9,
+            "postfix": "relu",
+            "aug_scale": 0.7,
             "aug_method": "ops_mean",
-            "aug_folds": 1
+            "aug_folds": 5
         },
 
         "train": {

@@ -11,7 +11,6 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 import itertools
 import pandas as pd
-import matplotlib.pylab as pylab
 import pickle
 import time
 import fnmatch
@@ -23,7 +22,7 @@ from scipy.stats import zscore
 import ipdb
 from collections import Counter
 
-
+import matplotlib.pylab as pylab
 base_size = 24
 params = {'legend.fontsize': base_size - 2,
           'figure.figsize': (12, 10),
@@ -713,7 +712,6 @@ def get_anno_for_one_file(filename, seg_anno, save_dir='results/'):
 def train_clustering(features, labels, start=10, end=11,
                      seed=589, save_folder='KMeans/',
                      if_sort_clusters=False):
-
     """
     The whole training process in clustering
     :param train_f_with_l:
@@ -843,8 +841,9 @@ def load_and_test(data_dir, pkl_dir="/results"):
     for i, center in enumerate(centroids):
         mean_distance = np.linalg.norm(spec-center, axis=1)
         sub_dist.append(mean_distance)
-    distances = np.array(sub_dist).T
-    np.savetxt(os.path.join(save_dir, "distances_to_centroids.csv"), distances, delimiter=",", fmt="%.5f")
+        distances = np.array(sub_dist).T
+    np.savetxt(os.path.join(save_dir, "distances_to_centroids.csv"), distances, delimiter=",", header="dis2cl0,dis2cl1,dis2cl2,dis2cl3,dis2cl4,dis2cl5,dis2cl6", fmt="%.5f")
+    np.savetxt(os.path.join(save_dir, "distances_to_healthy_tumore_centers.csv"), dist2, delimiter=",", header="dis2cl0_healthy,dis2cl3_tumor", fmt="%.5f")
 
     # tsne vis. the distance to two typical clusters
     dist2 = np.vstack((distances[0], distances[3])).T
@@ -857,14 +856,16 @@ def load_and_test(data_dir, pkl_dir="/results"):
     plt.savefig(save_dir + '/distances_healthy_tumor.png', format="png")
     plt.close()
 
-    X_embedded = TSNE(n_components=3).fit_transform(dist2)
-    from mpl_toolkits.mplot3d import Axes3D
-    markers = ["o", "^"]
+
+    # tsne vis the distances
+    X_embedded2 = TSNE(n_components=2).fit_transform(spec)
     fig = plt.figure(figsize=[12, 10])
     ax = fig.add_subplot(111)
-    ax.scatter(X_embedded[:, 0][ind0], X_embedded[:, 1][ind0], X_embedded[:, 2][ind0], color="royalblue", alpha=0.5, marker="o")
-    ax.scatter(X_embedded[:, 0][ind1], X_embedded[:, 1][ind1], X_embedded[:, 2][ind1], color="violet", alpha=0.5, marker="^")
-    plt.savefig(save_dir + '/tsne_distances_3d.png', format="png")
+    ax.scatter(X_embedded2[:, 0][ind0], X_embedded2[:, 1][ind0], color="royalblue", alpha=0.5, marker="o"),
+    ax.scatter(X_embedded2[:, 0][ind1], X_embedded2[:, 1][ind1], color="violet", alpha=0.5, marker="^"),
+    plt.savefig(save_dir + '/tsne_spec_2d.png', format="png"),
+    plt.close()
+
 
 
 
