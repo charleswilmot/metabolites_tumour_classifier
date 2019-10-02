@@ -100,7 +100,8 @@ class CNN:
     #  @param args arguments passed to the command line
     def __init__(self, args):
         logger.debug("Defining CNN")
-        self.data_len = args.data_len
+        self.height = args.height
+        self.width = args.width
         self.out_channels = np.array(args.out_channels)
         self.fc_dims = np.array(args.fc)
         self.kernel_size = args.kernel_size
@@ -118,7 +119,7 @@ class CNN:
 
     def __call__(self, features, training=False):
         out = {}
-        net = tf.reshape(features, [-1, self.data_len, 1])
+        net = tf.reshape(features, [-1, self.height, self.width, 1])
         self._net_constructed_once = True
         net = self.construct_cnn_layers(out, training)
         net = self.construct_fnn_layers(out, training)
@@ -174,11 +175,13 @@ class CNN:
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             kernel_size = inp.get_shape().as_list()[1]
-            out = tf.layers.conv1d(inp, out_ch,
+            out = tf.layers.conv2d(inp, out_ch,
                                    kernel_size, 1,
                                    padding='SAME',
                                    kernel_initializer=initializer)
-            out = tf.layers.max_pooling1d(out, self.pool_size, self.pool_size, padding="SAME")
+            out = tf.layers.max_pooling2d(out, pool_size=[self.pool_size, 1],
+                                               strides=[self.stride, 1],
+                                               padding='same')
             out = tf.layers.batch_normalization(
                 out, training=training) if bn else out
             out = out if activation is None else activation(out)
@@ -217,7 +220,8 @@ class CNN_CAM:
     #  @param args arguments passed to the command line
     def __init__(self, args):
         logger.debug("Defining CNN")
-        self.data_len = args.data_len
+        self.height = args.height
+        self.width = args.width
         self.out_channels = np.array(args.out_channels)
         self.kernel_size = args.kernel_size
         self.pool_size = args.pool_size
@@ -232,7 +236,7 @@ class CNN_CAM:
     
     def __call__(self, features, training=False):
         out = {}
-        inp = tf.reshape(features, [-1, self.data_len, 1])
+        inp = tf.reshape(features, [-1, self.height, self.width, 1])
         self._net_constructed_once = True
         out["conv"] = self.construct_cnn_layers(inp, training)
         # GAP layer - global average pooling
@@ -303,13 +307,18 @@ class CNN_CAM:
                 kernel_size = inp.get_shape().as_list()[1] // 2  # later layers, the filter size should be adjusted by the input
             else:
                 kernel_size = self.kernel_size
-            out = tf.layers.conv1d(out, out_ch,
-                                   kernel_size, 1,
+            out = tf.layers.conv2d(inputs=out,
+                                   filters=out_ch,
+                                   kernel_size=[kernel_size, 1],
+                                   strides=[1, 1],
+                                   padding='SAME',
                                    kernel_initializer=initializer,
-                                   padding='SAME')
+                                   # kernel_regularizer = regularizer,
+                                   activation=None)
             # if np.mod(layer_number, 2) == 1:  # only pool after odd number layer
-            #     out = tf.layers.max_pooling1d(out, self.pool_size, self.strides, padding="SAME")
-            out = tf.layers.max_pooling1d(out, self.pool_size, self.pool_size, padding="SAME")
+            out = tf.layers.max_pooling2d(out, pool_size=[self.pool_size, 1],
+                                          strides=[self.stride, 1],
+                                          padding='same')
             out = tf.layers.batch_normalization(
                 out, training=training) if bn else out
             out = out if activation is None else activation(out)
@@ -348,7 +357,8 @@ class Res_ECG_CAM:
     #  @param args arguments passed to the command line
     def __init__(self, args):
         logger.debug("Defining Res_ECG")
-        self.data_len = args.data_len
+        self.height = args.height
+        self.width = args.width
         self.channel_start = args.out_channels  # Starting num of channels
         self.num_layers_in_res = args.num_layers_in_res  #
         self.num_res_blocks = args.num_res_blocks
@@ -362,7 +372,7 @@ class Res_ECG_CAM:
 
     def __call__(self, features, training=False):
         ret = {}
-        inp = tf.reshape(features, [-1, self.data_len, 1, 1])
+        inp = tf.reshape(features, [-1, self.height, self.width, 1])
         self._net_constructed_once = True
 
         out = self._make_cnn_layer(inp, self.channel_start,
@@ -537,7 +547,8 @@ class Inception:
     def __init__(self, args):
         "https://mohitjain.me/2018/06/09/googlenet/"
         logger.debug("Defining Inception model")
-        self.data_len = args.data_len
+        self.height = args.height
+        self.width = args.width
         self.num_classes = args.num_classes
         self.channel_start = args.out_channels
         self.bn = args.bn
@@ -678,7 +689,7 @@ class Inception:
 
     def __call__(self, features, training=False):
         ret = {}
-        inp = tf.reshape(features, [-1, self.data_len, 1, 1])
+        inp = tf.reshape(features, [-1, self.height, self.width, 1])
 
         #Build the whole graph
 
@@ -745,7 +756,8 @@ class RNN(object):
         self.drop_rnn_ln = args.drop_rnn_ln  # to drop for the linear transformation of the inputs.
         self.drop_fc = args.drop_fc
         self.fc_dim = args.fc_dim
-        self.data_len = args.data_len
+        self.height = args.height
+        self.width = args.width
         self.num_classes = args.num_classes
 
     def build_rnn(self, inp, units):
@@ -760,7 +772,7 @@ class RNN(object):
 
     def __call__(self, features, training=False):
         ret = {}
-        net = tf.reshape(features, [-1, self.data_len])   # make sure each sample is one time serie dat
+        net = tf.reshape(features, [-1, self.height])   # make sure each sample is one time serie dat
 
         with tf.compat.v1.variable_scope("FCb4RNN", reuse=tf.AUTO_REUSE):
             for unit in self.fc_dim:
@@ -877,27 +889,27 @@ def get_graph(args, data_tensors):
 
     lr_placeholder = tf.compat.v1.placeholder(tf.float32, [], name='learning_rate')
     net_out = net(data_tensors["test_features"])
-    graph["test_out"] = net_out["logits"]
+    graph["test_logits"] = net_out["logits"]
     if "conv" in net_out.keys():
         graph["test_conv"] = net_out["conv"]
         graph["test_gap_w"] = net_out["gap_w"]
-    graph["test_batch_size"] = tf.shape(graph["test_out"])[0]
+    graph["test_batch_size"] = tf.shape(graph["test_logits"])[0]
     graph["test_num_batches"] = graph["test_num_samples"] // args.test_bs
-    graph["test_loss_sum"] = get_loss_sum(args, graph["test_out"], data_tensors["test_labels"])
-    graph["test_ncorrect"], graph["test_wrong_inds"] = get_ncorrect(graph["test_out"], data_tensors["test_labels"])
-    graph["test_confusion"] = get_confusion_matrix(graph["test_out"], data_tensors["test_labels"], args.num_classes)
-    graph["test_auc"] = get_roc_curve(graph["test_out"], data_tensors["test_labels"], args.num_classes)
+    graph["test_loss"] = get_loss_sum(args, graph["test_logits"], data_tensors["test_labels"])
+    graph["test_ncorrect"], graph["test_wrong_inds"] = get_ncorrect(graph["test_logits"], data_tensors["test_labels"])
+    graph["test_confusion"] = get_confusion_matrix(graph["test_logits"], data_tensors["test_labels"], args.num_classes)
+    graph["test_auc"] = get_roc_curve(graph["test_logits"], data_tensors["test_labels"], args.num_classes)
     if args.test_or_train == "train":
         net_out = net(data_tensors["train_features"], training=True)
-        graph["train_out"] = net_out["logits"]
+        graph["train_logits"] = net_out["logits"]
         graph["train_labels"] = data_tensors["train_labels"]
-        graph["train_batch_size"] = tf.shape(graph["train_out"])[0]
-        graph["train_loss_sum"] = get_loss_sum(args, graph["train_out"], data_tensors["train_labels"])
-        graph["train_ncorrect"], graph["train_wrong_inds"] = get_ncorrect(graph["train_out"], data_tensors["train_labels"])
-        graph["train_confusion"] = get_confusion_matrix(graph["train_out"], data_tensors["train_labels"], args.num_classes)
-        graph["learning_rate_op"] = tf.placeholder(tf.float32, [], name='learning_rate')
-        # graph["train_op"] = tf.train.AdamOptimizer(learning_rate=graph["learning_rate_op"]).minimize(graph["train_loss_sum"])
-        graph["train_op"] = get_train_op(args, graph["train_loss_sum"], graph["learning_rate_op"])
+        graph["train_batch_size"] = tf.shape(graph["train_logits"])[0]
+        graph["train_loss"] = get_loss_sum(args, graph["train_logits"], data_tensors["train_labels"])
+        graph["train_ncorrect"], graph["train_wrong_inds"] = get_ncorrect(graph["train_logits"], data_tensors["train_labels"])
+        graph["train_confusion"] = get_confusion_matrix(graph["train_logits"], data_tensors["train_labels"], args.num_classes)
+        graph["train_learning_rate_op"] = tf.placeholder(tf.float32, [], name='learning_rate')
+        # graph["train_op"] = tf.train.AdamOptimizer(learning_rate=graph["learning_rate_op"]).minimize(graph["train_loss"])
+        graph["train_op"] = get_train_op(args, graph["train_loss"], graph["train_learning_rate_op"])
         
 
     logger.info("Graph defined")

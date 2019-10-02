@@ -340,7 +340,7 @@ def plot_auc_curve(y_true, y_pred, postfix="test", save_dir="results/"):
     plt.close()
 #########################################################
 if __name__ == "__main__":
-    num_clusters = 6
+    num_clusters = 7
 
     save_dir = "EM_results" + '/cluster_{0}/{1:%Y-%m-%dT%H-%M-%S}'.format(num_clusters, datetime.datetime.now())
     check_make_dir(save_dir, ["data", "plots"])
@@ -363,13 +363,13 @@ if __name__ == "__main__":
                      postfix='train', sorted_index=None,
                      train_bg=None, if_sort_clusters=False)
 
-    # plot examples in the clusters
-    # plot_cluster_examples(X_train, Y_train, ct,
-    #                       pred_cluster,
-    #                       num_clusters=num_clusters,
-    #                       postfix="train",
-    #                       save_folder=save_dir,
-    #                       num_figs=3)
+    ## plot examples in the clusters
+    plot_cluster_examples(X_train, Y_train, ct,
+                          pred_cluster,
+                          num_clusters=num_clusters,
+                          postfix="train",
+                          save_folder=save_dir,
+                          num_figs=3)
 
     test_pred_cluster, test_pred_prob, test_ct, test_sorted_index \
         = get_crosstab(test_spec, test_lbs, GMM,

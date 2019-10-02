@@ -336,12 +336,3 @@ if __name__ == "__main__":
         inputs_enc = tf.placeholder(tf.float32, [None, 288 * 1], name='inputs_enc')
 
     train(inputs_enc)
-
-'''
-Iteration: 0, Loss: -1559.66674805, log_loss: -785.173950195, KL_term 624.776916504
-Iteration: 600, Loss: -1406.72229004, log_loss: -969.086486816, KL_term 423.029876709
-Iteration: 1000, Loss: -1250.46850586, log_loss: -941.946777344, KL_term 305.732299805
-Iteration: 2000, Loss: -1062.35107422, log_loss: -886.799804688, KL_term 175.553817749
-Iteration: 3000, Loss: -978.892456055, log_loss: -797.363830566, KL_term 189.481140137
-Iteration: 4000, Loss: -862.5078125, log_loss: -789.658935547, KL_term 102.668769836
-Iteration: 5000, Loss: -1050.76171875, log_loss: -996.399780273, KL_term 103.408706665'''

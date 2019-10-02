@@ -11,16 +11,18 @@
 
             "out_format": "m",
             "data_len": 288,
+            "data_width": 1,
             "num_lout": 40,
+            "data_shape": "1d",
 
             "output_path": "../results/",
             "model_save_dir": null,
             "restore_from": null,
 
-            "model_name": "MLP",
+            "model_name": "Inception",
             "optimizer_type": "adam",
             "loss_type": "softmax_ce",
-            "learning_rate": 0.0005,
+            "learning_rate": 0.001,
             "data_source": "lout40-data5",
             "postfix": "relu",
             "aug_scale": 0.7,

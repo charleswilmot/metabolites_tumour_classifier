@@ -31,9 +31,9 @@ logger = log.getLogger("classifier")
 args = argument.params
 dataio.save_command_line(args)
 get_available_gpus()
-if args.seed is not None:
-    np.random.seed(seed=args.seed)
-    tf.compat.v1.set_random_seed(args.seed)
+# if args.seed is not None:
+#     np.random.seed(seed=args.seed)
+#     tf.compat.v1.set_random_seed(args.seed)
 
 # if args.seed != 2594:   # every time change the random seed should save the data again
 ## get leave-out train and test sets: dataio.split_data_for_lout_val(args)\ dataio.split_data_for_val(args)

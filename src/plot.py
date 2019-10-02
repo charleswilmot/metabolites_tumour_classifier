@@ -123,7 +123,7 @@ def all_figures(sess, args, data, training=False, epoch=0):
 
     if not training:
         if 'CAM' in args.model_name:
-            class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.data_len, 1, number2use=1000)
+            class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.height, 1, number2use=1000)
 
             plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], data["test_pred"][rand_inds], epoch, args)
         plot_wrong_examples(args, data, training=training)
@@ -262,7 +262,7 @@ def get_class_map(labels, conv_out, weights, seq_len, seq_width, number2use=200)
     num_samples = min(conv_out.shape[0], number2use)
     classmaps = []
     labels_int = np.argmax(labels, axis=1)
-    conv_resized = tf.image.resize_nearest_neighbor(conv_out, [seq_len, seq_width])
+    conv_resized = tf.compat.v1.image.resize_nearest_neighbor(conv_out, [seq_len, seq_width])
     rand_inds = np.random.choice(conv_out.shape[0], min(num_samples, conv_out.shape[0]))
     for ind, label in enumerate(labels_int[rand_inds]):
         label_w = tf.gather(tf.transpose(weights), label)

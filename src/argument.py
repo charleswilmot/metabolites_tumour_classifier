@@ -272,8 +272,14 @@ params.update(json_path, mode=params.model_name) # update params with the model 
 # specify some params
 time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
 
+if params.data_shape == "2d":
+    params.height = params.data_len // 6
+    params.width = 6
+else:
+    params.width = 1
+    params.height = params.data_len
 params.output_path = os.path.join(params.output_path,
-                                time_str + "data-{}-class-{}-{}-{}-aug_{}x{}-{}-{}".format(os.path.basename(params.input_data[0:-4]), params.num_classes, params.model_name, params.postfix, params.aug_method, params.aug_folds, params.aug_scale, args.test_or_train))
+                                time_str + "data-{}-{}-class-{}-{}-{}-aug_{}x{}-{}-{}".format(os.path.basename(params.input_data[0:-4]), params.data_shape, params.num_classes, params.model_name, params.postfix, params.aug_method, params.aug_folds, params.aug_scale, args.test_or_train))
 params.model_save_dir = os.path.join(params.output_path, "network")
 params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from

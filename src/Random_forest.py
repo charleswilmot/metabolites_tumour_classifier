@@ -5,6 +5,7 @@ import os
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import pylab
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
@@ -13,7 +14,7 @@ from scipy.stats import zscore
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 from matplotlib.colors import ListedColormap
-
+import itertools
 
 class Configure(object):
     def __init__(self):
@@ -86,17 +87,6 @@ def get_data(config):
         labels = labels[need_inds]
         ids = ids[need_inds]
 
-    # if config.test_or_train == 'train':
-    #     temp_rand = np.arange(len(labels))
-    #     np.random.shuffle(temp_rand)
-    #     spectra_rand = spectra[temp_rand]
-    #     labels_rand = labels[temp_rand]
-    #     ids_rand = ids[temp_rand]
-    # elif config.test_or_train == 'test':  # In test, don't shuffle
-    #     spectra_rand = spectra
-    #     labels_rand = labels
-    #     ids_rand = ids
-    #     print("data labels: ", labels_rand)
     assert config.num_classes != np.max(labels), "The number of class doesn't match the data!"
 
     X_train, X_val, Y_train, Y_val = train_test_split(spectra, labels, test_size=config.val_ratio, random_state=132)
@@ -105,7 +95,7 @@ def get_data(config):
     train_data["labels"] = Y_train.astype(np.int32)
     # train_data["ids"] = np.squeeze(ids_rand[0:config.num_train]).astype(np.int32)
 
-    print("num_samples: ", len(Y_val))
+    print("num val samples: ", len(Y_val))
 
     ## oversample the minority samples ONLY in training data
     train_data = augment_with_batch_mean(config, train_data["spectra"], train_data["labels"], train_data)
@@ -133,6 +123,7 @@ def oversample_train(train_data, num_classes):
 
     return train_data
 
+
 def get_test_data(config):
     mat = loadmat(config.test_dir)["DATA"]
     spectra = mat[:, 2:]
@@ -153,120 +144,156 @@ def get_test_data(config):
     return spectra, labels
 
 
+def plot_confusion_matrix(conf, num_classes=2, ifnormalize=False, postfix="test", save_dir="results/"):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    :param confm: confusion matrix
+    :param num_classes: int, the number of classes
+    :param normalize: boolean, whether normalize to (0,1)
+    :return:
+    """
+    TN = conf[0][0]
+    FN = conf[1][0]
+    TP = conf[1][1]
+    FP = conf[0][1]
+    # Sensitivity, hit rate, recall, or true positive rate
+    TPR = TP / (TP + FN)
+    # Specificity or true negative rate
+    TNR = TN / (TN + FP)
+    # Precision or positive predictive value
+    PPV = TP / (TP + FP)
+    # Negative predictive value
+    NPV = TN / (TN + FN)
+    # Fall out or false positive rate
+    FPR = FP / (FP + TN)
+    # False negative rate
+    FNR = FN / (TP + FN)
+    # False discovery rate
+    FDR = FP / (TP + FP)
+
+    # Overall accuracy
+    ACC = (TP + TN) / (TP + FP + FN + TN)
+
+    if ifnormalize:
+        cm = (conf * 1.0 / conf.sum(axis=1)[:, np.newaxis])*1.0
+    else:
+        cm = conf
+    f = plt.figure()
+    plt.imshow(cm, interpolation='nearest', cmap='Blues', aspect='auto')
+    tick_marks = np.arange(num_classes)
+    plt.xticks(tick_marks)
+    plt.yticks(tick_marks)
+    plt.colorbar()
+
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        if cm[i, j] != 0:
+            plt.text(j, i, np.int(cm[i, j]*100)/100.0, horizontalalignment="center", color="darkorange", size=20)
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.title("Confusion matrix on {} set, SEN-{}, SPE-{}".format(postfix, TPR, TNR))
+    f.savefig(save_dir + '/confusion_matrix_{}.png'.format(postfix))
+    plt.close()
+
+
+def plot_importance(model):
+    """
+    PLot color coded importance
+    :param model:
+    :return:
+    """
+    importance = model.feature_importances_
+    import_inds = np.argsort(importance)
+    fig = plt.figure(figsize=[12, 10])
+    ax = fig.add_subplot(111)
+    colors = pylab.cm.jet(np.linspace(0, 1, 288))
+    lines = []
+    for ind, idx in enumerate(import_inds):
+        ax.scatter(import_inds[ind], importance[import_inds[ind]], color=colors[ind]),
+        ax.plot(importance, '-.')
+    plt.xlabel("importance")
+    plt.xlabel("metabolite indices")
+    plt.savefig(os.path.join(save_dir, "RF_importance.png"))
+    plt.close()
+
+
+def visualize_top_2_RF(X_Set, Y_Set, model, num_classes=2, postfix="val", save_dir="results/"):
+    """
+    plot the decision map with the two variables
+    :param X_Set:
+    :param Y_Set:
+    :param model:
+    :param postfix:
+    :param save_dir:
+    :return:
+    """
+    X1, X2 = np.meshgrid(
+        np.arange(start=X_Set[:, 0].min() - 1, stop=X_Set[:, 0].max() + 1, step=0.01),
+        np.arange(start=X_Set[:, 1].min() - 1, stop=X_Set[:, 1].max() + 1, step=0.01))
+    plt.contourf(X1, X2, model.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape), alpha=0.25,
+                 cmap=ListedColormap(('royalblue', 'violet')))
+    plt.xlim(X1.min(), X1.max()),
+    plt.ylim(X2.min(), X2.max())
+    for i, j in enumerate(np.arange(num_classes)):
+        plt.scatter(X_Set[X_Set == j, 0], X_Set[Y_Set == j, 1], c=ListedColormap(('darkblue', 'm'))(i), label=j)
+    plt.title('Random Forest Classifier (training set)'),
+    plt.xlabel('#1 important feature')
+    plt.ylabel('#2 important feature')
+    plt.legend(),
+    plt.savefig(os.path.join(save_dir, "RF_exaple_{}.png".format(postfix)))
+    plt.close()
 ##########################################################################
-config = Configure()
-root = "../Random_forest_results"
-time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
-save_dir = os.path.join(root, time_str+'lout40-5')
-subdirs = ["model"]
-if not os.path.exists(save_dir):
-    os.makedirs(save_dir)
-    for subdir in subdirs:
-        os.makedirs(save_dir + '/{}'.format(subdir))
 
-# Splitting the dataset into the training set and val set
-X_train, Y_train, X_val, Y_val = get_data(config)
+if __name__ == "__main__":
+    config = Configure()
+    root = "../Random_forest_results"
+    time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
+    save_dir = os.path.join(root, time_str+'lout40-5')
+    subdirs = ["model"]
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+        for subdir in subdirs:
+            os.makedirs(save_dir + '/{}'.format(subdir))
 
-# datasets = pd.read_csv('../data/20ind10325/social_network_ads.csv')
-# X = datasets.iloc[:, [2,3]].values
-# Y = datasets.iloc[:, 4].values
-# X_train, X_val, Y_train, Y_val = train_test_split(X, Y, val_size = 0.25, random_state = 0)
-# from sklearn.preprocessing import StandardScaler
-# sc_X = StandardScaler()
-# X_train = sc_X.fit_transform(X_train)
-# X_val = sc_X.transform(X_val)
+    # Splitting the dataset into the training set and val set
+    X_train, Y_train, X_val, Y_val = get_data(config)
 
-# Fitting the classifier into the training set
-classifier = RandomForestClassifier(n_estimators = 500, criterion = 'entropy', random_state = 0)
-classifier.fit(X_train, Y_train)
+    # Fitting the classifier into the training set
+    classifier = RandomForestClassifier(n_estimators = 500, criterion = 'entropy', random_state = 0)
+    classifier.fit(X_train, Y_train)
 
-# Predicting the val set results
-Y_Pred = classifier.predict(X_val)
+    # Predicting the val set results
+    Y_Pred = classifier.predict(X_val)
 
-# Making the Confusion Matrix
+    # Making the Confusion Matrix
+    cm = confusion_matrix(Y_val, Y_Pred)
+    plot_confusion_matrix(cm, num_classes=2, ifnormalize=False, postfix="val", save_dir=save_dir)
 
-cm = confusion_matrix(Y_val, Y_Pred)
+    # plot feature importance
+    plot_importance(classifier)
 
-# plot feature importance
-importance = classifier.feature_importances_
-import_inds = np.argsort(importance)
-plt.figure()
-plt.plot(importance, label="importance")
-plt.savefig(os.path.join(save_dir, "RF_importance.png"))
-plt.close()
+    ind0, ind1 = 171, 65
+    new_train = np.vstack((X_train[:, ind0], X_train[:, ind1])).T
+    clf = RandomForestClassifier(n_estimators = 300, criterion = 'entropy', random_state = 0)
+    clf.fit(new_train, Y_train)
 
-ind0, ind1 = 171, 65
-new_train = np.vstack((X_train[:, ind0], X_train[:, ind1])).T
-new_val = np.vstack((X_val[:, ind0], X_val[:, ind1])).T
-clf = RandomForestClassifier(n_estimators = 300, criterion = 'entropy', random_state = 0)
-clf.fit(new_train, Y_train)
-# Visualising the training set results
-
-X_Set, Y_Set = new_train, Y_train
-X1, X2 = np.meshgrid(np.arange(start = X_Set[:, 0].min() - 1, stop = X_Set[:, 0].max() + 1, step = 0.01), np.arange(start = X_Set[:, 1].min() - 1, stop = X_Set[:, 1].max() + 1, step = 0.01))
-plt.contourf(X1, X2, clf.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape), alpha = 0.25, cmap = ListedColormap(('royalblue', 'violet')))
-plt.xlim(X1.min(), X1.max()),
-plt.ylim(X2.min(), X2.max())
-for i, j in enumerate(np.unique(Y_Set)):
-    plt.scatter(X_Set[Y_Set == j, 0], X_Set[Y_Set == j, 1], c = ListedColormap(('darkblue', 'm'))(i), label = j)
-plt.title('Random Forest Classifier (training set)'),
-plt.xlabel('#1 important feature')
-plt.ylabel('#2 important feature')
-plt.legend(),
-plt.savefig(os.path.join(save_dir, "RF_exaple_train.png"))
-plt.close()
+    # Visualising the training set results
+    X_Set_train, Y_Set_train = new_train, Y_train
+    visualize_top_2_RF(X_Set_train, Y_Set_train, clf, postfix="train", save_dir=save_dir)
 
 
-fig = plt.figure()
-ax = fig.add_subplot(111)
-jet = colors.Colormap('jet')
-cNorm  = colors.Normalize(vmin=0, vmax=287)
-scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=jet)
-lines = []
-for ind, idx in enumerate(import_inds):
-    ax.scatter(import_inds[ind], importance[import_inds[ind]], color=scalarMap.to_rgba(ind))
-plt.savefig(os.path.join(save_dir, "RF_importance.png")),
+    # Visualising the val set results
+    new_val = np.vstack((X_val[:, ind0], X_val[:, ind1])).T
+    X_Set_val, Y_Set_val = new_val, Y_val
+    visualize_top_2_RF(X_Set_val, Y_Set_val, clf, postfix="val", save_dir=save_dir)
 
-# Visualising the val set results
+    # Test SET
+    X_test, Y_test = get_test_data(config)
+    Y_pred = classifier.predict(X_test)
+    cm_test = confusion_matrix(Y_test, Y_pred)
+    plot_confusion_matrix(cm_test, num_classes=2, ifnormalize=False, postfix="test", save_dir=save_dir)
 
-X_Set, Y_Set = new_val, Y_val
-X1, X2 = np.meshgrid(np.arange(start = X_Set[:, 0].min() - 1, stop = X_Set[:, 0].max() + 1, step = 0.01),
-                     np.arange(start = X_Set[:, 1].min() - 1, stop = X_Set[:, 1].max() + 1, step = 0.01))
-plt.contourf(X1, X2, clf.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
-             alpha = 0.20, cmap = ListedColormap(('royalblue', 'violet')))
-plt.xlim(X1.min(), X1.max())
-plt.ylim(X2.min(), X2.max())
-for i, j in enumerate(np.unique(Y_Set)):
-    plt.scatter(X_Set[Y_Set == j, 0], X_Set[Y_Set == j, 1],
-                c = ListedColormap(('darkblue', 'm'))(i), label = j)
-plt.title('Random Forest Classifier (Validation set)')
-plt.xlabel('#1 important feature')
-plt.ylabel('#2 important feature')
-plt.legend()
-plt.savefig(os.path.join(save_dir, "RF_exaple_val.png"))
-plt.close()
-
-
-# Validation SET
-X_test, Y_test = get_test_data(config)
-Y_pred = classifier.predict(X_test)
-cm_test = confusion_matrix(Y_test, Y_pred)
-
-new_test = np.vstack((X_test[:, ind0], X_test[:, ind1])).T
-X_Set, Y_Set = new_test, Y_test
-X1, X2 = np.meshgrid(np.arange(start = X_Set[:, 0].min() - 1, stop = X_Set[:, 0].max() + 1, step = 0.01),
-                     np.arange(start = X_Set[:, 1].min() - 1, stop = X_Set[:, 1].max() + 1, step = 0.01))
-plt.contourf(X1, X2, clf.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
-             alpha = 0.20, cmap = ListedColormap(('royalblue', 'violet')))
-plt.xlim(X1.min(), X1.max())
-plt.ylim(X2.min(), X2.max())
-for i, j in enumerate(np.unique(Y_Set)):
-    plt.scatter(X_Set[Y_Set == j, 0], X_Set[Y_Set == j, 1],
-                c = ListedColormap(('darkblue', 'm'))(i), label = j)
-plt.title('Random Forest Classifier (Test set)')
-plt.xlabel('#1 important feature')
-plt.ylabel('#2 important feature')
-plt.legend()
-plt.savefig(os.path.join(save_dir, "RF_exaple_test.png"))
-plt.close()
-new = np.vstack((Y_test, Y_pred)).T
+    new_test = np.vstack((X_test[:, ind0], X_test[:, ind1])).T
+    X_Set_test, Y_Set_test = new_test, Y_test
+    visualize_top_2_RF(X_Set_test, Y_Set_test, clf, postfix="test", save_dir=save_dir)
+    print("ok")
