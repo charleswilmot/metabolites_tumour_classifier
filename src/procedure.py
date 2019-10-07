@@ -1,5 +1,6 @@
 ## @package procedure
 #  Testing and training procedures.
+import os
 import numpy as np
 import logging as log
 import tensorflow as tf
@@ -14,17 +15,17 @@ logger = log.getLogger("classifier")
 # initializer = tf.glorot_uniform_initializer()
 initializer = tf.keras.initializers.he_normal(seed=845)
 ## Processes the output of compute (cf See also) to calculate the average loss and accuracy
-# @param ret dictionary containing the keys "ncorrect", "loss_sum" and "batch_size"
+# @param ret dictionary containing the keys "num_correct", "loss_sum" and "batch_size"
 # @param N number of examples computed by compute
 # @see compute
 def reduce_mean_loss_accuracy(ret):
     N = sum([b["batch_size"] for b in ret])
     loss = sum([b["loss_sum"] for b in ret]) / N
-    accuracy = sum([b["ncorrect"] for b in ret]) / N
+    accuracy = sum([b["num_correct"] for b in ret]) / N
     return loss, accuracy
 
 ## Processes the output of compute (cf See also) to calculate the sum of confusion matrices
-# @param ret dictionary containing the keys "ncorrect", "loss_sum" and "batch_size"
+# @param ret dictionary containing the keys "num_correct", "loss_sum" and "batch_size"
 # @param N number of examples computed by compute
 # @see compute
 def sum_confusion(ret):
@@ -79,46 +80,40 @@ def compute(sess, fetches, compute_batches=100, lr=0.0005,
     if_check_cam = False
     if "conv" in fetches.keys():
         if_check_cam = True
-        exp_keys = ["labels", "features", "sample_ids"
+        exp_keys = ["labels", "features", "sample_ids",
                     "logits", "conv", "gap_w"]
         if if_get_certain:
-            exp_keys += ["certain_features", "certain_labels_int", "certain_sample_ids",
-                         "certain_pred", "certain_conv"]
+            exp_keys += ["certain_labels", "certain_sample_ids",
+                         "certain_logits", "certain_conv"]
     else:
         exp_keys = ["labels", "features", "sample_ids",
                     "logits"]
         if if_get_certain:
-            exp_keys += ["certain_features", "certain_labels",
-                         "certain_sample_ids", "certain_pred"]
+            exp_keys += ["certain_labels",
+                         "certain_sample_ids", "certain_logits"]
     if if_get_wrong:
-        exp_keys += ["wrong_features", "wrong_labels"]
+        exp_keys += ["wrong_labels", "wrong_sample_ids", "wrong_features"]
+
 
     for key in exp_keys:
         results[key] = []
 
     for i in tqdm(range(compute_batches)):
-        if "train_op" in fetches.keys():
+        if "train_op" in fetches.keys():  # if training
             run_all = sess.run(fetches, feed_dict={fetches["learning_rate_op"]: lr})
-        else:
+        else:  # when testing/validating
             run_all = sess.run(fetches)
 
         for _, key in enumerate(run_all.keys()):
             # Sum over all the sumable variables
             if key in sum_keys:
-                if np.isnan(run_all[key]).any():
-                    print("{}-th batch, {} contains NaN".format(i, key))
-                else:
-                    results[key] = results[key] + run_all[key]
-            # only take the last batch example variables for further plotting
+                results[key] = results[key] + run_all[key]
             elif key in exp_keys:
-                if np.isnan(run_all[key]).any():
-                    print("{}-th batch, {} contains NaN".format(i, key))
-                else:
-                    results[key] = run_all[key]
+                results[key] = run_all[key]  #if np.isnan(run_all[key]).any()
+
         if if_get_wrong:
             results = get_wrong_examples(results)
         if if_get_certain:
-
             results = get_most_cer_uncertain_samples(results, cer_thsh=0.999, if_check_cam=if_check_cam)
     return results
 
@@ -130,22 +125,28 @@ def get_most_cer_uncertain_samples(results, cer_thsh=0.999, if_check_cam=True):
     :param cer_thsh: how many examples to collect
     :return:
     """
-    # labels_int = np.argmax(results["labels"], axis=1)
-    sample_ids = results["certain_sample_ids"]
+    if len(np.array(results["labels"]).shape) > 1:
+        labels_int = np.argmax(results["labels"], axis=1)
+    else:
+        labels_int = results["labels"]
+    sample_ids = results["sample_ids"]
     certain_inds = np.where(np.sum((results["logits"] > cer_thsh), axis=1) == 1)[0].astype(np.int)
-    # data_len = results["features"].shape[-1]
 
     if certain_inds.size != 0:
-        ipdb.set_trace()
-        if len(results["certain_features"]) == 0:
+        if len(results["certain_sample_ids"]) == 0:
             results["certain_sample_ids"] = np.empty(0)
+            results["certain_labels"] = np.empty(0)
+            results["certain_logits"] = np.empty((0, results["logits"].shape[-1]))
             if if_check_cam:
-                results["certain_conv"] = np.empty(results["conv"].shape)
+                shape = [a for a in results["conv"].shape]
+                shape[0] = 0
+                results["certain_conv"] = np.empty(shape)
+        if if_check_cam:
+            results["certain_conv"] = np.vstack((results["certain_conv"], results["conv"][certain_inds]))
 
+        results["certain_labels"] = np.append(results["certain_labels"], labels_int[certain_inds]).astype(np.int)
         results["certain_sample_ids"] = np.append(results["certain_sample_ids"], sample_ids[certain_inds]).astype(np.int)
-        # if if_check_cam:
-        #     results["certain_conv"] = np.vstack(
-        #         (results["certain_conv"], results["conv"][certain_inds]))
+        results["certain_logits"] = np.vstack((results["certain_logits"], results["logits"][certain_inds]))
 
     return results
 
@@ -156,24 +157,28 @@ def get_wrong_examples(results):
     :param results: dict, with keys "wrong_BL", "wrong_EPG"
     :return:
     """
-    labels_int = np.argmax(results["labels"], axis=1)
-    wrong_inds = np.where(labels_int != results["pred_int"])[0]
+    if len(np.array(results["labels"]).shape) > 1:
+        labels_int = np.argmax(results["labels"], axis=1)
+    else:
+        labels_int = results["labels"]
+    sample_ids = results["sample_ids"]
+
+    pred_lbs = np.argmax(results["logits"], axis=1)
+    wrong_inds = np.where(labels_int != pred_lbs)[0]
     if len(results["features"].shape) == 2:
         shape = (0, results["features"].shape[-1])
     elif len(results["features"].shape) == 3:
         shape = (0, results["features"].shape[1], results["features"].shape[-1])
 
     if len(wrong_inds) != 0:
-        if len(results["wrong_features"]) == 0:
-            results["wrong_features"] = np.empty(shape)
+        if len(results["wrong_sample_ids"]) == 0:
+            results["wrong_sample_ids"] = np.empty(0)
             results["wrong_labels"] = np.empty(0)
-            results["wrong_features"] = np.vstack((results["wrong_features"], results["features"][wrong_inds]))
-            results["wrong_labels"] = np.append(results["wrong_labels"], labels_int[wrong_inds]).astype(np.int)
-        else:
-            results["wrong_features"] = np.vstack(
-                (results["wrong_features"], results["features"][wrong_inds]))
-            results["wrong_labels"] = np.append(results["wrong_labels"], labels_int[wrong_inds]).astype(np.int)
+            results["wrong_features"] = np.empty(shape)
 
+        results["wrong_sample_ids"] = np.append(results["wrong_sample_ids"], sample_ids[wrong_inds]).astype(np.int)
+        results["wrong_labels"] = np.append(results["wrong_labels"], labels_int[wrong_inds]).astype(np.int)
+        results["wrong_features"] = np.vstack((results["wrong_features"], results["features"][wrong_inds]))
     return results
 
 
@@ -204,7 +209,7 @@ def initialize(sess, graph, test_only=False):
 
 
 ## Processes the output of compute (cf See also) to calculate the sum of confusion matrices
-# @param ret dictionary containing the keys "ncorrect", "loss_sum" and "batch_size"
+# @param ret dictionary containing the keys "num_correct", "loss_sum" and "batch_size"
 # @param N number of examples computed by compute
 # @see compute
 def get_activity(ret):
@@ -216,7 +221,7 @@ def get_activity(ret):
 
 
 ## Concat data in one training/test set
-# @param ret dictionary containing the keys "ncorrect", "loss_sum" and "batch_size"
+# @param ret dictionary containing the keys "num_correct", "loss_sum" and "batch_size"
 # @param key, the key of the interested data in the dict that you want to extract and concat
 # @return array of con
 def concat_data(ret, key="labels"):
@@ -308,107 +313,131 @@ def get_returns(results, names, train_or_test='test'):
     ret = {}
     for k in names:
         if k == 'accuracy':
-            ret["{}_accuracy".format(train_or_test)] = results["ncorrect"] / results["batch_size"]
+            ret["{}_accuracy".format(train_or_test)] = results["num_correct"] / results["batch_size"]
         elif k == 'loss':
-            ret["{}_loss_sum".format(train_or_test)] = results["loss_sum"] / results["batch_size"]
+            ret["{}_loss".format(train_or_test)] = results["loss"] / results["batch_size"]
         elif k == "batch_size":
-            ret["{}_num_trained"] = results["batch_size"]
+            ret["num_trained"] = results["batch_size"]   # it is only in training
         else:
             ret["{}_".format(train_or_test)+k] = results[k]
     return ret
 ########################################################################
+def training(sess, args, graph, saver):
+    """
+    Complete training procedure
+    :param sess: a tensorflow Session object
+    :param args: the arguments passed to the software
+    :param graph: graph the graph (cf See also)
+    :param saver:
+    :return:
+    """
+    logger.info("Starting training procedure")
+    best_saver = tf.train.Saver(max_to_keep=3)  # keep the top 3 best models
 
-## Testing phase
-# @param sess a tensorflow Session object
-# @param graph the graph (cf See also)
-# @return a dictionary containing the average loss and accuracy on the data
-# @see get_graph
-def testing(sess, graph, compute_batches=100,
-            if_check_cam=False, train_or_test='test'):
-    # return loss / accuracy for the complete set
-    initialize(sess, graph, test_only=True)
-    if if_check_cam:
-        names = ['loss', 'ncorrect', 'confusion',
-                 'batch_size', 'labels', 'ids',
-                 'logits', 'features', 'conv', 'gap_w']
-        fetches = get_fetches(graph, names, train_or_test=train_or_test)
-        results = compute(sess, fetches,
-                          compute_batches=compute_batches,
-                          if_get_wrong=True,
-                          if_get_certain=True)
+    output_data = {}
+    output_data["train_loss"] = []
+    output_data["train_accuracy"] = []
+    output_data["train_confusion"] = 0
+    output_data["test_loss"] = []
+    output_data["test_accuracy"] = []
+    output_data["test_confusion"] = 0
+    output_data["test_logits"] = []
+    output_data["current_step"] = 0
+    end = False
+    best_accuracy = 0
+    epoch = 0
+    num_trained = 0
+    lr = args.learning_rate
 
-        # loss, accuracy = reduce_mean_loss_accuracy(ret)
-        # confusion = sum_confusion(ret)
-        # wrong_features, wrong_labels = get_wrong_examples(ret)
-        # activity = get_activity(ret)
-        # test_labels = concat_data(ret, key="test_labels")
-        # test_ids = concat_data(ret, key="test_ids")
-        # test_pred = concat_data(ret, key="test_out")
-        # test_features = concat_data(ret, key="test_features")
-        # certain_features = concat_data(ret, key="certain_features")
-        # certain_labels = concat_data(ret, key="certain_labels")
-        # certain_pred = concat_data(ret, key="certain_pred")
-        return_names = ["accuracy", "loss", "confusion",
-                        "labels", "ids", "features", "sample_ids", "logits",
-                        "wrong_features", "wrong_labels",
-                        "conv", "gap_w",
-                        "certain_features", "certain_labels_int", "certain_pred",
-                        "certain_conv", "certain_sample_ids"]
-        ret = get_returns(results, return_names, train_or_test=train_or_test)
-    else:
-        names = ['loss', 'ncorrect', 'confusion',
-                 'batch_size', 'labels', 'ids',
-                 'logits', 'features']
-        fetches = get_fetches(graph, names, train_or_test=train_or_test)
-        results = compute(sess, fetches,
-                          compute_batches=compute_batches,
-                          if_get_wrong=True,
-                          if_get_certain=True)
-        return_names = ["accuracy", "loss", "confusion",
-                        "labels", "ids", "features", "sample_ids", "logits",
-                        "wrong_features", "wrong_labels",
-                        "certain_features", "certain_labels_int",
-                         "certain_pred", "certain_sample_ids"]
+    # while condition(end, output_data, epoch, args.number_of_epochs):
+    for epoch in range(args.number_of_epochs):
+        # train phase
+        if len(output_data[
+                   "test_accuracy"]) > 4:  # if the test_acc keeps dropping for 3 steps, reduce the learning rate
+            lr = reduce_lr_on_plateu(
+                lr,
+                np.array(output_data["test_accuracy"][-3 - 1:]),
+                factor=0.5, patience=3,
+                epsilon=1e-04, min_lr=10e-8)
 
-        ret = get_returns(results, return_names, train_or_test=train_or_test)
+        if epoch > 20 and epoch % 20 == 0:
+            print("Epoch: ", epoch)
+        ret_train = train_phase(sess, graph, args.test_every,
+                                epoch, lr=lr, if_get_wrong=False,
+                                if_get_certain=True)
+        if len(ret_train["train_certain_sample_ids"]) > 0:
+            certain_data = np.concatenate((ret_train["train_certain_sample_ids"].reshape(-1, 1), ret_train["train_certain_labels"].reshape(-1, 1), ret_train["train_certain_logits"]), axis=1)
+            np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}.csv".format("train", epoch)),
+                       certain_data, header="sample_ids,labels"+",logits" * args.num_classes, delimiter=",")
 
-    return ret
-
-    # if "CAM" in model_name:
-    #     test_conv = concat_data(ret, key="test_conv")
-    #     test_gap_w = ret[0]["test_gap_w"]
-    #     return {"test_accuracy": accuracy,
-    #             "test_loss": loss,
-    #             "test_confusion": confusion,
-    #             "test_wrong_features": wrong_features,
-    #             "test_wrong_labels": wrong_labels,
-    #             "test_labels": test_labels,
-    #             "test_ids": test_ids,
-    #             "test_features": test_features,
-    #             "test_conv": test_conv,
-    #             "test_gap_w": test_gap_w,
-    #             "test_pred": test_pred,
-    #             "test_pred": test_pred,
-    #             "test_pred": test_pred,
-    #             "certain_features":ghfdgh,
-    #             "certain_labels":fhgfhd,
-    #             "certain_pred":jk,
-    #             }
-    # else:
-    #     return {"test_accuracy": accuracy,
-    #             "test_loss": loss,
-    #             "test_confusion": confusion,
-    #             "test_wrong_features": wrong_features,
-    #             "test_wrong_labels": wrong_labels,
-    #             "test_labels": test_labels,
-    #             "test_ids": test_ids,
-    #             "test_features": test_features,
-    #             "test_pred": test_pred}
+        if ret_train is not None:
+            output_data["train_loss"].append(ret_train["train_loss"])
+            output_data["train_accuracy"].append(ret_train["train_accuracy"])
+        else:
+            end = True
+        num_trained += ret_train["num_trained"]
 
 
-test_phase = testing
-##
-#
+        # test phase
+        if_check_cam = True if "CAM" in args.model_name else False
+        ret_test = test_phase(sess, graph,
+                              if_check_cam=if_check_cam,
+                              compute_batches=graph["test_num_batches"],
+                              train_or_test="test")
+        if len(ret_test["test_certain_labels"]) > 0:
+            certain_data = np.concatenate((ret_test["test_certain_sample_ids"].reshape(-1, 1),
+                                           ret_test["test_certain_labels"].reshape(-1, 1),
+                                           ret_test["test_certain_logits"]), axis=1)
+            np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}.csv".format("test", epoch)),
+                       certain_data, header="sample_ids,labels" + ",logits" * args.num_classes, delimiter=",")
+
+        epoch = num_trained * 1.0 / graph["train_num_samples"]
+
+        output_data["test_loss"].append(ret_test["test_loss"])
+        output_data["test_accuracy"].append(ret_test["test_accuracy"])
+        output_data["test_confusion"] = ret_test["test_confusion"]
+        output_data["test_wrong_features"] = ret_test["test_wrong_features"]
+        output_data["test_wrong_labels"] = ret_test["test_wrong_labels"]
+        # output_data["test_activity"] = ret["test_activity"]
+        output_data["test_labels"] = ret_test["test_labels"]  # collect all prediction
+        output_data["test_logits"] = ret_test["test_logits"]
+        output_data["test_ids"] = ret_test["test_ids"]
+        # output_data["test_conv"] = ret["test_conv"]
+        output_data["current_step"] += 1
+        # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch
+        logger.debug("Epoch {}, Testing phase done\t({})".format(epoch, ret_test["test_accuracy"]))
+
+        # save model
+        if output_data["test_accuracy"][-1] > best_accuracy:
+            print(
+                "Epoch {:0.1f} Best test accuracy {}, "
+                "test AUC {}\n Test Confusion:\n{}\n, "
+                "saved_dir: {}".format(epoch,
+                                       output_data["test_accuracy"][-1],
+                                       metrics.roc_auc_score(ret_test["test_labels"],ret_test[ "test_logits"]),
+                                       ret_test["test_confusion"],
+                                       args.output_path))
+            best_accuracy = output_data["test_accuracy"][-1]
+            save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]),
+                          name=np.str("{:.4f}".format(best_accuracy)))
+            save_plots(sess, args, output_data, training=True, epoch=epoch)
+
+            if "CAM" in args.model_name:
+                class_maps, rand_inds = plot.get_class_map(ret_test["test_labels"],
+                                                           ret_test["test_conv"],
+                                                           ret_test["test_gap_w"],
+                                                           args.data_len, 1, number2use=200)
+                plot.plot_class_activation_map(sess, class_maps,
+                                               ret_test["test_features"][rand_inds],
+                                               ret_test["test_labels"][rand_inds],
+                                               ret_test["test_logits"][rand_inds],
+                                               epoch, args)
+
+    logger.info("Training procedure done")
+    save_plots(sess, args, output_data, training=True, epoch=epoch)
+    return output_data
+
+
 def train_phase(sess, graph, nbatches, epoch, lr=0.001,
                 if_get_wrong=False, if_get_certain=False,
                 train_or_test="train"): # change
@@ -424,21 +453,70 @@ def train_phase(sess, graph, nbatches, epoch, lr=0.001,
     :param train_or_test:
     :return:
     """
-    names = ['loss', 'ncorrect', 'confusion',
+    names = ['loss', 'num_correct', 'confusion', 'labels',
              'batch_size', 'train_op', 'logits',
-             'learning_rate_op']
+             'learning_rate_op', "sample_ids"]
     fetches = get_fetches(graph, names, train_or_test=train_or_test)
 
     ret = compute(sess, fetches, compute_batches=nbatches, lr=lr,
             if_get_wrong=if_get_wrong, if_get_certain=if_get_certain)
 
-    # loss, accuracy = reduce_mean_loss_accuracy(ret)
-    # confusion = sum_confusion(ret)
-    # num_trained = sum([b["batch_size"] for b in ret])
-    return_names = ["accuracy", "loss", "confusion", "batch_size"]
+    return_names = ["accuracy", "loss", "confusion", "batch_size",
+                    "certain_labels", "certain_logits", "certain_sample_ids"]
 
-    return get_returns(results, return_names, train_or_test=train_or_test)
+    return get_returns(ret, return_names, train_or_test=train_or_test)
 
+
+def testing(sess, graph, compute_batches=100,
+            if_check_cam=False, train_or_test='test'):
+    """
+    Testing phase
+    :param sess:
+    :param graph:
+    :param compute_batches:
+    :param if_check_cam:
+    :param train_or_test:
+    :return:
+    """
+    # return loss / accuracy for the complete set
+    initialize(sess, graph, test_only=True)
+    if if_check_cam:
+        names = ['loss', 'num_correct', 'confusion',
+                 'batch_size', 'labels', 'ids', 'sample_ids',
+                 'logits', 'features', 'conv', 'gap_w']
+        fetches = get_fetches(graph, names, train_or_test=train_or_test)
+
+        results = compute(sess, fetches,
+                          compute_batches=compute_batches,
+                          if_get_wrong=True,
+                          if_get_certain=True)
+
+        return_names = ["accuracy", "loss", "confusion",
+                        "labels", "ids", "features", "sample_ids", "logits",
+                        "wrong_features", "wrong_labels",
+                        "conv", "gap_w", "certain_labels", "certain_logits",
+                        "certain_conv", "certain_sample_ids"]
+        ret = get_returns(results, return_names, train_or_test=train_or_test)
+    else:
+        names = ['loss', 'num_correct', 'confusion',
+                 'batch_size', 'labels', 'ids',
+                 'logits', 'features', "sample_ids"]
+        fetches = get_fetches(graph, names, train_or_test=train_or_test)
+        results = compute(sess, fetches,
+                          compute_batches=compute_batches,
+                          if_get_wrong=True,
+                          if_get_certain=True)
+        return_names = ["accuracy", "loss", "confusion",
+                        "labels", "ids", "features", "sample_ids", "logits",
+                        "wrong_labels", "wrong_sample_ids", "wrong_features",
+                        "certain_labels", "certain_logits", "certain_sample_ids"]
+
+        ret = get_returns(results, return_names, train_or_test=train_or_test)
+
+    return ret
+
+
+test_phase = testing
 
 
 ## Termination contition of the training
@@ -466,103 +544,6 @@ def condition(end, output_data, epoch, number_of_epochs):
         return not c
 
 
-## Complete training procedure
-#
-# The training procedure uses the training and testing data to completely
-# train the network, until a termination condition is fulfilled.
-# It alternates between training phases and testing phases. The frequency at
-# which these phases alternates is determined by the option
-# --train-test-compute-time-ratio.
-#
-# @param sess a tensorflow Session object
-# @param args the arguments passed to the software
-# @param graph the graph (cf See also)
-# @param input_data training and testing data
-# @return output_data the loss and accuracy of training and testing
-def training(sess, args, graph, saver):
-    logger.info("Starting training procedure")
-    best_saver = tf.train.Saver(max_to_keep=3)   # keep the top 3 best models
-
-    output_data = {}
-    output_data["train_loss"] = []
-    output_data["train_accuracy"] = []
-    output_data["train_confusion"] = 0
-    output_data["test_loss"] = []
-    output_data["test_accuracy"] = []
-    output_data["test_confusion"] = 0
-    output_data["test_pred"] = []
-    output_data["current_step"] = 0
-    end = False
-    best_accuracy = 0
-    epoch = 0
-    num_trained = 0
-    lr = args.learning_rate
-
-    # while condition(end, output_data, epoch, args.number_of_epochs):
-    for epoch in range(args.number_of_epochs):
-        # train phase
-        if len(output_data["test_accuracy"]) > 4:  # if the test_acc keeps dropping for 3 steps, reduce the learning rate
-            lr = reduce_lr_on_plateu(
-                lr,
-                np.array(output_data["test_accuracy"][-3-1:]),
-                factor=0.5, patience=3,
-                epsilon=1e-04, min_lr=10e-8)
-
-        if epoch > 20 and epoch % 20 == 0:
-            print("Epoch: ", epoch)
-        ret_train = train_phase(sess, graph, args.test_every,
-                                epoch, lr=lr, if_get_wrong=False,
-                                if_get_certain=True)
-
-        if ret_train is not None:
-            output_data["train_loss"].append(ret_train["loss"])
-            output_data["train_accuracy"].append(ret_train["accuracy"])
-        else:
-            end = True
-        num_trained += ret_train["num_trained"]
-        epoch = num_trained * 1.0 / graph["train_num_samples"]
-        logger.debug("Epoch: {:.2f}, Training phase done".format(epoch))
-        
-        # test phase
-        if_check_cam = True if "CAM" in args.model_name else False
-        ret_test = test_phase(sess, graph,
-                              if_check_cam=if_check_cam,
-                              compute_batches=graph["test_num_batches"],
-                              train_or_test="test")
-        output_data["test_loss"].append(ret_test["test_loss"])
-        output_data["test_accuracy"].append(ret_test["test_accuracy"])
-        output_data["test_confusion"] = ret_test["test_confusion"]
-        output_data["test_wrong_features"] = ret_test["test_wrong_features"]
-        output_data["test_wrong_labels"] = ret_test["test_wrong_labels"]
-        # output_data["test_activity"] = ret["test_activity"]
-        output_data["test_labels"] = ret_test["test_labels"]  # collect all prediction
-        output_data["test_pred"] = ret_test["test_pred"]
-        output_data["test_ids"] = ret_test["test_ids"]
-        # output_data["test_conv"] = ret["test_conv"]
-        output_data["current_step"] += 1
-        # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch
-        logger.debug("Epoch {}, Testing phase done\t({})".format(epoch, ret_test["test_accuracy"]))
-
-        # save model
-        if output_data["test_accuracy"][-1] > best_accuracy:
-            print("Epoch {:0.1f} Best test accuracy {}, test AUC {}\n Test Confusion:\n{}\n, saved_dir: {}".format(epoch, output_data["test_accuracy"][-1], metrics.roc_auc_score(ret_test["test_labels"], ret_test["test_pred"]), ret_test["test_confusion"], args.output_path))
-            best_accuracy = output_data["test_accuracy"][-1]
-            save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]), name=np.str("{:.4f}".format(best_accuracy)))
-            save_plots(sess, args, output_data, training=True, epoch=epoch)
-            if "CAM" in args.model_name:
-                class_maps, rand_inds = plot.get_class_map(ret_test["test_labels"],
-                                                ret_test["test_conv"],
-                                                ret_test["test_gap_w"],
-                                                args.data_len, 1, number2use = 200)
-                plot.plot_class_activation_map(sess, class_maps,
-                                               ret_test["test_features"][rand_inds],
-                                               ret_test["test_labels"][rand_inds],
-                                               ret_test["test_pred"][rand_inds],
-                                               epoch, args)
-
-    logger.info("Training procedure done")
-    save_plots(sess, args, output_data, training=True, epoch=epoch)
-    return output_data
 
 
 ## Dispatches the call between test and train

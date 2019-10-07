@@ -70,7 +70,7 @@ def loss_figure(args, data, training=False):
 def accuracy_figure(args, data, training=False, epoch=0):
     f = plt.figure()
     ax = f.add_subplot(111)
-    auc = metrics.roc_auc_score(data["test_labels"], data["test_pred"])
+    auc = metrics.roc_auc_score(data["test_labels"], data["test_logits"])
     max_acc = accuracy_plot(ax, data, training=training)
 
     f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}.png'.format(epoch, max_acc, auc, args.data_source))
@@ -86,15 +86,15 @@ def plot_auc_curve(args, data, epoch=0):
     :return:
     """
     f = plt.figure()
-    fpr, tpr, _ = metrics.roc_curve(np.argmax(data["test_labels"], 1), data["test_pred"][:, 1])  # input the positive label's prob distribution
-    auc = metrics.roc_auc_score(data["test_labels"], data["test_pred"])
+    fpr, tpr, _ = metrics.roc_curve(np.argmax(data["test_labels"], 1), data["test_logits"][:, 1])  # input the positive label's prob distribution
+    auc = metrics.roc_auc_score(data["test_labels"], data["test_logits"])
     plt.plot(fpr, tpr, label="auc={0:.4f}".format(auc))
     plt.legend(loc=4)
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
     f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.png'.format(epoch, auc, args.data_source))
     np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.csv'.format(epoch, auc, args.data_source),
-               np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_pred"][:, 1].reshape(-1,1))), fmt="%.8f", delimiter=',', header="labels,pred[:,1]")
+               np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_logits"][:, 1].reshape(-1,1))), fmt="%.8f", delimiter=',', header="labels,pred[:,1]")
     plt.close()
 
 def accuracy_loss_figure(args, data, training=False, epoch=0):
@@ -114,7 +114,9 @@ def accuracy_loss_figure(args, data, training=False, epoch=0):
 
 def all_figures(sess, args, data, training=False, epoch=0):
     # print("labels: ", np.argmax(data["test_labels"], axis=1))
-    print("accuracy: ", data["test_accuracy"], "auc: ", metrics.roc_auc_score(np.argmax(data["test_labels"], axis=1), data["test_pred"][:, 1]))
+
+    print("accuracy: ", data["test_accuracy"],
+          "auc: ", metrics.roc_auc_score(np.argmax(data["test_labels"], axis=1), data["test_logits"][:, 1]))
     accuracy_figure(args, data, training=training, epoch=epoch)
     # accuracy_loss_figure(args, data, training=training, epoch=epoch)
     # plot_confusion_matrix(args, data, ifnormalize=True, training=training)
@@ -125,7 +127,7 @@ def all_figures(sess, args, data, training=False, epoch=0):
         if 'CAM' in args.model_name:
             class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.height, 1, number2use=1000)
 
-            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], data["test_pred"][rand_inds], epoch, args)
+            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], data["test_logits"][rand_inds], epoch, args)
         plot_wrong_examples(args, data, training=training)
         # plot_prob_distr_on_ids(data, args.output_path)
 
@@ -174,9 +176,9 @@ def plot_wrong_examples(args, data, training=False):
     :param data: dict,
     :return:
     """
-    labels = np.argmax(data["test_wrong_labels"], axis=1)
+    labels = data["test_wrong_labels"]
     colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
-    num_classes = data["test_wrong_labels"].shape[-1]
+    num_classes = args.num_classes
     f, axs = plt.subplots(num_classes, 1, 'col')
     plt.suptitle("Mistakes", x=0.5, y=0.925, fontsize=base)
     for i in range(num_classes):
@@ -191,6 +193,7 @@ def plot_wrong_examples(args, data, training=False):
         f.savefig(args.output_path + '/wrong_examples/{}-class_wrong_examples_{}.png'.format(num_classes, data["current_step"]))
     else:
         f.savefig(args.output_path + '/wrong_examples/{}-class_wrong_examples_{}.png'.format(num_classes, "VALID"))
+
     plt.close()
     logger.info("Mistakes plot saved")
 
@@ -460,8 +463,8 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
     :param test_data:
     :return:
     """
-    predictions = test_data["test_pred"]
-    pred_int = np.argmax(test_data["test_pred"], axis=1)
+    predictions = test_data["test_logits"]
+    pred_int = np.argmax(test_data["test_logits"], axis=1)
     ids = test_data["test_ids"]
     labels_int = np.argmax(test_data["test_labels"], axis=1)
     count = dict(Counter(list(ids)))  # c

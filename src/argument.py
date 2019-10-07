@@ -287,7 +287,7 @@ params.test_or_train = args.test_or_train
 params.resume_training = (args.restore_from != None)
 
 # Make the output directory
-dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples"])
+dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
 
 
 # Verbosity level:

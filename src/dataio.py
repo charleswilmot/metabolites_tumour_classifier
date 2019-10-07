@@ -202,7 +202,7 @@ def get_data(args):
     assert np.sum(Y_test.astype(np.int32) == X_test[:, 2].astype(np.int32)) == len(
         X_test), "train_test_split messed up the data!"
     test_data["ids"] = X_test[:, 1].astype(np.int32)
-    test_data["sample_ids"] = X_test[:, 2].astype(np.int32)
+    test_data["sample_ids"] = X_test[:, 0].astype(np.int32)
     test_data["num_samples"] = len(test_data["labels"])
     print("num_samples: ", test_data["num_samples"])
     #
@@ -215,8 +215,7 @@ def get_data(args):
 
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
-        # # train_data = augment_data(train_data, args)
-        # args.num_train = int(((100 - args.test_ratio) * train_data["spectra"].shape[0]) // 100)
+        # train_data = augment_data(train_data, args)
         # args.num_train = train_data["spectra"].shape[0]
         # print("After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]), "num of train class 1: ",
         #       len(np.where(train_data["labels"] == 1)[0]))
@@ -392,7 +391,7 @@ def get_data_tensors(args):
         batch_train = iter_train.get_next()
         data["train_features"] = batch_train[0]
         data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
-        data["train_sample_ids"] = batch_train[2]
+        data["train_sample_ids"] = batch_train[2]  # in training, we don't consider patient-ids
         data["train_initializer"] = iter_train.initializer
         data["train_num_samples"] = train_data["num_samples"]
         data["train_batches"] = train_data["num_samples"] // args.batch_size

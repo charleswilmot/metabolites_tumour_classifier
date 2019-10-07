@@ -5,7 +5,7 @@
             "exp_config": "./exp_parameters.json",
             "model_config": "./model_parameters.json",
             "num_classes": 2,
-            "batch_size": 64,
+            "batch_size": 32,
             "test_bs": 128,
             "seed": 2594,
 
@@ -19,7 +19,7 @@
             "model_save_dir": null,
             "restore_from": null,
 
-            "model_name": "Inception",
+            "model_name": "Res_ECG_CAM",
             "optimizer_type": "adam",
             "loss_type": "softmax_ce",
             "learning_rate": 0.001,

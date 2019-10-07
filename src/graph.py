@@ -896,7 +896,7 @@ def get_graph(args, data_tensors):
     graph["test_batch_size"] = tf.shape(graph["test_logits"])[0]
     graph["test_num_batches"] = graph["test_num_samples"] // args.test_bs
     graph["test_loss"] = get_loss_sum(args, graph["test_logits"], data_tensors["test_labels"])
-    graph["test_ncorrect"], graph["test_wrong_inds"] = get_ncorrect(graph["test_logits"], data_tensors["test_labels"])
+    graph["test_num_correct"], graph["test_wrong_inds"] = get_ncorrect(graph["test_logits"], data_tensors["test_labels"])
     graph["test_confusion"] = get_confusion_matrix(graph["test_logits"], data_tensors["test_labels"], args.num_classes)
     graph["test_auc"] = get_roc_curve(graph["test_logits"], data_tensors["test_labels"], args.num_classes)
     if args.test_or_train == "train":
@@ -905,7 +905,7 @@ def get_graph(args, data_tensors):
         graph["train_labels"] = data_tensors["train_labels"]
         graph["train_batch_size"] = tf.shape(graph["train_logits"])[0]
         graph["train_loss"] = get_loss_sum(args, graph["train_logits"], data_tensors["train_labels"])
-        graph["train_ncorrect"], graph["train_wrong_inds"] = get_ncorrect(graph["train_logits"], data_tensors["train_labels"])
+        graph["train_num_correct"], graph["train_wrong_inds"] = get_ncorrect(graph["train_logits"], data_tensors["train_labels"])
         graph["train_confusion"] = get_confusion_matrix(graph["train_logits"], data_tensors["train_labels"], args.num_classes)
         graph["train_learning_rate_op"] = tf.placeholder(tf.float32, [], name='learning_rate')
         # graph["train_op"] = tf.train.AdamOptimizer(learning_rate=graph["learning_rate_op"]).minimize(graph["train_loss"])
