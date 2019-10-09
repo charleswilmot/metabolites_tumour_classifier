@@ -100,11 +100,13 @@ def plot_auc_curve(labels_hot, pred, epoch=0, save_dir='./results'):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "average_models"
+plot_name = "indi_rating_with_model"
 
 if plot_name == "indi_rating_with_model":
     data_dir = "../data/20190325"
-    model_results = "../results/2019-07-02T14-05-36-data-20190325-3class_lout40_val_data5-2class_human_performance844_with_labels-class-2-Res_ECG_CAM-test/AUC_curve_step_0.00-auc_0.7257-labels.csv"
+
+    model_results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-09T12-55-23-data-lout40-datas-1d-class2-Res_ECG_CAM-0.766certainEp3-aug_ops_meanx10-0.3-test-auc0.828/AUCs/AUC_curve_step_0.00-auc_0.8282-lout40-datas.csv"
+
     human_indi_rating = "../data/20190325/lout40-data5-doctor_ratings_individual.mat"
     # Get individual rater's prediction
     true_indi_lbs = {}
@@ -157,24 +159,29 @@ if plot_name == "indi_rating_with_model":
     plt.plot(np.mean(np.array(mean_fpr)[:, 1]), np.mean(np.array(mean_tpr)[:, 1]), color="m", marker="d", markersize=6, label='human average AUC:  {:.3f}'.format(np.mean(np.array(mean_score))))
     plt.plot(base_fpr, mean_model_tpr, color="royalblue", linewidth=3.0, label='model average AUC:  {:.3f}'.format(mean_model_score))
 
-    plt.title("ROC", fontsize=20)
+    plt.title("Receiver Operating Characteristic", fontsize=20)
     plt.xlim([-0.02, 1.02])
     plt.ylim([-0.02, 1.02])
     plt.legend(loc=4)
     plt.ylabel('true positive rate', fontsize=18)
     plt.xlabel('false positive rate', fontsize=18)
-    plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual.png"), format='png')
-    plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual.pdf"), format='pdf')
+    plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual_on_certain.png"), format='png')
+    plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual_on_certain.pdf"), format='pdf')
     plt.close()
 
 elif plot_name == "human_whole_with_model":
     data_dir = "../data/20190325"
     human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
+    original = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
+    ori = scipy.io.loadmat(original)["DATA"]
+    true_label = ori[:, 1]
+
     # Get model's prediction
+    model_results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/saved_certain/2019-10-08T14-53-42-data-lout40-data5-1d-class2-Res_ECG_CAM-certainEp3-aug_ops_meanx10-0.3-test-auc0.858/AUCs/AUC_curve_step_0.00-auc_0.8582-lout40-data5.csv"
     model_auc = pd.read_csv(model_results, header=0).values
     label = model_auc[:, 0].astype(np.int)
     pred_logits = model_auc[:, 1]
-    pred_lb = np.argmax(pred_logits, axis=0)
+    # pred_lb = np.argmax(pred_logits, axis=0)
 
     # Get human's total labels
     hum_whole = scipy.io.loadmat(human_rating)["data_ratings"]
@@ -192,7 +199,7 @@ elif plot_name == "human_whole_with_model":
     score = metrics.roc_auc_score(label, pred_logits)
     plt.plot(fpr, tpr, 'royalblue', linewidth=2, label='model AUC: {:.3f}'.format(score))
 
-    plt.title("ROC", fontsize=20)
+    plt.title("Receiver Operating Characteristic", fontsize=20)
     plt.xlim([-0.02, 1.02])
     plt.ylim([-0.02, 1.02])
     plt.legend(loc=4)
@@ -246,6 +253,9 @@ elif plot_name == "average_models":
         else:
             agg_pred += values[:, 1]
     print("ok")
+elif plot_name == "certain":
+    fn = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/saved_certain/2019-10-07T17-02-18-data-20190325-3class_lout40_train_test_data5-1d-class-2-Res_ECG_CAM-relu-aug_ops_meanx5-0.7-train--auc0.715/certains/certain_data_train_epoch_0_num660.csv"
+
 
 
 

@@ -866,9 +866,6 @@ def load_and_test(data_dir, pkl_dir="/results"):
     plt.savefig(save_dir + '/tsne_spec_2d.png', format="png"),
     plt.close()
 
-
-
-
     predictions, crosstabs, _ = \
         evaluate_clusters(spec,
                           lbs,
@@ -920,22 +917,71 @@ def load_and_test(data_dir, pkl_dir="/results"):
 
 
 def load_data(data_dir, num_classes=2):
-	mat = scipyio.loadmat(data_dir)["DATA"]
-	spectra = mat[:, 2:]
-	labels = mat[:, 1]
-	ids = mat[:, 0]
-	spectra = zscore(spectra, axis=1)
-	## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
-	if num_classes - 1 < np.max(labels):
-		need_inds = np.empty((0))
-		for class_id in range(num_classes):
-			need_inds = np.append(need_inds, np.where(labels == class_id)[0])
-		need_inds = need_inds.astype(np.int32)
-		spectra = spectra[need_inds]
-		labels = labels[need_inds]
-		ids = ids[need_inds]
+    """
 
-	return spectra, labels, ids
+    :param data_dir:
+    :param num_classes:
+    :return:
+    """
+    mat = scipyio.loadmat(data_dir)["DATA"]
+    spectra = mat[:, 2:]
+    labels = mat[:, 1]
+    ids = mat[:, 0]
+    sample_ids = np.arange(len(mat))
+    spectra = zscore(spectra, axis=1)
+    ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
+    if num_classes - 1 < np.max(labels):
+        need_inds = np.empty((0))
+        for class_id in range(num_classes):
+            need_inds = np.append(need_inds, np.where(labels == class_id)[0])
+        need_inds = need_inds.astype(np.int32)
+        spectra = spectra[need_inds]
+        labels = labels[need_inds]
+        ids = ids[need_inds]
+
+    return spectra, labels, ids
+
+
+def plot_from_certain_ids(data_dir, fn):
+    """
+    from the sample_ids provided by fn, plot the mean of the samples
+    :param fn:
+    :param lbs:
+    :param spec:
+    :return:
+    """
+    mat = scipyio.loadmat(data_dir)["DATA"]
+    spec = mat[:, 2:]
+    lbs = mat[:, 1]
+    ids = mat[:, 0]
+
+    data = pd.read_csv(fn, header=0).values
+    data_ids = data[:, 0].astype(np.int)
+    certain_data = spec[data_ids]
+    certain_lb = lbs[data_ids]
+    epoch = os.path.basename(fn).split("_")[-2]
+    ind0 = np.where(certain_lb == 0)[0]
+    ind1 = np.where(certain_lb == 1)[0]
+    assert (certain_lb == lbs[data_ids]).all(), "labels do not match!"
+    spec0 = certain_data[ind0]
+    spec1 = certain_data[ind1]
+    mean0 = np.mean(spec0, axis=0)
+    std0 = np.std(spec0, axis=0)
+    mean1 = np.mean(spec1, axis=0)
+    std1 = np.std(spec1, axis=0)
+    fig, axs = plt.subplots(2, 1, 'col', figsize=[12, 10])
+    axs[0].plot(spec0.T, 'lightskyblue', alpha=0.5)
+    axs[0].plot(spec0[0], 'lightskyblue', alpha=0.5, label="individual healthy samples")
+    axs[0].plot(mean0, 'royalblue', linewidth=2.0, label="mean of healthy samples")
+    axs[1].plot(spec1.T, 'violet', alpha=0.5)
+    axs[1].plot(spec1[0], 'violet', alpha=0.5, label="individual tumor samples")
+    axs[1].plot(mean1, 'magenta', linewidth=2.0, label="mean of tumor samples")
+    axs[0].legend()
+    axs[1].legend()
+    plt.xlabel("metabolite indices"),
+    plt.ylabel("normalized amplitude"),
+    plt.savefig(fn[0:-4] + ".png", format="png"),
+    plt.close()
 
 
 def cluster_spectra(data_dir):
@@ -945,6 +991,11 @@ def cluster_spectra(data_dir):
     :param nonoverlap:
     :return:
     """
+    fn = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/saved_certain/2019-10-07T17-02-18-data-20190325-3class_lout40_train_test_data5-1d-class-2-Res_ECG_CAM-relu-aug_ops_meanx5-0.7-train--auc0.715/certains/certain_data_train_epoch_20_num4407.csv"
+
+    plot_from_certain_ids(data_dir, fn)
+
+
     spec, lbs, ids = load_data(data_dir, num_classes=2)
     data_mode = 'spec'
     postfix = 'lout40-5'
@@ -953,15 +1004,21 @@ def cluster_spectra(data_dir):
     # Get data
     print("Got all data", spec.shape, 'label shape:', lbs.shape, '\n save_foler: ', root_folder)
 
+
+
     train_clustering(spec, lbs,
                      start=7, end=8, seed=589,
                      save_folder=root_folder,
                      if_sort_clusters=False)
     print("clustering is Done!")
 
+
+
+
+
 #######################################################################################
 if __name__ == "__main__":
-    process = "test"
+    process = "train"
 
     if process == "train":
         data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"

@@ -266,7 +266,8 @@ params.update(json_path, mode=args.test_or_train)
 
 # load model specific parameters
 json_path = args.model_config
-assert os.path.isfile(json_path), "No json file found at {}, run build_vocab.py".format(json_path)
+assert os.path.isfile(json_path), "No json file found at {}".format(json_path)
+
 params.update(json_path, mode=params.model_name) # update params with the model configuration
 
 # specify some params
@@ -278,14 +279,17 @@ if params.data_shape == "2d":
 else:
     params.width = 1
     params.height = params.data_len
+params.data_source = "lout40-data" + os.path.basename(params.input_data)[-5]
 params.output_path = os.path.join(params.output_path,
-                                time_str + "data-{}-{}-class-{}-{}-{}-aug_{}x{}-{}-{}".format(os.path.basename(params.input_data[0:-4]), params.data_shape, params.num_classes, params.model_name, params.postfix, params.aug_method, params.aug_folds, params.aug_scale, args.test_or_train))
+                                time_str + "data-{}-{}-class{}-{}-{}-aug_{}x{}-{}-{}".format(params.data_source, params.data_shape, params.num_classes, params.model_name, params.postfix, params.aug_method, params.aug_folds, params.aug_scale, args.test_or_train))
 params.model_save_dir = os.path.join(params.output_path, "network")
 params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from
 params.test_or_train = args.test_or_train
 params.resume_training = (args.restore_from != None)
 
+if params.test_or_train == "test":
+    params.if_from_certain = False
 # Make the output directory
 dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
 

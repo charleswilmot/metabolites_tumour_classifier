@@ -41,8 +41,8 @@
                     "filter_size": 144,
                     "fc": [500],
                     "bn": true,
-                    "drop_cnn": 0.8,
-                    "drop_fnn": 0.8
+                    "drop_cnn": 0.55,
+                    "drop_fnn": 0.55
                 },
                 "Inception": {
                     "model_name": "Inception",

@@ -17,6 +17,9 @@ import ipdb
 from plot import plot_aug_examples
 logger = log.getLogger("classifier")
 from sklearn.model_selection import train_test_split
+import pandas as pd
+
+
 
 def get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=0, fold=0):
     """
@@ -186,16 +189,16 @@ def get_data(args):
             sub_inds = np.append(sub_inds, np.where(labels==class_id)[0])
         sub_inds = sub_inds.astype(np.int32)
         sub_mat = new_mat[sub_inds]
+    else:
+        sub_mat = new_mat
 
-    if args.test_or_train == 'train':
-        temp_rand = np.arange(len(sub_inds))
-        np.random.shuffle(temp_rand)
-        mat_shuffle = sub_mat[temp_rand]
-    elif args.test_or_train == 'test':   # In test, don't shuffle
-        mat_shuffle = sub_mat
-        print("data labels: ", mat_shuffle[:, 2])
+    np.random.shuffle(sub_mat)
+    print("data labels: ", sub_mat[:, 2])
 
-    X_train, X_test, Y_train, Y_test = train_test_split(mat_shuffle, mat_shuffle[:, 2], test_size=args.test_ratio/100.)
+    if args.test_ratio == 100:
+        X_train, X_test, Y_train, Y_test = [], sub_mat, [], sub_mat[:, 2]
+    else:
+        X_train, X_test, Y_train, Y_test = train_test_split(sub_mat, sub_mat[:, 2], test_size=args.test_ratio/100.)
 
     test_data["spectra"] = zscore(X_test[:, 3:], axis=1).astype(np.float32)
     test_data["labels"] = Y_test.astype(np.int32)
@@ -237,6 +240,84 @@ def get_data(args):
     return train_data, test_data
 
 
+def get_data_from_certain_ids(args, certain_fns=["f1", "f2"]):
+    """
+    Load data from previous certain examples
+    :param args:
+    :param certain_fns: list of filenames, from train and validation
+    :return:
+    """
+    mat = scipy.io.loadmat(args.input_data)["DATA"]
+    labels = mat[:, 1]
+
+    new_mat = np.zeros((mat.shape[0], mat.shape[1] + 1))
+    new_mat[:, 0] = np.arange(mat.shape[0])   # tag every sample
+    new_mat[:, 1:] = mat
+    train_data = {}
+    test_data = {}
+
+    certain_mat = np.empty((0, new_mat.shape[1]))
+    for fn in certain_fns:
+        certain = pd.read_csv(fn, header=0).values
+        certain_inds = certain[:, 0].astype(np.int)
+        certain_mat = np.vstack((certain_mat, new_mat[certain_inds]))
+        print(os.path.basename(fn), len(certain_inds), "samples\n")
+
+    print("certain samples 0: ", len(np.where(certain_mat[:, 2] == 0)[0]), "\ncertain samples 1: ", len(np.where(certain_mat[:, 2] == 1)[0]))
+
+    if args.test_or_train == 'train':
+        temp_rand = np.arange(len(certain_mat))
+        np.random.shuffle(temp_rand)
+        mat_shuffle = certain_mat[temp_rand]
+    elif args.test_or_train == 'test':   # In test, don't shuffle
+        mat_shuffle = certain_mat
+        print("data labels: ", mat_shuffle[:, 2])
+
+    X_train, X_test, Y_train, Y_test = train_test_split(mat_shuffle, mat_shuffle[:, 2], test_size=args.test_ratio/100.)
+
+    test_data["spectra"] = zscore(X_test[:, 3:], axis=1).astype(np.float32)
+    test_data["labels"] = Y_test.astype(np.int32)
+    test_data["ids"] = X_test[:, 1].astype(np.int32)
+    test_data["sample_ids"] = X_test[:, 0].astype(np.int32)
+    test_data["num_samples"] = len(test_data["labels"])
+    assert np.sum(Y_test.astype(np.int32) == X_test[:, 2].astype(np.int32)) == len(
+        X_test), "train_test_split messed up the data!"
+    print("num_samples: ", test_data["num_samples"])
+    #
+    test_count = dict(Counter(list(test_data["ids"])))  # count the num of samples of each id
+    sorted_count = sorted(test_count.items(), key=lambda kv: kv[1])
+    np.savetxt(os.path.join(args.output_path, "test_ids_count.csv"), np.array(sorted_count), fmt='%d',
+               delimiter=',')
+    np.savetxt(os.path.join(args.output_path, "original_labels.csv"), np.array(test_data["labels"]), fmt='%d',
+               delimiter=',')
+
+    ## oversample the minority samples ONLY in training data
+    if args.test_or_train == 'train':
+        # augment the training data
+        train_data = augment_data(X_train, args)
+
+        args.num_train = train_data["spectra"].shape[0]
+        print("After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]), "num of train class 1: ",
+              len(np.where(train_data["labels"] == 1)[0]))
+
+        X_train, Y_train = oversample_train(X_train, Y_train, args.num_classes)
+        print("After oversampling--num of train class 0: ", len(np.where(Y_train == 0)[0]), "num of train class 1: ", len(np.where(Y_train == 1)[0]))
+        train_data["num_samples"] = len(Y_train)
+
+        train_data["spectra"] = zscore(X_train[:, 3:], axis=1).astype(np.float32)
+        train_data["labels"] = Y_train.astype(np.int32)
+        assert np.sum(Y_train.astype(np.int32) == X_train[:, 2].astype(np.int32)) == len(
+            Y_train), "train_test_split messed up the data!"
+        train_data["ids"] = X_train[:, 1].astype(np.int32)
+        train_data["sample_ids"] = X_train[:, 0].astype(np.int32)
+
+        train_count = dict(Counter(list(train_data["ids"])))  # count the num of samples of each id
+        sorted_count = sorted(train_count.items(), key=lambda kv: kv[1])
+        np.savetxt(os.path.join(args.output_path, "train_ids_count.csv"), np.array(sorted_count), fmt='%d', delimiter=',')
+
+    return train_data, test_data
+
+
 def oversample_train(features, labels, num_classes):
     """
     Oversample the minority samples
@@ -250,128 +331,107 @@ def oversample_train(features, labels, num_classes):
     return X_resampled, y_resampled
     
 
-def augment_data(train_data, args):
+def augment_data(X_train, args):
     """
     Get the augmentation based on mean of subset. ONly do it on train spectra
 
-    :param train_data:
+    :param X_train: 2d array, n_sample * 291 [sample_id, patient_id, label, features*288]
     :param args
-    :return:
+    :return: train_aug: dict
     """
-    spec = train_data["spectra"]
-    true_labels = train_data["labels"]
-    true_ids = train_data["ids"]
+    train_data_aug = {}
+    X_train_aug = X_train
 
-    spec_aug = spec
-    labels_aug = true_labels
-    ids_aug = true_ids
     if "mean" in args.aug_method:
-        ids_aug, labels_aug, spec_aug = augment_with_batch_mean(args,
-                                                                ids_aug,   # need this for placeholder
-                                                                labels_aug,
-                                                                spec, spec_aug, # need this for placeholder
-                                                                true_ids,
-                                                                true_labels)
+        X_train_aug = \
+            augment_with_batch_mean(args, X_train, X_train_aug)
     elif args.aug_method == "noise":
-        ids_aug, labels_aug, spec_aug = augment_with_random_noise(args,
-                                                                  ids_aug,
-                                                                  labels_aug,
-                                                                  spec, spec_aug,
-                                                                  true_ids,
-                                                                  true_labels)
+        X_train_aug = \
+            augment_with_random_noise(args, X_train, X_train_aug)
 
-    print("Augmentation number of class 0", np.where(labels_aug == 0)[0].size, "number of class 1", np.where(labels_aug == 1)[0].size)
-    train_data["spectra"] = spec_aug.astype(np.float32)
-    train_data["labels"] = labels_aug.astype(np.int32)
-    train_data["ids"] = ids_aug.astype(np.int32)
+    print("Augmentation number of class 0", np.where(X_train_aug[:, 2] == 0)[0].size, "number of class 1", np.where(X_train_aug[:, 2] == 1)[0].size)
+    train_data_aug["spectra"] = X_train_aug[:, 3:].astype(np.float32)
+    train_data_aug["labels"] = X_train_aug[:, 2].astype(np.int32)
+    train_data_aug["ids"] = X_train_aug[:, 1].astype(np.int32)
+    train_data_aug["sample_ids"] = X_train_aug[:, 0].astype(np.int32)
 
-    return train_data
+    return train_data_aug
 
 
-def augment_with_batch_mean(args,
-                            ids_aug, labels_aug,
-                            spec, spec_aug, true_ids,
-                            true_labels):
+def augment_with_batch_mean(args, X_train, X_train_aug):
     """
     Augment the original spectra with the mini-mini-same-class-batch mean
-    :param aug_folds: how many folds to augment the data
-    :param aug_scale: what is the scale of the mean/noise to add for augmentation
-    :param ids_aug: also perserve the patient ids. Augmented ids
-    :param labels_aug:
-    :param num_classes:
-    :param spec:
-    :param spec_aug:
-    :param true_ids: true patient ids
-    :param true_labels:
+    :param X_train: 2d array  [sample_id, patient_id, label, features*288]
+    :param train_data_aug: 2d array
     :return:
+    train_data_aug: 2d array
     """
     num2average = 1
     for class_id in range(args.num_classes):
         # find all the samples from this class
         if args.aug_method == "ops_mean":
-            inds = np.where(true_labels == args.num_classes-1-class_id)[0]
+            inds = np.where(X_train[:, 2] == args.num_classes - 1 - class_id)[0]
         elif args.aug_method == "mean":
-            inds = np.where(true_labels == class_id)[0]
+            inds = np.where(X_train[:, 2] == class_id)[0]
         elif args.aug_method == "compose":
-            inds = np.where(true_labels == class_id)[0]
+            inds = np.where(X_train[:, 2] == class_id)[0]
 
         # randomly select 100 groups of 100 samples each and get mean
-        aug_inds = np.random.choice(inds, inds.size*num2average, replace=True).reshape(-1, num2average)  # random pick 10000 samples and take mean every 2 samples
-        mean_batch = np.mean(spec[aug_inds], axis=1)   # get a batch of spectra to get the mean for aug
-
+        aug_inds = np.random.choice(inds, inds.size*num2average, replace=True).reshape(-1, num2average)  # random pick 10000 samples and take mean every num2average samples
+        mean_batch = np.mean(X_train[:, 3:][aug_inds], axis=1)   # get a batch of spectra to get the mean
         new_mean = (mean_batch - np.mean(mean_batch, axis=1)[:, np.newaxis]) / np.std(mean_batch, axis=1)[:, np.newaxis]
-        # new_mean = (mean_batch - np.max(mean_batch, axis=1)[:, np.newaxis]) / (np.max(mean_batch, axis=1) - np.min(mean_batch, axis=1))[:, np.newaxis]
-        # rec_inds = np.random.choice(inds, aug_folds * 100, replace=True).reshape(aug_folds, 100)  # aug receiver inds
-        plot_aug_examples(new_mean, num2average, spec, true_labels, args)
+
+        plot_aug_examples(new_mean, num2average, X_train[:, 3:], X_train[:, 2], args)
 
         for fold in range(args.aug_folds):
-            aug_zspec = (1 - args.aug_scale) * spec[inds] + new_mean[np.random.choice(new_mean.shape[0], inds.size)] * args.aug_scale
-            spec_aug = np.vstack((spec_aug, aug_zspec))
-            labels_aug = np.append(labels_aug, true_labels[inds])
-            ids_aug = np.append(ids_aug, true_ids[inds])
-        print("original spec shape class : ", class_id, spec.shape, "augment spec shape: ", spec_aug.shape)
-    return ids_aug, labels_aug, spec_aug
+            aug_zspec = (1 - args.aug_scale) * X_train[:, 3:][inds] + new_mean[np.random.choice(new_mean.shape[0], inds.size)] * args.aug_scale
+            combine = np.concatenate((X_train[:, 0][inds].reshape(-1, 1), X_train[:, 1][inds].reshape(-1, 1), X_train[:, 2][inds].reshape(-1, 1), aug_zspec), axis=1)
+            X_train_aug = np.vstack((X_train_aug, combine))
+
+        print("original spec shape class : ", class_id, X_train[:, 3:].shape, "augment spec shape: ", X_train_aug[:, 3:].shape)
+
+    return X_train_aug
 
 
-
-def augment_with_random_noise(aug_folds, aug_scale,
-                              ids_aug, labels_aug,
-                              num_classes, spec,
-                              spec_aug, true_ids,
-                              true_labels):
+def augment_with_random_noise(args, X_train, train_aug):
     """
     Add random noise on the original spectra
-    :param aug_folds:
-    :param aug_scale:
-    :param ids_aug:
-    :param labels_aug:
-    :param num_classes:
-    :param spec:
-    :param spec_aug:
-    :param true_ids:
-    :param true_labels:
+    :param X_train: dict
+    :param train_aug: dict
+    :return: train_data_aug: dict
+    """
+    noise = args.aug_scale * \
+            np.random.uniform(size=[args.aug_folds, X_train[:, 2].size, X_train[:, 3:].shape[-1]])
+
+    for fold in range(args.aug_folds):
+        aug_zspec = X_train[:, 3:] + noise[fold]
+        combine = np.concatenate((X_train[:, 0][inds].reshape(-1, 1),
+                                  X_train[:, 1][inds].reshape(-1, 1),
+                                  X_train[:, 2][inds].reshape(-1, 1),
+                                  aug_zspec))
+        train_aug = np.vstack((train_aug, combine))
+
+    return train_aug
+
+
+
+def get_data_tensors(args, certain_fns=None):
+    """
+    Get batches of data in tf.dataset
+    :param args:
+    :param certain_fns:
     :return:
     """
-    noise = aug_scale * np.random.uniform(size=[aug_folds, true_labels.size, spec.shape[-1]])
-
-    for fold in range(aug_folds):
-        aug_zspec = spec + noise[fold]
-        spec_aug = np.vstack((spec_aug, aug_zspec))
-        labels_aug = np.append(labels_aug, true_labels)
-        ids_aug = np.append(ids_aug, true_ids)
-    return ids_aug, labels_aug, spec_aug
-
-
-## Get batches of data in tf.dataset
-# @param args the arguments passed to the software
-# @param train_data dict, "features", "labels"
-# @param test_data dict, "features", "labels"
-def get_data_tensors(args):
     data = {}
-    train_data, test_data = get_data(args)
+    if not certain_fns:
+        train_data, test_data = get_data(args)
+    else:
+        train_data, test_data = get_data_from_certain_ids(args, certain_fns=certain_fns)
     
     test_spectra, test_labels, test_ids, test_sample_ids = tf.constant(test_data["spectra"]), tf.constant(test_data["labels"]), tf.constant(test_data["ids"]), tf.constant(test_data["sample_ids"])
     test_ds = tf.data.Dataset.from_tensor_slices((test_spectra, test_labels, test_ids, test_sample_ids)).batch(args.test_bs)
+    if test_data["num_samples"] < args.test_bs:
+        args.test_bs = test_data["num_samples"]
     
     iter_test = tf.compat.v1.data.make_initializable_iterator(test_ds)
     data["test_initializer"] = iter_test.initializer

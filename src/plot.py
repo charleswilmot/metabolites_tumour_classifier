@@ -114,7 +114,6 @@ def accuracy_loss_figure(args, data, training=False, epoch=0):
 
 def all_figures(sess, args, data, training=False, epoch=0):
     # print("labels: ", np.argmax(data["test_labels"], axis=1))
-
     print("accuracy: ", data["test_accuracy"],
           "auc: ", metrics.roc_auc_score(np.argmax(data["test_labels"], axis=1), data["test_logits"][:, 1]))
     accuracy_figure(args, data, training=training, epoch=epoch)
@@ -511,6 +510,7 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
 
 def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
     row, col = 4, 1
+    true_labels = true_labels.astype(np.int)
     plt.figure()
     rand_inds = np.random.choice(spec.shape[0], row * col)
     f, axs = plt.subplots(row, col, 'col')

@@ -14,34 +14,28 @@ from sklearn import metrics
 logger = log.getLogger("classifier")
 # initializer = tf.glorot_uniform_initializer()
 initializer = tf.keras.initializers.he_normal(seed=845)
-## Processes the output of compute (cf See also) to calculate the average loss and accuracy
-# @param ret dictionary containing the keys "num_correct", "loss_sum" and "batch_size"
-# @param N number of examples computed by compute
-# @see compute
+
 def reduce_mean_loss_accuracy(ret):
+    """
+        ONly use it in test_phase, where ret["batch_size"] is not summed up yet.
+        :param ret: dictionary containing the keys "num_correct", "loss_sum" and "batch_size"
+        :return:
+        """
     N = sum([b["batch_size"] for b in ret])
-    loss = sum([b["loss_sum"] for b in ret]) / N
+    loss = sum([b["loss"] for b in ret]) / N
     accuracy = sum([b["num_correct"] for b in ret]) / N
     return loss, accuracy
 
-## Processes the output of compute (cf See also) to calculate the sum of confusion matrices
-# @param ret dictionary containing the keys "num_correct", "loss_sum" and "batch_size"
-# @param N number of examples computed by compute
-# @see compute
+
 def sum_confusion(ret):
+    """
+    ONly use it in test_phase, where ret["batch_size"] is not summed up yet.
+    :param ret:
+    :return:
+    """
     N = sum([b["batch_size"] for b in ret])
     confusion = sum([b["confusion"] for b in ret])
     return confusion
-
-
-def limit(max_batches):
-    if max_batches is None:
-        def iterator():
-            while True:
-                yield
-        return iterator()
-    else:
-        return range(max_batches)
 
 
 # def compute(sess, fetches, max_batches=None, learning_rate=0.0005):
@@ -116,6 +110,71 @@ def compute(sess, fetches, compute_batches=100, lr=0.0005,
         if if_get_certain:
             results = get_most_cer_uncertain_samples(results, cer_thsh=0.999, if_check_cam=if_check_cam)
     return results
+
+
+def compute_test_only(sess, fetches, compute_batches=100, lr=0.0005,
+            if_get_wrong=False, if_get_certain=False):
+    """
+    Compute test only results
+    :param sess:
+    :param fetches:
+    :param compute_batches:
+    :param lr:
+    :param if_get_wrong:
+    :param if_get_certain:
+    :return:
+    """
+    sum_keys = ["loss", "num_correct", "confusion", "batch_size"]
+
+    run_all = []
+    collections = {}
+    if "conv" in fetches.keys():
+        if_check_cam = True
+        exp_keys = ["labels", "features", "sample_ids",
+                    "logits", "conv", "gap_w"]
+        if if_get_certain:
+            exp_keys += ["certain_labels", "certain_sample_ids",
+                         "certain_logits", "certain_conv"]
+    else:
+        exp_keys = ["labels", "features", "sample_ids",
+                    "logits"]
+        if if_get_certain:
+            exp_keys += ["certain_labels",
+                         "certain_sample_ids", "certain_logits"]
+    if if_get_wrong:
+        exp_keys += ["wrong_labels", "wrong_sample_ids", "wrong_features"]
+
+
+    for key in exp_keys:
+        collections[key] = []
+
+    init_wrong = True
+    init_certrin = True
+    for i in tqdm(range(compute_batches)):
+        ret = sess.run(fetches)
+        run_all.append(ret)
+
+        if if_get_wrong:
+            if init_wrong:
+                for key in ret.keys():
+                    collections[key] = ret[key]
+                collections = get_wrong_examples(collections)
+                init_wrong = True if len(collections["wrong_labels"]) == 0 \
+                    else False
+            else:
+                collections = get_wrong_examples(collections)
+        if if_get_certain:
+            if init_certrin:
+                for key in ret.keys():
+                    collections[key] = ret[key]
+                collections = get_most_cer_uncertain_samples(collections, cer_thsh=0.9999,
+                                                             if_check_cam=if_check_cam)
+                init_certrin = True if len(collections["certain_labels"]) == 0 \
+                    else False
+            else:
+                collections = get_most_cer_uncertain_samples(collections, cer_thsh=0.9999,
+                                                             if_check_cam=if_check_cam)
+    return run_all, collections
 
 
 def get_most_cer_uncertain_samples(results, cer_thsh=0.999, if_check_cam=True):
@@ -365,9 +424,9 @@ def training(sess, args, graph, saver):
         ret_train = train_phase(sess, graph, args.test_every,
                                 epoch, lr=lr, if_get_wrong=False,
                                 if_get_certain=True)
-        if len(ret_train["train_certain_sample_ids"]) > 0:
+        if len(ret_train["train_certain_sample_ids"]) > 0 and epoch < 50:
             certain_data = np.concatenate((ret_train["train_certain_sample_ids"].reshape(-1, 1), ret_train["train_certain_labels"].reshape(-1, 1), ret_train["train_certain_logits"]), axis=1)
-            np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}.csv".format("train", epoch)),
+            np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}_num_{}_{}.csv".format("train", epoch, ret_train["train_certain_sample_ids"].size, args.data_source)),
                        certain_data, header="sample_ids,labels"+",logits" * args.num_classes, delimiter=",")
 
         if ret_train is not None:
@@ -380,15 +439,16 @@ def training(sess, args, graph, saver):
 
         # test phase
         if_check_cam = True if "CAM" in args.model_name else False
-        ret_test = test_phase(sess, graph,
-                              if_check_cam=if_check_cam,
-                              compute_batches=graph["test_num_batches"],
-                              train_or_test="test")
-        if len(ret_test["test_certain_labels"]) > 0:
+        ret_test = validation_phase(sess, graph,
+                                    if_check_cam=if_check_cam,
+                                    compute_batches=graph["test_num_batches"],
+                                    train_or_test="test")
+        if len(ret_test["test_certain_labels"]) > 0 and epoch < 50:
             certain_data = np.concatenate((ret_test["test_certain_sample_ids"].reshape(-1, 1),
                                            ret_test["test_certain_labels"].reshape(-1, 1),
                                            ret_test["test_certain_logits"]), axis=1)
-            np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}.csv".format("test", epoch)),
+
+            np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}_num_{}_{}.csv".format("test", epoch, ret_test["test_certain_sample_ids"].size, args.data_source)),
                        certain_data, header="sample_ids,labels" + ",logits" * args.num_classes, delimiter=",")
 
         epoch = num_trained * 1.0 / graph["train_num_samples"]
@@ -467,7 +527,7 @@ def train_phase(sess, graph, nbatches, epoch, lr=0.001,
     return get_returns(ret, return_names, train_or_test=train_or_test)
 
 
-def testing(sess, graph, compute_batches=100,
+def validation_phase(sess, graph, compute_batches=100,
             if_check_cam=False, train_or_test='test'):
     """
     Testing phase
@@ -493,7 +553,7 @@ def testing(sess, graph, compute_batches=100,
 
         return_names = ["accuracy", "loss", "confusion",
                         "labels", "ids", "features", "sample_ids", "logits",
-                        "wrong_features", "wrong_labels",
+                        "wrong_features", "wrong_labels", "wrong_sample_ids"
                         "conv", "gap_w", "certain_labels", "certain_logits",
                         "certain_conv", "certain_sample_ids"]
         ret = get_returns(results, return_names, train_or_test=train_or_test)
@@ -516,7 +576,73 @@ def testing(sess, graph, compute_batches=100,
     return ret
 
 
-test_phase = testing
+def test_phase(sess, graph, compute_batches=100,
+            if_check_cam=False, train_or_test='test'):
+    """
+    Testing phase
+    :param sess:
+    :param graph:
+    :param compute_batches:
+    :param if_check_cam:
+    :param train_or_test:
+    :return:
+    """
+    # return loss / accuracy for the complete set
+    initialize(sess, graph, test_only=True)
+    if if_check_cam:
+        names = ['loss', 'num_correct', 'confusion',
+                 'batch_size', 'labels', 'ids', 'sample_ids',
+                 'logits', 'features', 'conv', 'gap_w']
+        fetches = get_fetches(graph, names, train_or_test=train_or_test)
+
+        results, collections = compute_test_only(sess, fetches,
+                          compute_batches=compute_batches,
+                          if_get_wrong=True,
+                          if_get_certain=True)
+
+        loss, accuracy = reduce_mean_loss_accuracy(results)
+        confusion = sum_confusion(results)
+        labels = concat_data(results, key="labels")
+        ids = concat_data(results, key="ids")
+        features = concat_data(results, key="features")
+        logits = concat_data(results, key="logits")
+
+        conv = concat_data(results, key="conv")
+        sample_ids = concat_data(results, key="sample_ids")
+
+        ret = {"test_gap_w": results[0]["gap_w"], "test_certain_conv": collections["certain_conv"], "test_conv": collections["conv"]}
+    else:
+        names = ['loss', 'num_correct', 'confusion',
+                 'batch_size', 'labels', 'ids',
+                 'logits', 'features', "sample_ids"]
+        fetches = get_fetches(graph, names, train_or_test=train_or_test)
+        results, collections = compute_test_only(sess, fetches,
+                          compute_batches=compute_batches,
+                          if_get_wrong=True,
+                          if_get_certain=True)
+
+        loss, accuracy = reduce_mean_loss_accuracy(results)
+        confusion = sum_confusion(results)
+        labels = concat_data(results, key="labels")
+        ids = concat_data(results, key="ids")
+        features = concat_data(results, key="features")
+        sample_ids = concat_data(results, key="sample_ids")
+        logits = concat_data(results, key="logits")
+
+
+    ret.update({"test_loss": loss, "test_accuracy": accuracy, "test_confusion": confusion,
+           "test_labels": labels, "test_ids": ids, "test_features": features,
+           "test_sample_ids": sample_ids,
+           "test_logits": logits,
+           "test_wrong_features": collections["wrong_features"],
+           "test_wrong_labels": collections["wrong_labels"],
+           "test_wrong_sample_ids": collections["wrong_sample_ids"],
+           "test_certain_labels": collections["certain_labels"],
+           "test_certain_logits": collections["certain_logits"],
+           "test_certain_sample_ids": collections["certain_sample_ids"],
+           })
+
+    return ret
 
 
 ## Termination contition of the training
@@ -568,11 +694,19 @@ def main_train(sess, args, graph):
         dataio.save_plots(sess, args, output_data, training=True)
     else:
         initialize(sess, graph, test_only=True)
-        output_data = testing(sess, graph, model_name=args.model_name)
+        if_check_cam = True if "CAM" in args.model_name else False
+        output_data = test_phase(sess, graph, compute_batches=graph["test_batches"],
+                              if_check_cam=if_check_cam, train_or_test='test')
+
+        if len(output_data["test_certain_labels"]) > 0:
+            certain_data = np.concatenate((output_data["test_certain_sample_ids"].reshape(-1, 1), output_data["test_certain_labels"].reshape(-1, 1), output_data["test_certain_logits"]), axis=1)
+            np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}.csv".format("test", "TEST")), certain_data, header="sample_ids,labels" + ",logits" * args.num_classes, delimiter=",")
 
         with open(args.output_path + '/Data{}_class{}_model{}_test_return_data_acc_{:.3f}.txt'.format(
                     args.data_source, args.num_classes, args.model_name,
                     output_data["test_accuracy"]), 'wb') as ff:
             pickle.dump({"output_data": output_data}, ff)
         dataio.save_plots(sess, args, output_data, training=False)
+
+        args.save(os.path.join(args.output_path, "network", "parameters.json"))
         
