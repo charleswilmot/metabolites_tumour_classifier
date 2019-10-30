@@ -11,7 +11,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 import matplotlib.pylab as pylab
-
+base = 22
+params = {'legend.fontsize': base-8,
+          'figure.figsize': (10, 7),
+         'axes.labelsize': base-4,
+         #'weight' : 'bold',
+         'axes.titlesize':base,
+         'xtick.labelsize':base-8,
+         'ytick.labelsize':base-8}
+pylab.rcParams.update(params)
 
 def find_files(directory, pattern='*.csv'):
     files = []
@@ -105,21 +113,26 @@ plot_name = "indi_rating_with_model"
 if plot_name == "indi_rating_with_model":
     data_dir = "../data/20190325"
 
-    model_results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-09T12-55-23-data-lout40-datas-1d-class2-Res_ECG_CAM-0.766certainEp3-aug_ops_meanx10-0.3-test-auc0.828/AUCs/AUC_curve_step_0.00-auc_0.8282-lout40-datas.csv"
+    model_results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-09T13-47-36-data-lout40-datas-1d-class2-Res_ECG_CAM-0.766certainEp3-aug_ops_meanx10-0.3-test-auc0.79/AUCs/AUC_curve_step_0.00-auc_0.7905-lout40-datas.csv"
 
     human_indi_rating = "../data/20190325/lout40-data5-doctor_ratings_individual.mat"
     # Get individual rater's prediction
     true_indi_lbs = {}
+    true_indi_model_lbs = {}
     human_indi_lbs = {}
     model_indi_lbs = {}
     indi_mat = scipy.io.loadmat(human_indi_rating)['a']
     indi_ratings = np.array(indi_mat)
 
+    true_data = scipy.io.loadmat("/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat")["DATA"]
+    true_label = true_data[:, 1].astype(np.int)
+
     # Get model's prediction
     model_auc = pd.read_csv(model_results, header=0).values
-    true_label = model_auc[:, 0].astype(np.int)
+    true_model_label = model_auc[:, 0].astype(np.int)
     pred_logits = model_auc[:, 1]
     pred_lb = np.argmax(pred_logits, axis=0)
+    model_fpr, model_tpr, _ = metrics.roc_curve(true_model_label, pred_logits)
 
     mean_fpr = []
     mean_tpr = []
@@ -128,15 +141,18 @@ if plot_name == "indi_rating_with_model":
     tpr_model = []
 
     start = 0
-    plt.figure(figsize=[12, 10])
+    plt.figure()
     colors = pylab.cm.cool(np.linspace(0, 1, 8))
     for i in range(indi_ratings.shape[1]):
         key = "{}".format(i)
-        true_indi_lbs[key] = true_label[start: start+len(indi_ratings[0, i])]
+        print(key)
+        end = start + min(len(indi_ratings[0, i]), len(true_model_label) - start)
+        true_indi_lbs[key] = true_label[start: start + len(indi_ratings[0, i])]
+        true_indi_model_lbs[key] = true_model_label[start: end]
 
         human_indi_lbs[key] = indi_ratings[0, i][:, 0]
-        model_indi_lbs[key] = pred_logits[start: start+len(indi_ratings[0, i])]
-        start = start + len(indi_ratings[0, i])
+        model_indi_lbs[key] = pred_logits[start: end]
+        start = end
 
         indi_fpr, indi_tpr, _ = metrics.roc_curve(true_indi_lbs[key], human_indi_lbs[key])
         indi_score = metrics.roc_auc_score(true_indi_lbs[key], human_indi_lbs[key])
@@ -144,29 +160,30 @@ if plot_name == "indi_rating_with_model":
         mean_tpr.append(indi_tpr)
         mean_score.append(indi_score)
 
-        indi_model_fpr, indi_model_tpr, _ = metrics.roc_curve(true_indi_lbs[key], model_indi_lbs[key])
-        indi_model_score = metrics.roc_auc_score(true_indi_lbs[key], model_indi_lbs[key])
+        indi_model_fpr, indi_model_tpr, _ = metrics.roc_curve(true_indi_model_lbs[key], model_indi_lbs[key])
+        indi_model_score = metrics.roc_auc_score(true_indi_model_lbs[key], model_indi_lbs[key])
         tpr_temp = interp(base_fpr, indi_model_fpr, indi_model_tpr)
         tpr_model.append(tpr_temp)
 
-        plt.plot(indi_fpr[1], indi_tpr[1], color="m", marker="*", alpha=0.35)
-        plt.plot(indi_model_fpr, indi_model_tpr, color='royalblue', alpha=0.25, label='model {} AUC:  {:.3f}'.format(i+1, indi_model_score))
+        plt.plot(indi_fpr[1], indi_tpr[1], color="r", marker="o", markersize=10, alpha=0.65)
+        # plt.plot(indi_model_fpr, indi_model_tpr, color=colors[i], alpha=0.15, label='model {} AUC:  {:.2f}'.format(i+1, indi_model_score))
+
     mean_model_tpr = np.mean(np.array(tpr_model), axis=0)
     std_model_tpr = np.std(np.array(tpr_model), axis=0)
     mean_model_score = metrics.auc(base_fpr, mean_model_tpr)
 
-    plt.plot(indi_fpr[1], indi_tpr[1], alpha=0.35, color="m", marker="*", label="individual radiologists")
-    plt.plot(np.mean(np.array(mean_fpr)[:, 1]), np.mean(np.array(mean_tpr)[:, 1]), color="m", marker="d", markersize=6, label='human average AUC:  {:.3f}'.format(np.mean(np.array(mean_score))))
-    plt.plot(base_fpr, mean_model_tpr, color="royalblue", linewidth=3.0, label='model average AUC:  {:.3f}'.format(mean_model_score))
+    plt.plot(indi_fpr[1], indi_tpr[1], alpha=0.65, color="r", marker="o", markersize=10, label="individual radiologists")
+    plt.plot(np.mean(np.array(mean_fpr)[:, 1]), np.mean(np.array(mean_tpr)[:, 1]), color="r", marker="d", markersize=16, label='human average AUC: {:.2f}'.format(np.mean(np.array(mean_score))))
+    plt.plot(model_fpr, model_tpr, color="royalblue", linewidth=3.0, label='model AUC:  {:.2f}'.format(mean_model_score))
 
-    plt.title("Receiver Operating Characteristic", fontsize=20)
+    plt.title("Receiver Operating Characteristic")
     plt.xlim([-0.02, 1.02])
     plt.ylim([-0.02, 1.02])
     plt.legend(loc=4)
-    plt.ylabel('true positive rate', fontsize=18)
-    plt.xlabel('false positive rate', fontsize=18)
-    plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual_on_certain.png"), format='png')
-    plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual_on_certain.pdf"), format='pdf')
+    plt.ylabel('true positive rate')
+    plt.xlabel('false positive rate')
+    plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.png"), format='png')
+    plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.pdf"), format='pdf')
     plt.close()
 
 elif plot_name == "human_whole_with_model":
@@ -177,7 +194,7 @@ elif plot_name == "human_whole_with_model":
     true_label = ori[:, 1]
 
     # Get model's prediction
-    model_results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/saved_certain/2019-10-08T14-53-42-data-lout40-data5-1d-class2-Res_ECG_CAM-certainEp3-aug_ops_meanx10-0.3-test-auc0.858/AUCs/AUC_curve_step_0.00-auc_0.8582-lout40-data5.csv"
+    model_results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-09T13-47-36-data-lout40-datas-1d-class2-Res_ECG_CAM-0.766certainEp3-aug_ops_meanx10-0.3-test-auc0.79/AUCs/AUC_curve_step_0.00-auc_0.7905-lout40-datas.csv"
     model_auc = pd.read_csv(model_results, header=0).values
     label = model_auc[:, 0].astype(np.int)
     pred_logits = model_auc[:, 1]
@@ -191,23 +208,24 @@ elif plot_name == "human_whole_with_model":
     hum_score = metrics.roc_auc_score(true_label, human_lb)
 
     # PLot human average rating
-    plt.figure()
-    plt.plot(hum_fpr[1], hum_tpr[1], 'purple', marker="*", markersize=4, label='human AUC: {:.3f}'.format(hum_score))
+    plt.figure(figsize=[10, 7])
+    plt.plot(hum_fpr[1], hum_tpr[1], 'purple', marker="*", markersize=10, label='human AUC: {:.2f}'.format(hum_score))
 
     # Plot trained model prediction
     fpr, tpr, _ = metrics.roc_curve(label, pred_logits)
     score = metrics.roc_auc_score(label, pred_logits)
-    plt.plot(fpr, tpr, 'royalblue', linewidth=2, label='model AUC: {:.3f}'.format(score))
 
+    plt.plot(hum_fpr[1], hum_tpr[1], 'purple', marker="*", markersize=10, label='human AUC: {:.2f}'.format(hum_score))
+    plt.plot(fpr, tpr, 'royalblue', linewidth=2, label='model AUC: {:.2f}'.format(score))
     plt.title("Receiver Operating Characteristic", fontsize=20)
     plt.xlim([-0.02, 1.02])
     plt.ylim([-0.02, 1.02])
     plt.legend(loc=4)
     plt.ylabel('true positive rate', fontsize=18)
     plt.xlabel('false positive rate', fontsize=18)
-    plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively.pdf"), format='pdf')
+    plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively_certain.pdf"), format='pdf')
     # plt.savefig(os.path.join(data_dir, "model_with_human_rating.eps"), format='eps')
-    plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively.png"), format='png')
+    plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively_certain.png"), format='png')
     plt.close()
 elif plot_name == "all_ROCs":
     data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/1-20190325-data-trained-models/TEST/Res_CNN_CAM-LOUT40"

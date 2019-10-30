@@ -553,7 +553,7 @@ def validation_phase(sess, graph, compute_batches=100,
 
         return_names = ["accuracy", "loss", "confusion",
                         "labels", "ids", "features", "sample_ids", "logits",
-                        "wrong_features", "wrong_labels", "wrong_sample_ids"
+                        "wrong_features", "wrong_labels", "wrong_sample_ids",
                         "conv", "gap_w", "certain_labels", "certain_logits",
                         "certain_conv", "certain_sample_ids"]
         ret = get_returns(results, return_names, train_or_test=train_or_test)
@@ -691,6 +691,7 @@ def main_train(sess, args, graph):
     if args.test_or_train == 'train':
         initialize(sess, graph, test_only=False)
         output_data = training(sess, args, graph, saver)
+        args.save(os.path.join(args.output_path, "network", "parameters.json"))
         dataio.save_plots(sess, args, output_data, training=True)
     else:
         initialize(sess, graph, test_only=True)

@@ -4,7 +4,6 @@ import itertools
 import matplotlib.pyplot as plt
 import logging as log
 import numpy as np
-import matplotlib.pylab as pylab
 from collections import Counter
 # import tsne
 import ipdb
@@ -13,7 +12,7 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 from sklearn import metrics
 import tensorflow as tf
 import os
-
+import matplotlib.pylab as pylab
 base = 22
 params = {'legend.fontsize': base-8,
           'figure.figsize': (13, 8.6),

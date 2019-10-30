@@ -750,7 +750,6 @@ class Inception:
 
 class RNN(object):
     def __init__(self, args):
-        self.num_layers = args.num_layers
         self.rnn_dims = args.rnn_dims
         self.drop_rnn = args.drop_rnn  # to drop for the linear transformation of the recurrent state.
         self.drop_rnn_ln = args.drop_rnn_ln  # to drop for the linear transformation of the inputs.
@@ -784,10 +783,10 @@ class RNN(object):
                 net = tf.layers.dropout(net, rate=self.drop_fc)
 
         with tf.compat.v1.variable_scope("RNN", reuse=tf.AUTO_REUSE):
-            for layer_id in range(self.num_layers):
-                net = self.build_rnn(net, self.rnn_dims[layer_id])
+            for layer_id, rnn_dim in enumerate(self.rnn_dims):
+                net = self.build_rnn(net, rnn_dim)
 
-        ret["rnn"] = net
+        ret["rnn_state"] = net
 
         with tf.compat.v1.variable_scope("FC", reuse=tf.AUTO_REUSE):
             logits = tf.layers.dense(net, self.num_classes,

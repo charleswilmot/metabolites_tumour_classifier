@@ -4,6 +4,7 @@
 #  It can in particular read and write matlab or python matrices.
 import numpy as np
 import logging as log
+import fnmatch
 import sys
 import os
 import plot
@@ -19,6 +20,15 @@ logger = log.getLogger("classifier")
 from sklearn.model_selection import train_test_split
 import pandas as pd
 
+
+
+def find_files(directory, pattern='*.csv'):
+    files = []
+    for root, dirnames, filenames in os.walk(directory):
+        for filename in fnmatch.filter(filenames, pattern):
+            files.append(os.path.join(root, filename))
+
+    return files
 
 
 def get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=0, fold=0):
@@ -218,20 +228,28 @@ def get_data(args):
 
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
-        # train_data = augment_data(train_data, args)
-        # args.num_train = train_data["spectra"].shape[0]
-        # print("After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]), "num of train class 1: ",
-        #       len(np.where(train_data["labels"] == 1)[0]))
         X_train, Y_train = oversample_train(X_train, Y_train, args.num_classes)
-        print("After oversampling--num of train class 0: ", len(np.where(Y_train == 0)[0]), "num of train class 1: ", len(np.where(Y_train == 1)[0]))
-        train_data["num_samples"] = len(Y_train)
+        print("After oversampling--num of train class 0: ", len(np.where(Y_train == 0)[0]), "\n num of train class 1: ", len(np.where(Y_train == 1)[0]))
 
-        train_data["spectra"] = zscore(X_train[:, 3:], axis=1).astype(np.float32)
-        train_data["labels"] = Y_train.astype(np.int32)
-        assert np.sum(Y_train.astype(np.int32) == X_train[:, 2].astype(np.int32)) == len(
-            Y_train), "train_test_split messed up the data!"
-        train_data["ids"] = X_train[:, 1].astype(np.int32)
-        train_data["sample_ids"] = X_train[:, 0].astype(np.int32)
+        if args.aug_folds != 0:
+            train_data = augment_data(X_train, args)
+            args.num_train = train_data["spectra"].shape[0]
+            print("After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]), "num of train class 1: ",
+                  len(np.where(train_data["labels"] == 1)[0]))
+        else:
+            train_data["spectra"] = X_train[:, 3:]
+            train_data["labels"] = Y_train
+            true_lables = X_train[:, 2]
+            train_data["ids"] = X_train[:, 1]
+            train_data["sample_ids"] = X_train[:, 0]
+
+        train_data["num_samples"] = len(Y_train)
+        train_data["spectra"] = zscore(train_data["spectra"], axis=1).astype(np.float32)
+        train_data["labels"] = train_data["labels"].astype(np.int32)
+        # assert np.sum(train_data["labels"].astype(np.int32) == true_lables.astype(np.int32)) == len(
+        #     train_data["labels"]), "train_test_split messed up the data!"
+        train_data["ids"] = train_data["ids"].astype(np.int32)
+        train_data["sample_ids"] = train_data["sample_ids"].astype(np.int32)
 
         train_count = dict(Counter(list(train_data["ids"])))  # count the num of samples of each id
         sorted_count = sorted(train_count.items(), key=lambda kv: kv[1])
@@ -282,7 +300,7 @@ def get_data_from_certain_ids(args, certain_fns=["f1", "f2"]):
     test_data["num_samples"] = len(test_data["labels"])
     assert np.sum(Y_test.astype(np.int32) == X_test[:, 2].astype(np.int32)) == len(
         X_test), "train_test_split messed up the data!"
-    print("num_samples: ", test_data["num_samples"])
+    print("Test num of class 0: ", len(np.where(test_data["labels"] == 0)[0]), "num of class 1: ", len(np.where(test_data["labels"] == 1)[0]))
     #
     test_count = dict(Counter(list(test_data["ids"])))  # count the num of samples of each id
     sorted_count = sorted(test_count.items(), key=lambda kv: kv[1])
@@ -293,28 +311,35 @@ def get_data_from_certain_ids(args, certain_fns=["f1", "f2"]):
 
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
+        X_train, Y_train = oversample_train(X_train, Y_train, args.num_classes)
+        print("Train After oversampling--class 0: ", len(np.where(Y_train == 0)[0]), "class 1: ",
+              len(np.where(Y_train == 1)[0]))
         # augment the training data
-        train_data = augment_data(X_train, args)
+        if args.aug_folds != 0:
+            train_data = augment_data(X_train, args)
+            args.num_train = train_data["spectra"].shape[0]
+            print("Train After augmentation--class 0: ", len(np.where(train_data["labels"] == 0)[0]), "class 1: ", len(np.where(train_data["labels"] == 1)[0]))
+        else:
+            train_data["spectra"] = X_train[:, 3:]
+            train_data["labels"] = Y_train
+            true_lables = X_train[:, 2]
+            train_data["ids"] = X_train[:, 1]
+            train_data["sample_ids"] = X_train[:, 0]
+
+        train_data["num_samples"] = len(train_data["labels"])
+        train_data["spectra"] = zscore(train_data["spectra"], axis=1).astype(np.float32)
+        train_data["labels"] = train_data["labels"].astype(np.int32)
+        # assert np.sum(train_data["labels"].astype(np.int32) == true_lables.astype(np.int32)) == len(
+        #     train_data["labels"]), "train_test_split messed up the data!"
+        train_data["ids"] = train_data["ids"].astype(np.int32)
+        train_data["sample_ids"] = train_data["sample_ids"].astype(np.int32)
 
         args.num_train = train_data["spectra"].shape[0]
-        print("After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]), "num of train class 1: ",
-              len(np.where(train_data["labels"] == 1)[0]))
-
-        X_train, Y_train = oversample_train(X_train, Y_train, args.num_classes)
-        print("After oversampling--num of train class 0: ", len(np.where(Y_train == 0)[0]), "num of train class 1: ", len(np.where(Y_train == 1)[0]))
-        train_data["num_samples"] = len(Y_train)
-
-        train_data["spectra"] = zscore(X_train[:, 3:], axis=1).astype(np.float32)
-        train_data["labels"] = Y_train.astype(np.int32)
-        assert np.sum(Y_train.astype(np.int32) == X_train[:, 2].astype(np.int32)) == len(
-            Y_train), "train_test_split messed up the data!"
-        train_data["ids"] = X_train[:, 1].astype(np.int32)
-        train_data["sample_ids"] = X_train[:, 0].astype(np.int32)
 
         train_count = dict(Counter(list(train_data["ids"])))  # count the num of samples of each id
         sorted_count = sorted(train_count.items(), key=lambda kv: kv[1])
         np.savetxt(os.path.join(args.output_path, "train_ids_count.csv"), np.array(sorted_count), fmt='%d', delimiter=',')
-
+        ipdb.set_trace()
     return train_data, test_data
 
 
@@ -348,8 +373,8 @@ def augment_data(X_train, args):
     elif args.aug_method == "noise":
         X_train_aug = \
             augment_with_random_noise(args, X_train, X_train_aug)
-
-    print("Augmentation number of class 0", np.where(X_train_aug[:, 2] == 0)[0].size, "number of class 1", np.where(X_train_aug[:, 2] == 1)[0].size)
+    #
+    # print("Augmentation number of class 0", np.where(X_train_aug[:, 2] == 0)[0].size, "number of class 1", np.where(X_train_aug[:, 2] == 1)[0].size)
     train_data_aug["spectra"] = X_train_aug[:, 3:].astype(np.float32)
     train_data_aug["labels"] = X_train_aug[:, 2].astype(np.int32)
     train_data_aug["ids"] = X_train_aug[:, 1].astype(np.int32)
@@ -388,8 +413,7 @@ def augment_with_batch_mean(args, X_train, X_train_aug):
             combine = np.concatenate((X_train[:, 0][inds].reshape(-1, 1), X_train[:, 1][inds].reshape(-1, 1), X_train[:, 2][inds].reshape(-1, 1), aug_zspec), axis=1)
             X_train_aug = np.vstack((X_train_aug, combine))
 
-        print("original spec shape class : ", class_id, X_train[:, 3:].shape, "augment spec shape: ", X_train_aug[:, 3:].shape)
-
+    print("original spec total shape", class_id, X_train[:, 3:].shape, "augment spec shape: ", X_train_aug[:, 3:].shape)
     return X_train_aug
 
 

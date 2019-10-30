@@ -55,10 +55,10 @@
                         7
                     ],
                     "filter_size": 144,
-                    "conv_1_size": 3,
-                    "conv_3_size": 9,
-                    "conv_3_reduced_size": 9,
-                    "conv_5_reduced_size": 32,
+                    "conv_1_size": 16,
+                    "conv_3_size": 32,
+                    "conv_3_reduced_size": 32,
+                    "conv_5_reduced_size": 64,
                     "conv_5_size": 64,
                     "pool_size": 3,
                     "stride": 2,
@@ -76,7 +76,6 @@
                 "RNN": {
                     "model_name": "RNN",
                     "bn": true,
-                    "num_layers": 2,
                     "rnn_dims": [64],
                     "fc_dim": [128],
                     "drop_rnn": 0.7,
