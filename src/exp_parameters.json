@@ -25,10 +25,8 @@
             "learning_rate": 0.001,
             "data_source": "lout40-data5",
             "postfix": "ep2-0.874",
-            "aug_scale": 0.2,
-            "aug_method": "ops_mean",
-            "aug_folds": 5,
-            "if_from_certain": true
+            "if_from_certain": true,
+            "if_save_certain": false
         },
 
         "train": {

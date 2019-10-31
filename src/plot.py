@@ -508,7 +508,7 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
 
 
 def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
-    row, col = 4, 1
+    row, col = 6, 1
     true_labels = true_labels.astype(np.int)
     plt.figure()
     rand_inds = np.random.choice(spec.shape[0], row * col)
@@ -525,6 +525,7 @@ def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
         axs[jj].legend(loc="best")
     f.text(0.5, 0.05, 'index', fontsize=16),
     f.text(0.05, 0.5, 'Normalized amplitude', fontsize=16, rotation=90, verticalalignment='center'),
+    f.subplots_adjust(hspace=0, wspace=0.01)
     f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale, num2average)), format="png")
     plt.close()
 

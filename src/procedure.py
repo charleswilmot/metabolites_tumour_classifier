@@ -443,7 +443,8 @@ def training(sess, args, graph, saver):
                                     if_check_cam=if_check_cam,
                                     compute_batches=graph["test_num_batches"],
                                     train_or_test="test")
-        if len(ret_test["test_certain_labels"]) > 0 and epoch < 50:
+
+        if args.if_save_certain and len(ret_test["test_certain_labels"]) > 0 and epoch < 20:
             certain_data = np.concatenate((ret_test["test_certain_sample_ids"].reshape(-1, 1),
                                            ret_test["test_certain_labels"].reshape(-1, 1),
                                            ret_test["test_certain_logits"]), axis=1)

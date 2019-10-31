@@ -368,11 +368,11 @@ def augment_data(X_train, args):
     X_train_aug = X_train
 
     if "mean" in args.aug_method:
-        X_train_aug = \
-            augment_with_batch_mean(args, X_train, X_train_aug)
+        X_train_aug =  augment_with_batch_mean(args, X_train, X_train_aug)
+    if "both" == args.aug_method:
+        X_train_aug =  augment_with_batch_mean(args, X_train, X_train_aug)
     elif args.aug_method == "noise":
-        X_train_aug = \
-            augment_with_random_noise(args, X_train, X_train_aug)
+        X_train_aug =  augment_with_random_noise(args, X_train, X_train_aug)
     #
     # print("Augmentation number of class 0", np.where(X_train_aug[:, 2] == 0)[0].size, "number of class 1", np.where(X_train_aug[:, 2] == 1)[0].size)
     train_data_aug["spectra"] = X_train_aug[:, 3:].astype(np.float32)
@@ -396,10 +396,10 @@ def augment_with_batch_mean(args, X_train, X_train_aug):
         # find all the samples from this class
         if args.aug_method == "ops_mean":
             inds = np.where(X_train[:, 2] == args.num_classes - 1 - class_id)[0]
-        elif args.aug_method == "mean":
+        elif args.aug_method == "same_mean":
             inds = np.where(X_train[:, 2] == class_id)[0]
-        elif args.aug_method == "compose":
-            inds = np.where(X_train[:, 2] == class_id)[0]
+        elif args.aug_method == "both_mean":
+            inds = len(X_train[:, 2])   # use all labels to augment
 
         # randomly select 100 groups of 100 samples each and get mean
         aug_inds = np.random.choice(inds, inds.size*num2average, replace=True).reshape(-1, num2average)  # random pick 10000 samples and take mean every num2average samples
