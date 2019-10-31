@@ -339,7 +339,7 @@ def get_data_from_certain_ids(args, certain_fns=["f1", "f2"]):
         train_count = dict(Counter(list(train_data["ids"])))  # count the num of samples of each id
         sorted_count = sorted(train_count.items(), key=lambda kv: kv[1])
         np.savetxt(os.path.join(args.output_path, "train_ids_count.csv"), np.array(sorted_count), fmt='%d', delimiter=',')
-        ipdb.set_trace()
+
     return train_data, test_data
 
 
