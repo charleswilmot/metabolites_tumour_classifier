@@ -26,7 +26,8 @@
             "data_source": "lout40-data5",
             "postfix": "ep2-0.874",
             "if_from_certain": true,
-            "if_save_certain": false
+            "if_save_certain": false,
+            "test_data": "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
         },
 
         "train": {

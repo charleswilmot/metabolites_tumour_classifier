@@ -508,7 +508,7 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
 
 
 def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
-    row, col = 6, 1
+    row, col = 4, 2
     true_labels = true_labels.astype(np.int)
     plt.figure()
     rand_inds = np.random.choice(spec.shape[0], row * col)
@@ -516,16 +516,18 @@ def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
     colors = ["royalblue", "darkviolet"]
     class_names = ["healthy", "tumor"]
     num_to_plot = 30
-    for jj, ind in enumerate(rand_inds):
-        start = np.random.choice((len(new_mean) - 40))
-        end = start + num_to_plot
-        NEW = args.aug_scale * new_mean[start:end] + np.tile((1 - args.aug_scale) * spec[ind], (num_to_plot, 1))
-        axs[jj].plot(NEW.T, alpha=0.65, linewidth=0.8)
-        axs[jj].plot(spec[ind], colors[true_labels[ind]], label=class_names[true_labels[ind]])
-        axs[jj].legend(loc="best")
+    for jj in range(row):
+        for ii in range(col):
+            start = np.random.choice((len(new_mean) - 40))
+            end = start + num_to_plot
+            ind = jj * col + ii
+            NEW = args.aug_scale * new_mean[start:end] + np.tile((1 - args.aug_scale) * spec[ind], (num_to_plot, 1))
+            axs[jj, ii].plot(NEW.T, alpha=0.5, linewidth=0.8)
+            axs[jj, ii].plot(spec[ind], colors[true_labels[ind]], label=class_names[true_labels[ind]])
+            axs[jj, ii].legend(loc="best")
     f.text(0.5, 0.05, 'index', fontsize=16),
     f.text(0.05, 0.5, 'Normalized amplitude', fontsize=16, rotation=90, verticalalignment='center'),
-    f.subplots_adjust(hspace=0, wspace=0.01)
+    f.subplots_adjust(hspace=0, wspace=0.06)
     f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale, num2average)), format="png")
     plt.close()
 

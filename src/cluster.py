@@ -92,7 +92,7 @@ class ClusterQueue:
         # TODO
         os.system(self.cmd)
 
-        time.sleep(2)
+        time.sleep(1)
 
     def _key_to_flag(self, key):
         return "--" + key.replace("_", "_")
@@ -105,9 +105,18 @@ class ClusterQueue:
 
 
 # run all the experiments with different configurations
-for ep_num in range(1, 11):
-    for augmentation_method in ["same_mean", "ops_mean", "both_mean"]:
-        for factor in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+# for ep_num in range(1, 11):
+#     for augmentation_method in ["same_mean", "ops_mean", "both_mean"]:
+#         for factor in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+#             for fold in range(1, 11):
+#                 cq = ClusterQueue(aug_method=augmentation_method,
+#                                   aug_scale=factor,
+#                                   aug_folds=fold,
+#                                   from_epoch=ep_num)
+
+for ep_num in [1]:
+    for augmentation_method in ["same_mean"]:  #, "ops_mean", "both_mean"
+        for factor in [0.5]:  #0.1, 0.2, 0.3,
             for fold in range(1, 11):
                 cq = ClusterQueue(aug_method=augmentation_method,
                                   aug_scale=factor,

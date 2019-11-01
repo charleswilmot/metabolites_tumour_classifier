@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 #SBATCH --partition sleuths
-#SBATCH --reservation triesch-shared
 #SBATCH --mem 4G
-#SBATCH --gres gpu:1
+#SBATCH --mincpus 2
+##SBATCH --gres gpu:1
+##SBATCH --reservation triesch-shared
 
 srun -u python3 classifier.py train "$@"
