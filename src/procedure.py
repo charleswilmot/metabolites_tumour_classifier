@@ -391,7 +391,7 @@ def training(sess, args, graph, saver):
     :return:
     """
     logger.info("Starting training procedure")
-    best_saver = tf.train.Saver(max_to_keep=3)  # keep the top 3 best models
+    best_saver = tf.train.Saver(max_to_keep=2)  # keep the top 3 best models
 
     output_data = {}
     output_data["train_loss"] = []
@@ -419,8 +419,6 @@ def training(sess, args, graph, saver):
                 factor=0.5, patience=3,
                 epsilon=1e-04, min_lr=10e-8)
 
-        if epoch > 20 and epoch % 20 == 0:
-            print("Epoch: ", epoch)
         ret_train = train_phase(sess, graph, args.test_every,
                                 epoch, lr=lr, if_get_wrong=False,
                                 if_get_certain=True)
@@ -453,7 +451,6 @@ def training(sess, args, graph, saver):
                        certain_data, header="sample_ids,labels" + ",logits" * args.num_classes, delimiter=",")
 
         epoch = num_trained * 1.0 / graph["train_num_samples"]
-
         output_data["test_loss"].append(ret_test["test_loss"])
         output_data["test_accuracy"].append(ret_test["test_accuracy"])
         output_data["test_confusion"] = ret_test["test_confusion"]
@@ -467,6 +464,11 @@ def training(sess, args, graph, saver):
         output_data["current_step"] += 1
         # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch
         logger.debug("Epoch {}, Testing phase done\t({})".format(epoch, ret_test["test_accuracy"]))
+
+        if epoch > 50 and epoch % 50 == 0:
+            print(
+                "Epoch {:0.1f} Best test accuracy {}, test AUC {}\n Test Confusion:\n{}".format(epoch, output_data["test_accuracy"][-1], metrics.roc_auc_score(ret_test["test_labels"],ret_test[ "test_logits"]), ret_test["test_confusion"]))
+            save_plots(sess, args, output_data, training=True, epoch=epoch)
 
         # save model
         if output_data["test_accuracy"][-1] > best_accuracy:

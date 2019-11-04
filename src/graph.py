@@ -54,7 +54,7 @@ class MLP:
             net = self._make_layer(net, ind, self.drop_fc[ind], training)
         activity = net
 
-        with tf.compat.v1.variable_scope("logits", reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope("logits", reuse=tf.compat.v1.AUTO_REUSE):
             net = tf.layers.dense(net, self.num_classes,
                                       kernel_initializer=initializer,
                                       activation=None)
@@ -83,7 +83,7 @@ class MLP:
         logger.debug(string.format(*_to_format))
 
         print("-------Building network-----------")
-        with tf.compat.v1.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             net = tf.layers.dense(inp, out_size,
                                   kernel_initializer=initializer,
                                   activation=None)
@@ -172,7 +172,7 @@ class CNN:
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
-        with tf.compat.v1.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             kernel_size = inp.get_shape().as_list()[1]
             out = tf.layers.conv2d(inp, out_ch,
@@ -202,7 +202,7 @@ class CNN:
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
-        with tf.compat.v1.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_dim))
             out = tf.layers.dense(inp, out_dim,
                                   kernel_initializer=initializer,
@@ -240,7 +240,7 @@ class CNN_CAM:
         self._net_constructed_once = True
         out["conv"] = self.construct_cnn_layers(inp, training)
         # GAP layer - global average pooling
-        with tf.compat.v1.variable_scope('GAP', reuse=tf.AUTO_REUSE) as scope:
+        with tf.compat.v1.variable_scope('GAP', reuse=tf.compat.v1.AUTO_REUSE) as scope:
             net_gap = tf.reduce_mean(out["conv"], (1))  # get the mean of axis 1 and 2 resulting in shape [batch_size, filters]
             print("gap shape", net_gap.shape.as_list())
     
@@ -301,7 +301,7 @@ class CNN_CAM:
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
         out = inp
-        with tf.compat.v1.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             if self.kernel_size >= 100:
                 kernel_size = inp.get_shape().as_list()[1] // 2  # later layers, the filter size should be adjusted by the input
@@ -339,7 +339,7 @@ class CNN_CAM:
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
-        with tf.compat.v1.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_dim))
             out = tf.layers.dense(inp, out_dim,
                                   kernel_initializer=initializer,
@@ -382,7 +382,7 @@ class Res_ECG_CAM:
 
         ret["conv"] = self.construct_res_blocks_ecg(out, training=training)
         # GAP layer - global average pooling
-        with tf.compat.v1.variable_scope('GAP', reuse=tf.AUTO_REUSE) as scope:
+        with tf.compat.v1.variable_scope('GAP', reuse=tf.compat.v1.AUTO_REUSE) as scope:
             net_gap = tf.squeeze(tf.reduce_mean(ret["conv"], (1)), axis=1) # get the mean of axis 1 and 2 resulting in shape [batch_size, filters]
 
             print("gap shape", net_gap.get_shape().as_list())
@@ -436,7 +436,7 @@ class Res_ECG_CAM:
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\t (training = {})"
         logger.debug(string.format(*_to_format))
         out = inp
-        with tf.compat.v1.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             kernel_size = min(self.kernel_size, inp.get_shape().as_list()[1])
             out = tf.layers.conv2d(inputs = out,
@@ -468,7 +468,7 @@ class Res_ECG_CAM:
         """
         out = inp
 
-        with tf.compat.v1.variable_scope("res_block_start", reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope("res_block_start", reuse=tf.compat.v1.AUTO_REUSE):
             out = tf.layers.conv2d(
                 inputs=out,
                 filters=self.channel_start,
@@ -513,7 +513,7 @@ class Res_ECG_CAM:
             concat_long_ch = tf.concat([x, zeros_x], axis=3)
             x = concat_long_ch
 
-        with tf.compat.v1.variable_scope("res_block" + str(layer_id), reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope("res_block" + str(layer_id), reuse=tf.compat.v1.AUTO_REUSE):
             for j in range(self.num_layers_in_res):  # there are two conv layers in one block
                 print(training)
                 out = tf.layers.batch_normalization(out, training=training)
@@ -585,7 +585,7 @@ class Inception:
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\t (training = {})"
         logger.debug(string.format(*_to_format))
         out = inp
-        with tf.compat.v1.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             kernel_size = min(self.kernel_size, inp.get_shape().as_list()[1])
             out = tf.layers.conv2d(inputs = out,
@@ -614,7 +614,7 @@ class Inception:
         # Get number of input channels
         input_channels = int(x.get_shape()[-1])
 
-        with tf.compat.v1.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
+        with tf.compat.v1.variable_scope(name, reuse=tf.compat.v1.AUTO_REUSE) as scope:
             out = tf.layers.conv2d(
                 inputs=x,
                 filters=num_filters,
@@ -664,7 +664,7 @@ class Inception:
         :return:
         """
 
-        with tf.compat.v1.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
+        with tf.compat.v1.variable_scope(name, reuse=tf.compat.v1.AUTO_REUSE) as scope:
             conv_1 = self.conv_layer(x, filter_height=1, filter_width=1,
                                 num_filters=conv_1_size, name='{}_1x1'.format(name))
 
@@ -732,13 +732,13 @@ class Inception:
                                            pool_proj_size=64//factor, name="inception3b")
         print("layer inception3b out_size {}".format(inception3b.get_shape().as_list()))
 
-        with tf.compat.v1.variable_scope("GAP", reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope("GAP", reuse=tf.compat.v1.AUTO_REUSE):
             gap = tf.reduce_mean(inception3b, (1))
             print("layer gap out_size {}".format(gap.get_shape().as_list()))
             gap_dropout = tf.layers.dropout(gap, rate=self.drop_cnn, training=training) if self.drop_cnn != 0 else gap
             flatten = tf.layers.flatten(gap_dropout)
 
-        with tf.compat.v1.variable_scope("logits", reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope("logits", reuse=tf.compat.v1.AUTO_REUSE):
             logits = tf.layers.dense(flatten, self.num_classes,
                                       kernel_initializer=initializer,
                                       activation=self.activations[-1])
@@ -773,7 +773,7 @@ class RNN(object):
         ret = {}
         net = tf.reshape(features, [-1, self.height])   # make sure each sample is one time serie dat
 
-        with tf.compat.v1.variable_scope("FCb4RNN", reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope("FCb4RNN", reuse=tf.compat.v1.AUTO_REUSE):
             for unit in self.fc_dim:
                 net = tf.layers.dense(net, unit,
                                       kernel_initializer=initializer,
@@ -782,13 +782,13 @@ class RNN(object):
                 net = tf.nn.relu(net)
                 net = tf.layers.dropout(net, rate=self.drop_fc)
 
-        with tf.compat.v1.variable_scope("RNN", reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope("RNN", reuse=tf.compat.v1.AUTO_REUSE):
             for layer_id, rnn_dim in enumerate(self.rnn_dims):
                 net = self.build_rnn(net, rnn_dim)
 
         ret["rnn_state"] = net
 
-        with tf.compat.v1.variable_scope("FC", reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope("FC", reuse=tf.compat.v1.AUTO_REUSE):
             logits = tf.layers.dense(net, self.num_classes,
                                      kernel_initializer=initializer,
                                      activation=tf.nn.softmax)

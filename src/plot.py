@@ -508,6 +508,15 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
 
 
 def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
+    """
+    new_mean, num2average, X_train[:, 3:], X_train[:, 2], args
+    :param new_mean:
+    :param num2average:
+    :param spec:
+    :param true_labels:
+    :param args:
+    :return:
+    """
     row, col = 4, 2
     true_labels = true_labels.astype(np.int)
     plt.figure()

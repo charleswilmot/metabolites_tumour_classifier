@@ -404,12 +404,13 @@ def augment_with_batch_mean(args, X_train, X_train_aug):
         # randomly select 100 groups of 100 samples each and get mean
         aug_inds = np.random.choice(inds, inds.size*num2average, replace=True).reshape(-1, num2average)  # random pick 10000 samples and take mean every num2average samples
         mean_batch = np.mean(X_train[:, 3:][aug_inds], axis=1)   # get a batch of spectra to get the mean
-        new_mean = (mean_batch - np.mean(mean_batch, axis=1)[:, np.newaxis]) / np.std(mean_batch, axis=1)[:, np.newaxis]
+        # get zscore of the mean_batch. Out of scale! NOt a good idea
+        # mean_batch = (mean_batch - np.mean(mean_batch, axis=1)[:, np.newaxis]) / np.std(mean_batch, axis=1)[:, np.newaxis]
 
-        plot_aug_examples(new_mean, num2average, X_train[:, 3:], X_train[:, 2], args)
+        plot_aug_examples(mean_batch, num2average, X_train[:, 3:], X_train[:, 2], args)
 
         for fold in range(args.aug_folds):
-            aug_zspec = (1 - args.aug_scale) * X_train[:, 3:][inds] + new_mean[np.random.choice(new_mean.shape[0], inds.size)] * args.aug_scale
+            aug_zspec = (1 - args.aug_scale) * X_train[:, 3:][inds] + mean_batch[np.random.choice(mean_batch.shape[0], inds.size)] * args.aug_scale
             combine = np.concatenate((X_train[:, 0][inds].reshape(-1, 1), X_train[:, 1][inds].reshape(-1, 1), X_train[:, 2][inds].reshape(-1, 1), aug_zspec), axis=1)
             X_train_aug = np.vstack((X_train_aug, combine))
 

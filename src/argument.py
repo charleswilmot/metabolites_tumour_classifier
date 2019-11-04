@@ -222,43 +222,45 @@ train_parser.add_argument(
 )
 train_parser.add_argument(
     '--aug_method', type=log_debug_arg(str, "the augmentation method"),
-    default= 'ops_mean',
+    default='ops_mean',
     help="augmentation methods: mean, ops_mean, both"
 )
 train_parser.add_argument(
     '--aug_scale', type=log_debug_arg(float, "augmenatation scale w: w*another + (1-w)*self"),
-     default= 0.3,
+     default=0.8,
     help="a float number of aug scale."
 )
+
 train_parser.add_argument(
     '--from_epoch', type=log_debug_arg(int, "Use certain examples from epoch "),
-    default= 3,
+    default=3,
     help="Certain examples from which epoch to use for training"
 )
 train_parser.add_argument(
     '--aug_folds', type=log_debug_arg(int, "How many folds to augment"),
-    default= 5,
+    default=5,
     help="How many folds to augment the data"
 )
 train_parser.add_argument(
     '--output_path', type=log_debug_arg(str, "results save dir"),
+    default=None,
     help="results save dir"
 )
 
 
 test_parser = subparsers.add_parser("test")
 test_parser.add_argument(
-    'restore_from', metavar='MODEL',
+    '--restore_from', metavar='restore from MODEL',
     type=log_debug_arg(str, "Restore model from:"),
     help="Path to a previously trained model."
 )
 
-# test_parser.add_argument(
-#     'output_path', metavar='OUTPUT',
-#     type=log_debug_arg(str, "Output path:"),
-#     nargs='?', default='./',
-#     help="Path to the output data."
-# )
+test_parser.add_argument(
+    '--output_path', metavar='OUTPUT',
+    type=log_debug_arg(str, "Output path:"),
+    nargs='?', default='../results',
+    help="Path to the output data."
+)
 
 test_parser.add_argument(
     '-x', '--data-not-labeled', action='store_true',
@@ -298,24 +300,29 @@ else:
     params.width = 1
     params.height = params.data_len
 
-# # params.output_path = os.path.join(params.output_path,
-#                                 time_str + "class{}-{}-{}-aug_{}x{}-{}-{}".format(params.num_classes, params.model_name, params.postfix, params.aug_method, params.aug_folds, params.aug_scale, args.test_or_train))
-params.output_path = args.output_path
+if not args.output_path:
+    params.output_path = os.path.join("../results",
+                                time_str + "class{}-{}-{}-aug_{}x{}-{}-{}".format(params.num_classes, params.model_name, params.postfix, args.aug_method, args.aug_folds, args.aug_scale, args.test_or_train))
+else:
+    params.output_path = args.output_path
+
 params.model_save_dir = os.path.join(params.output_path, "network")
 params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from
 params.test_or_train = args.test_or_train
 params.resume_training = (args.restore_from != None)
-params.aug_scale = args.aug_scale
-params.aug_method = args.aug_method
-params.aug_folds = args.aug_folds
-params.from_epoch = args.from_epoch
-params.if_save_certain = not params.if_from_certain
 
 if params.test_or_train == "test":
     params.if_from_certain = False
+elif params.test_or_train == "train":
+    params.aug_scale = args.aug_scale
+    params.aug_method = args.aug_method
+    params.aug_folds = args.aug_folds
+    params.from_epoch = args.from_epoch
+    params.if_save_certain = not params.if_from_certain
 # Make the output directory
-# dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+if not args.output_path:
+    dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
 
 
 # Verbosity level:

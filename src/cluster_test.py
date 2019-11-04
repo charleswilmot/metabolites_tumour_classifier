@@ -5,14 +5,22 @@ import numpy as np
 default_aug_method = "ops_mean"
 default_factor = 0.2
 default_folds = 5
+default_aug_scale = 0.3
+default_from_epoch = 3
 EXPERIMENT_DIR_ROOT = "../results/"
 
 
-def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None, description=None, from_epoch=None):
+def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None, description=None, from_epoch=None, restore_from=None):
     date = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
     aug_method = default_aug_method if aug_method is None else aug_method
+    aug_scale = default_aug_scale if aug_scale is None else aug_scale
     aug_folds = default_folds if aug_folds is None else aug_folds
-    description = description if description else "train"
+    from_epoch = default_from_epoch if from_epoch is None else from_epoch
+    if restore_from:
+        restore_from = restore_from
+    else:
+        raise ValueError('A model dir should be passed into!')
+    description = description if description else "test"
     experiment_dir = EXPERIMENT_DIR_ROOT + "{}_exp0.874_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
     return experiment_dir
 
@@ -63,7 +71,8 @@ class ClusterQueue:
             aug_scale=kwargs["aug_scale"] if "aug_scale" in kwargs else None,
             aug_folds=kwargs["aug_folds"] if "aug_folds" in kwargs else None,
             from_epoch=kwargs["from_epoch"] if "from_epoch" in kwargs else None,
-            description=kwargs["description"] if "description" in kwargs else None)
+            description=kwargs["description"] if "description" in kwargs else None,
+            restore_from=kwargs["restore_from"] if "restore_from" in kwargs else None)
         make_output_dir(self.output_path, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
 
         # output path for the experiment log
@@ -113,12 +122,19 @@ class ClusterQueue:
 #                                   aug_scale=factor,
 #                                   aug_folds=fold,
 #                                   from_epoch=ep_num)
+model_dirs = [
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-09-42_exp0.874_same_meanx10_factor_0.05_from-epoch_3_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-09-43_exp0.874_same_meanx10_factor_0.1_from-epoch_3_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-09-44_exp0.874_same_meanx10_factor_0.2_from-epoch_3_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-18_exp0.874_same_meanx10_factor_0.3_from-epoch_3_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-20_exp0.874_same_meanx10_factor_0.4_from-epoch_3_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-21_exp0.874_same_meanx10_factor_0.5_from-epoch_3_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-22_exp0.874_same_meanx10_factor_0.6_from-epoch_3_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-23_exp0.874_same_meanx10_factor_0.7_from-epoch_3_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-24_exp0.874_same_meanx10_factor_0.8_from-epoch_3_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-26_exp0.874_same_meanx10_factor_0.9_from-epoch_3_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-27_exp0.874_same_meanx10_factor_0.95_from-epoch_3_train/network"
+]
 
-for ep_num in [3]:
-    for augmentation_method in ["same_mean"]:  #, "ops_mean", "both_mean"
-        for factor in [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]:  #0.1, 0.2, 0.3,
-            for fold in [10]:
-                cq = ClusterQueue(aug_method=augmentation_method,
-                                  aug_scale=factor,
-                                  aug_folds=fold,
-                                  from_epoch=ep_num)
+for model in model_dirs:
+    cq = ClusterQueue(restore_from=model)
