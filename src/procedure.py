@@ -422,7 +422,7 @@ def training(sess, args, graph, saver):
         ret_train = train_phase(sess, graph, args.test_every,
                                 epoch, lr=lr, if_get_wrong=False,
                                 if_get_certain=True)
-        if len(ret_train["train_certain_sample_ids"]) > 0 and epoch < 50:
+        if len(ret_train["train_certain_sample_ids"]) > 0 and epoch < 20 and args.if_save_certain:
             certain_data = np.concatenate((ret_train["train_certain_sample_ids"].reshape(-1, 1), ret_train["train_certain_labels"].reshape(-1, 1), ret_train["train_certain_logits"]), axis=1)
             np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}_num_{}_{}.csv".format("train", epoch, ret_train["train_certain_sample_ids"].size, args.data_source)),
                        certain_data, header="sample_ids,labels"+",logits" * args.num_classes, delimiter=",")

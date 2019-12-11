@@ -45,7 +45,10 @@ tf.compat.v1.set_random_seed(args.seed)
 
 # Get augmentation of the data
 if args.if_from_certain:
-    certain_dir ="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-30T14-34-21-data-lout40-data5-1d-class2-Res_ECG_CAM-step1-collect-aug_ops_meanx0-0-train-0.874/certains"
+    certain_dir ="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-08T14-22-53-data-lout40-data5-1d-class-2-Res_ECG_CAM-relu-aug_ops_meanx10-0.3-train-auc0.766/network"
+    print("______________________________________________")
+    print(certain_dir)
+    print("______________________________________________")
     certain_files = dataio.find_files(certain_dir, pattern="*_epoch_{}_*.csv".format(args.from_epoch))
     print("certain_files", certain_files)
     data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files)

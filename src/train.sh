@@ -40,14 +40,14 @@ srun -p sleuths -w jetski --mem=10000 --reservation triesch-shared --gres gpu:rt
 
 srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py train
 
-srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py train --aug_method="same_mean" --aug_scale=0.8 --from_epoch=3 --aug_folds=10
+srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py train --aug_method="ops_mean" --aug_scale=0.5 --from_epoch=3 --aug_folds=5
 
 
 srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py train
 
 srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 vae_metabolite.py
 
-srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py test --restore_from=/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-09-42_exp0.874_same_meanx10_factor_0.05_from-epoch_3_train/network
+srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py test --restore_from=/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-08T14-22-53-data-lout40-data5-1d-class-2-Res_ECG_CAM-relu-aug_ops_meanx10-0.3-train-auc0.766
 
 
 srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py test /home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/saved_certain/2019-10-08T14-51-40-data-lout40-data5-1d-class2-Res_ECG_CAM-certainEp3-aug_ops_meanx10-0.3-train-auc0.858

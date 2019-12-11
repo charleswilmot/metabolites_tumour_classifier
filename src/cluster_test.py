@@ -1,7 +1,7 @@
 import time
 import os
 import numpy as np
-
+import logging
 default_aug_method = "ops_mean"
 default_factor = 0.2
 default_folds = 5
@@ -21,13 +21,13 @@ def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None
     else:
         raise ValueError('A model dir should be passed into!')
     description = description if description else "test"
-    experiment_dir = EXPERIMENT_DIR_ROOT + "{}_exp0.874_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
+    experiment_dir = os.path.dirname(restore_from) + "_{}".format(description)
     return experiment_dir
 
 
 def make_output_dir(output_path, sub_folders=["CAMs"]):
     if os.path.isdir(output_path):
-        logger.critical("Output path already exists. Please use an other path.")
+        logging.critical("Output path already exists. Please use an other path.")
         raise FileExistsError("Output path already exists.")
     else:
         os.makedirs(output_path)
@@ -81,7 +81,7 @@ class ClusterQueue:
         # special treatment for the "description" param (for convevience)
         if "description" in kwargs:
             self.cmd_slurm += " --job-name {}".format(kwargs["description"])
-        self.cmd_slurm += " cluster.sh"
+        self.cmd_slurm += " cluster_test.sh"
 
         # Creating the flags to be passed to classifier.py
         self.cmd_python = ""
@@ -113,27 +113,30 @@ class ClusterQueue:
         os.system("watch tail -n 40 \"{}\"".format(self.output_path + "/log/*.log"))
 
 
-# run all the experiments with different configurations
-# for ep_num in range(1, 11):
-#     for augmentation_method in ["same_mean", "ops_mean", "both_mean"]:
-#         for factor in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
-#             for fold in range(1, 11):
-#                 cq = ClusterQueue(aug_method=augmentation_method,
-#                                   aug_scale=factor,
-#                                   aug_folds=fold,
-#                                   from_epoch=ep_num)
 model_dirs = [
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-09-42_exp0.874_same_meanx10_factor_0.05_from-epoch_3_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-09-43_exp0.874_same_meanx10_factor_0.1_from-epoch_3_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-09-44_exp0.874_same_meanx10_factor_0.2_from-epoch_3_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-18_exp0.874_same_meanx10_factor_0.3_from-epoch_3_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-20_exp0.874_same_meanx10_factor_0.4_from-epoch_3_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-21_exp0.874_same_meanx10_factor_0.5_from-epoch_3_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-22_exp0.874_same_meanx10_factor_0.6_from-epoch_3_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-23_exp0.874_same_meanx10_factor_0.7_from-epoch_3_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-24_exp0.874_same_meanx10_factor_0.8_from-epoch_3_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-26_exp0.874_same_meanx10_factor_0.9_from-epoch_3_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-11-04-10-42-27_exp0.874_same_meanx10_factor_0.95_from-epoch_3_train/network"
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-10-17-06-57_exp0.776_same_meanx1_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-10-17-06-59_exp0.776_same_meanx3_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-10-17-07-06_exp0.776_ops_meanx1_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-10-17-07-07_exp0.776_ops_meanx3_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-10-17-07-14_exp0.776_both_meanx1_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-10-17-07-15_exp0.776_both_meanx3_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-10-17-07-16_exp0.776_both_meanx5_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-10-17-07-17_exp0.776_both_meanx7_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-16_exp0.776_same_meanx5_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-17_exp0.776_same_meanx7_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-18_exp0.776_same_meanx9_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-19_exp0.776_same_meanx13_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-21_exp0.776_same_meanx15_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-22_exp0.776_ops_meanx5_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-23_exp0.776_ops_meanx7_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-24_exp0.776_ops_meanx9_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-25_exp0.776_ops_meanx13_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-27_exp0.776_ops_meanx15_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-28_exp0.776_both_meanx5_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-29_exp0.776_both_meanx7_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-30_exp0.776_both_meanx9_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-31_exp0.776_both_meanx13_factor_0.5_from-epoch_5_train/network",
+"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-11-13-31-32_exp0.776_both_meanx15_factor_0.5_from-epoch_5_train/network"
 ]
 
 for model in model_dirs:

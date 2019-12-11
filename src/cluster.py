@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 default_aug_method = "ops_mean"
-default_factor = 0.2
+default_factor = 0.5
 default_folds = 5
 EXPERIMENT_DIR_ROOT = "../results/"
 
@@ -13,7 +13,8 @@ def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None
     aug_method = default_aug_method if aug_method is None else aug_method
     aug_folds = default_folds if aug_folds is None else aug_folds
     description = description if description else "train"
-    experiment_dir = EXPERIMENT_DIR_ROOT + "{}_exp0.874_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
+    experiment_dir = EXPERIMENT_DIR_ROOT + "{}_new_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
+    # experiment_dir = EXPERIMENT_DIR_ROOT + "{}_exp0.776_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
     return experiment_dir
 
 
@@ -114,10 +115,10 @@ class ClusterQueue:
 #                                   aug_folds=fold,
 #                                   from_epoch=ep_num)
 
-for ep_num in [3]:
-    for augmentation_method in ["same_mean"]:  #, "ops_mean", "both_mean"
-        for factor in [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]:  #0.1, 0.2, 0.3,
-            for fold in [10]:
+for ep_num in [99]:
+    for augmentation_method in ["same_mean", "ops_mean", "both_mean"]:  #,"same_mean", "ops_mean", "both_mean"
+        for factor in [0.1, 0.2, 0.3, 0.4, 0.5]:  #0.1, 0.2, 0.3,
+            for fold in [1, 3, 5, 8, 10]:
                 cq = ClusterQueue(aug_method=augmentation_method,
                                   aug_scale=factor,
                                   aug_folds=fold,

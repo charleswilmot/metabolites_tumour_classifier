@@ -3,7 +3,7 @@ import os
 import random
 import itertools
 import scipy as scipy
-
+from collections import Counter
 from sklearn import metrics
 from scipy import interp
 import pandas as pd
@@ -28,6 +28,16 @@ def find_files(directory, pattern='*.csv'):
             files.append(os.path.join(root, filename))
 
     return files
+
+
+def find_folderes(directory, pattern='*.csv'):
+    folders = []
+    for root, dirnames, filenames in os.walk(directory):
+        for subfolder in fnmatch.filter(dirnames, pattern):
+            folders.append(os.path.join(root, subfolder))
+
+    return folders
+
 
 def plot_confusion_matrix(confm, num_classes, title='Confusion matrix', cmap='Blues', normalize=False, save_name="results/"):  # plt.cm.Blues):
     """
@@ -103,12 +113,72 @@ def plot_auc_curve(labels_hot, pred, epoch=0, save_dir='./results'):
 
     plt.close()
 
+
+def get_auc_as_factor(epoch=5, factor=0.5, aug_meth=["same", "ops"], colors=pylab.cm.Set2(np.linspace(0, 1, 6)), fix_name="epoch"):
+    """
+    Get auc as a function of aug factor with three different aug methods
+    header = np.array(["method", "fold", "factor", "epoch", "auc"])
+    :param epoch:
+    :param aug_meth:
+    :return:
+    """
+    colors = ["royalblue", "paleturquoise", "orangered", "mistyrose", "limegreen", "palegreen"]
+    if not epoch:
+        base_var = np.linspace(1, 10, 9)
+        var_name = "epoch"
+        fix_value = factor
+        fix_ind = 2
+        var_ind = 3
+        fold = 5
+    elif not factor:
+        base_var = np.linspace(0, 1.0, 10)
+        var_name = "factor"
+        fix_value = epoch
+        fix_ind = 3
+        var_ind = 2
+        fold = 5
+    plt.figure()
+    for ind, method in enumerate(aug_meth):
+        files = find_files(file_dir, pattern='*aug_{}*.txt'.format(method))
+
+        sum_aucs = []
+
+        for fn in files:
+            print("Model {}, fix_name {}: {}".format(os.path.basename(fn).split("_")[1], fix_name, fix_value))
+            data = pd.read_csv(fn, header=0).values
+            need_inds = np.where(
+                (data[:, fix_ind] == fix_value) &
+                (data[:, 1] == fold))[0]
+            new_data = data[need_inds]
+
+            sort_data = sorted(new_data, key=lambda x: x[var_ind])
+            var_values = np.array(sort_data)[:, var_ind].astype(np.float)
+            auc = np.array(sort_data)[:, -1].astype(np.float)
+            auc_interp = interp(base_var, var_values, auc)
+            sum_aucs.append(auc_interp)
+            print("ok")
+
+        mean_auc = np.mean(np.array(sum_aucs), axis=0)
+        std_auc = np.std(np.array(sum_aucs), axis=0)
+
+        plt.plot(base_var, mean_auc, color=colors[ind * 2], linewidth=2.5, label=method)
+        plt.fill_between(base_var, mean_auc - std_auc, mean_auc + std_auc, color=colors[ind * 2 + 1])
+
+    plt.legend()
+    plt.ylim([0.4, 0.82])
+    plt.xlabel("{}".format(var_name))
+    plt.ylabel("area under the curve")
+    plt.savefig(os.path.dirname(file_dir) + "/auc_as_factor_all_fix_{}_var_{}.png".format(fix_name, var_name), format="png")
+    plt.savefig(os.path.dirname(file_dir) + "/auc_as_factor_all_fix_{}_var_{}.pdf".format(fix_name, var_name), format="pdf")
+    plt.close()
+
 # ------------------------------------------------
 
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "indi_rating_with_model"
+plot_name = "test_aucs"
+
 
 if plot_name == "indi_rating_with_model":
     data_dir = "../data/20190325"
@@ -138,6 +208,7 @@ if plot_name == "indi_rating_with_model":
     mean_tpr = []
     mean_score = []
     base_fpr = np.linspace(0, 1, 20)
+
     tpr_model = []
 
     start = 0
@@ -185,7 +256,6 @@ if plot_name == "indi_rating_with_model":
     plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.png"), format='png')
     plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.pdf"), format='pdf')
     plt.close()
-
 elif plot_name == "human_whole_with_model":
     data_dir = "../data/20190325"
     human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
@@ -273,6 +343,88 @@ elif plot_name == "average_models":
     print("ok")
 elif plot_name == "certain":
     fn = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/saved_certain/2019-10-07T17-02-18-data-20190325-3class_lout40_train_test_data5-1d-class-2-Res_ECG_CAM-relu-aug_ops_meanx5-0.7-train--auc0.715/certains/certain_data_train_epoch_0_num660.csv"
+elif plot_name == "test_aucs":
+    from_dirs = True
+    if from_dirs:
+        results = "/home/epilepsy-data/data/metabolites/paper_results_2700/saved_all_models_and_tests"
+        model = "0.776"
+        pattern = "*exp{}*_train_test-*".format(model)
+        folders = find_folderes(results, pattern=pattern)
+        configs = [] # "aug_method": [], "aug_factor": [], "aug_fold": [], "from_epoch": []
+        for fn in folders:
+            print(fn)
+            splits = os.path.basename(fn).split("_")
+            aug_name = splits[2]
+            aug_fold = splits[3].split("x")[-1]
+            aug_factor = splits[5]
+            from_epoch = splits[7]
+            test_auc = splits[-1].split("-")[-1]
+            configs.append((aug_name, aug_fold, aug_factor, from_epoch, test_auc))
+
+        ## plot same_mean aug, auc w.r.t.
+        print("ok")
+        configs = np.array(configs)
+        aug_same = configs[np.where(configs[:, 0] == "same")[0]]
+        aug_ops = configs[np.where(configs[:, 0] == "ops")[0]]
+        aug_both = configs[np.where(configs[:, 0] == "both")[0]]
+
+        np.savetxt(os.path.join(results, 'model_{}_aug_same_entry_{}.txt'.format(model, len(aug_same))), aug_same, header="aug_name,aug_fold,aug_factor,from_epoch,test_auc", delimiter=",", fmt="%s")
+        np.savetxt(os.path.join(results, 'model_{}_aug_ops_entry_{}.txt'.format(model, len(aug_ops))), aug_ops, header="aug_name,aug_fold,aug_factor,from_epoch,test_auc", delimiter=",", fmt="%s")
+        np.savetxt(os.path.join(results, 'model_{}_aug_both_entry_{}.txt'.format(model, len(aug_both))), aug_both, header="aug_name,aug_fold,aug_factor,from_epoch,test_auc", delimiter=",", fmt="%s")
+    else:
+        file_dir = "/home/epilepsy-data/data/metabolites/paper_results_2700/Z-Summary-results"
+        aug_meth = ["same", "ops", "both"]
+
+        colors = pylab.cm.Set2(np.linspace(0, 1, 6))
+        factor = 0.5
+        get_auc_as_factor(epoch=None, factor=factor, aug_meth=aug_meth, colors=colors, fix_name="factor")
+
+    # for fold in [5, 10]:
+    #     same = aug_same[np.where(aug_same[:, 1].astype(np.int) == fold)[0]]
+    #     ops = aug_ops[np.where(aug_ops[:, 1].astype(np.int) == fold)[0]]
+    #     both = aug_both[np.where(aug_both[:, 1].astype(np.int) == fold)[0]]
+    #
+    #     epoch_counter_same = list(Counter(list(same[:, 3])))
+    #     epoch_counter_ops = list(Counter(list(ops[:, 3])))
+    #     epoch_counter_both = list(Counter(list(both[:, 3])))
+    #
+    #     plt.figure(),
+    #     for epo in [3, 4, 5, 6]:
+    #         for data, name in zip([same, ops, both], ["same", "ops", "both"]):
+    #             subdata = data[np.where(data[:, 3].astype(np.int) == epo)[0]]
+    #             sortdata = np.array(sorted(zip(subdata[:, 2], subdata[:, 4], subdata[:, 1]), key=lambda x: x[0]))
+    #
+    #             if len(subdata) > 0:
+    #                 plt.plot(sortdata[:, 0].astype(np.float), sortdata[:, 1].astype(np.float), label="{} class".format(name)),
+    #         plt.title("Augment by {} fold from epoch {}".format(fold, epo))
+    #         plt.legend(),
+    #         plt.savefig(os.path.join(results, "model-{}-Augment by {} fold from epoch {}.png".format(model, fold, epo)))
+    #         plt.close()
+
+
+elif plot_name == "rename_test_folders":
+    results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results"
+    pattern = "*train_test"
+    folders = find_folderes(results, pattern=pattern)
+    for fn in folders:
+        print(fn)
+        test_result = find_files(fn, pattern="accuracy_step_0.0_acc_*")
+        splits = os.path.basename(test_result[0]).split("_")
+        auc = splits[-2]
+        os.rename(fn, fn+'-{}'.format(auc))
+
+    ## plot aug_method, from_epoch, mix_factor, aug_fold
+
+
+
+
+
+
+
+
+
+
+
 
 
 

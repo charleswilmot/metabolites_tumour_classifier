@@ -399,7 +399,7 @@ def augment_with_batch_mean(args, X_train, X_train_aug):
         elif args.aug_method == "same_mean":
             inds = np.where(X_train[:, 2] == class_id)[0]
         elif args.aug_method == "both_mean":
-            inds = len(X_train[:, 2])   # use all labels to augment
+            inds = np.arange(len(X_train[:, 2]))   # use all labels to augment
 
         # randomly select 100 groups of 100 samples each and get mean
         aug_inds = np.random.choice(inds, inds.size*num2average, replace=True).reshape(-1, num2average)  # random pick 10000 samples and take mean every num2average samples

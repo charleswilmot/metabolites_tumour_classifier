@@ -314,6 +314,7 @@ params.resume_training = (args.restore_from != None)
 
 if params.test_or_train == "test":
     params.if_from_certain = False
+    params.if_save_certain = False
 elif params.test_or_train == "train":
     params.aug_scale = args.aug_scale
     params.aug_method = args.aug_method

@@ -524,20 +524,21 @@ def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
     f, axs = plt.subplots(row, col, 'col')
     colors = ["royalblue", "darkviolet"]
     class_names = ["healthy", "tumor"]
-    num_to_plot = 30
+    num_to_plot = 5
     for jj in range(row):
         for ii in range(col):
             start = np.random.choice((len(new_mean) - 40))
             end = start + num_to_plot
             ind = jj * col + ii
             NEW = args.aug_scale * new_mean[start:end] + np.tile((1 - args.aug_scale) * spec[ind], (num_to_plot, 1))
-            axs[jj, ii].plot(NEW.T, alpha=0.5, linewidth=0.8)
-            axs[jj, ii].plot(spec[ind], colors[true_labels[ind]], label=class_names[true_labels[ind]])
+            axs[jj, ii].plot(NEW.T, linewidth=0.8)
+            axs[jj, ii].plot(spec[ind], colors[true_labels[ind]], linewidth=2.0, label=class_names[true_labels[ind]])
             axs[jj, ii].legend(loc="best")
     f.text(0.5, 0.05, 'index', fontsize=16),
     f.text(0.05, 0.5, 'Normalized amplitude', fontsize=16, rotation=90, verticalalignment='center'),
     f.subplots_adjust(hspace=0, wspace=0.06)
     f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale, num2average)), format="png")
+    f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.pdf".format(args.aug_method, args.aug_scale, num2average)), format="pdf")
     plt.close()
 
 
