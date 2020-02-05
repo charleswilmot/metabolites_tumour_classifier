@@ -21,6 +21,8 @@ import datetime
 from scipy.stats import zscore
 import ipdb
 from collections import Counter
+from sklearn import svm
+from sklearn import metrics
 
 import matplotlib.pylab as pylab
 base_size = 24
@@ -308,11 +310,11 @@ def get_crosstab(features, labels, mod,
     plt.hlines(0, 0, len(sorted_cluster), 'k')
     for x, y in zip(np.arange(len(sorted_cluster)), np.array(sorted_cluster)[:, 0]):
         if y > 0.0:
-            plt.text(x, y , '%.2f' % (y*100), ha='center', va='bottom', fontsize=base_size-4)
+            plt.text(x, y , '%.2f' % (y*10), ha='center', va='bottom', fontsize=base_size-4)
 
     for x, y in zip(np.arange(len(sorted_cluster)), np.array(sorted_cluster)[:, 1]):
         if y > 0.0:
-            plt.text(x, -y, '%.2f' % (y*100), ha='center', va='top', fontsize=base_size-4)
+            plt.text(x, -y, '%.2f' % (y*10), ha='center', va='top', fontsize=base_size-4)
 
     plt.yticks(()),
     plt.ylabel("frequency [%]", fontsize=base_size-2)
@@ -321,7 +323,8 @@ def get_crosstab(features, labels, mod,
     plt.xlim(-.5, len(sorted_cluster))
     plt.legend(fontsize=base_size-1, loc="best")
     plt.xticks(np.arange(len(sorted_cluster)), np.array(sorted_index), fontsize=base_size-2)
-    plt.savefig(save_folder+"/cluster_{}_crosstab_{}_{}.png".format(num_clusters, postfix, sorted_index))
+    plt.savefig(save_folder+"/cluster_{}_crosstab_{}_{}.png".format(num_clusters, postfix, sorted_index), format="png")
+    plt.savefig(save_folder+"/cluster_{}_crosstab_{}_{}.pdf".format(num_clusters, postfix, sorted_index), format="pdf")
     # plt.savefig(os.path.join(save_folder, "cluster_{}_crosstab_{}_EPG{}.pdf".format(num_clusters, postfix, sorted_index)), format="pdf")
     plt.close()
 
@@ -409,8 +412,8 @@ def plot_mean_spec_in_cluster(fea, cluster_id, num_clusters, postfix, crosstab_c
     plt.title("{}-clusters No. {} cluster, count {}".format(num_clusters, cluster_id, crosstab_count))
     ylabel = "normalized value [a.u.]"
     plt.ylabel(ylabel)
-    plt.savefig(os.path.join(save_folder,
-                             "{}_clusters_label_{}-spec-{}-mean.png".format(num_clusters, cluster_id, postfix)))
+    plt.savefig(os.path.join(save_folder, "{}_clusters_label_{}-spec-{}-mean.png".format(num_clusters, cluster_id, postfix)), format="png")
+    plt.savefig(os.path.join(save_folder, "{}_clusters_label_{}-spec-{}-mean.pdf".format(num_clusters, cluster_id, postfix)), format="pdf")
     plt.close()
     np.savetxt(os.path.join(save_folder, "{}_clusters_label_{}-spec-{}-mean.csv".format(num_clusters, cluster_id, postfix)), data, header='mean,std', delimiter=',')
 
@@ -754,7 +757,7 @@ def train_clustering(features, labels, start=10, end=11,
                               num_clusters=n_clusters,
                               save_folder=k_cluster_folder,
                               postfix="train",
-                              if_save_data=False,
+                              if_save_data=True,
                               sorted_index=None,
                               if_sort_clusters=if_sort_clusters)
 
@@ -991,20 +994,18 @@ def cluster_spectra(data_dir):
     :param nonoverlap:
     :return:
     """
-    fn = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/saved_certain/2019-10-07T17-02-18-data-20190325-3class_lout40_train_test_data5-1d-class-2-Res_ECG_CAM-relu-aug_ops_meanx5-0.7-train--auc0.715/certains/certain_data_train_epoch_20_num4407.csv"
-
-    plot_from_certain_ids(data_dir, fn)
+    # fn = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/saved_certain/2019-10-07T17-02-18-data-20190325-3class_lout40_train_test_data5-1d-class-2-Res_ECG_CAM-relu-aug_ops_meanx5-0.7-train--auc0.715/certains/certain_data_train_epoch_20_num4407.csv"
+    #
+    # plot_from_certain_ids(data_dir, fn)
 
 
     spec, lbs, ids = load_data(data_dir, num_classes=2)
     data_mode = 'spec'
-    postfix = 'lout40-5'
-    root_folder = 'KMeans/metabolites_clustering-{}-{}/{}' \
+    postfix = 'whole-20190325'
+    root_folder = '../KMeans/metabolites_clustering-{}-{}/{}' \
         .format(data_mode, postfix, '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now()))
     # Get data
     print("Got all data", spec.shape, 'label shape:', lbs.shape, '\n save_foler: ', root_folder)
-
-
 
     train_clustering(spec, lbs,
                      start=7, end=8, seed=589,
@@ -1013,12 +1014,32 @@ def cluster_spectra(data_dir):
     print("clustering is Done!")
 
 
+def SVM_classifier(train_data_dir, test_data_dir):
+    spec, lbs, ids = load_data(train_data_dir, num_classes=2)
+    data_mode = 'spec'
+    postfix = 'whole-20190325'
+    root_folder = '../SVM/metabolites_SVM-{}-{}/{}' \
+        .format(data_mode, postfix, '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now()))
+    # Get data
+    print("Got all data", spec.shape, 'label shape:', lbs.shape, '\n save_foler: ', root_folder)
+    check_make_dir(root_folder, [])
 
+    clf = svm.SVC()
+    clf.fit(spec, lbs)
+
+    test_spec, test_lbs, test_ids = load_data(test_data_dir, num_classes=2)
+    pred = clf.predict(test_spec)
+
+    auc = metrics.roc_auc_score(test_lbs, pred)
+    np.savetxt(os.path.join(root_folder, "svm_pred_labels_auc_{:.3f}.txt".format(auc)), np.array(pred), fmt="%d", delimiter=",")
 
 
 #######################################################################################
 if __name__ == "__main__":
+
     process = "train"
+
+
 
     if process == "train":
         data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
@@ -1029,4 +1050,9 @@ if __name__ == "__main__":
         pkl_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/KMeans/metabolites_clustering-spec-lout40-5/2019-10-01T11-58-13/7-cluster/7_cluster_model-random_seed589.pkl"
         load_and_test(data_dir, pkl_dir=pkl_dir)
 
+    elif process == "svm":
+        train_data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
+        test_data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
+
+        SVM_classifier(train_data_dir, test_data_dir)
 

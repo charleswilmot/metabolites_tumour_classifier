@@ -242,6 +242,11 @@ train_parser.add_argument(
     help="How many folds to augment the data"
 )
 train_parser.add_argument(
+    '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
+    default='/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat',
+    help="which cross-validation set is used"
+)
+train_parser.add_argument(
     '--output_path', type=log_debug_arg(str, "results save dir"),
     default=None,
     help="results save dir"
@@ -261,7 +266,11 @@ test_parser.add_argument(
     nargs='?', default='../results',
     help="Path to the output data."
 )
-
+test_parser.add_argument(
+    '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
+    default='/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat',
+    help="which cross-validation set is used"
+)
 test_parser.add_argument(
     '-x', '--data-not-labeled', action='store_true',
     help="Set this flag if the data you want to classify is not labeled."
@@ -315,11 +324,13 @@ params.resume_training = (args.restore_from != None)
 if params.test_or_train == "test":
     params.if_from_certain = False
     params.if_save_certain = False
+    params.input_data = args.input_data
 elif params.test_or_train == "train":
     params.aug_scale = args.aug_scale
     params.aug_method = args.aug_method
     params.aug_folds = args.aug_folds
     params.from_epoch = args.from_epoch
+    params.input_data = args.input_data
     params.if_save_certain = not params.if_from_certain
 # Make the output directory
 if not args.output_path:

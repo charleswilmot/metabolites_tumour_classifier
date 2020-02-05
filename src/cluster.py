@@ -5,15 +5,17 @@ import numpy as np
 default_aug_method = "ops_mean"
 default_factor = 0.5
 default_folds = 5
+default_source = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
 EXPERIMENT_DIR_ROOT = "../results/"
 
 
-def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None, description=None, from_epoch=None):
+def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None, description=None, from_epoch=None, input_data=None):
     date = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
     aug_method = default_aug_method if aug_method is None else aug_method
     aug_folds = default_folds if aug_folds is None else aug_folds
+    input_data = default_source if input_data is None else input_data
     description = description if description else "train"
-    experiment_dir = EXPERIMENT_DIR_ROOT + "{}_new_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
+    experiment_dir = EXPERIMENT_DIR_ROOT + "{}_exp8944_{}x{}_factor_{}_from-epoch_{}_from-lout40_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, input_data[-5], description)
     # experiment_dir = EXPERIMENT_DIR_ROOT + "{}_exp0.776_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
     return experiment_dir
 
@@ -64,6 +66,7 @@ class ClusterQueue:
             aug_scale=kwargs["aug_scale"] if "aug_scale" in kwargs else None,
             aug_folds=kwargs["aug_folds"] if "aug_folds" in kwargs else None,
             from_epoch=kwargs["from_epoch"] if "from_epoch" in kwargs else None,
+            input_data=kwargs["input_data"] if "input_data" in kwargs else None,
             description=kwargs["description"] if "description" in kwargs else None)
         make_output_dir(self.output_path, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
 
@@ -114,12 +117,26 @@ class ClusterQueue:
 #                                   aug_scale=factor,
 #                                   aug_folds=fold,
 #                                   from_epoch=ep_num)
+data_source_dirs = [
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data0.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data8.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat"
+]
 
-for ep_num in [99]:
+for ep_num in [3, 5]:
     for augmentation_method in ["same_mean", "ops_mean", "both_mean"]:  #,"same_mean", "ops_mean", "both_mean"
-        for factor in [0.1, 0.2, 0.3, 0.4, 0.5]:  #0.1, 0.2, 0.3,
-            for fold in [1, 3, 5, 8, 10]:
-                cq = ClusterQueue(aug_method=augmentation_method,
+        for factor in [0.5]:  #0.1, 0.2, 0.3,
+            for fold in [5]:
+                for source in data_source_dirs:
+                    cq = ClusterQueue(aug_method=augmentation_method,
                                   aug_scale=factor,
                                   aug_folds=fold,
-                                  from_epoch=ep_num)
+                                  from_epoch=ep_num,
+                                  input_data=source)

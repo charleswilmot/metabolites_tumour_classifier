@@ -404,8 +404,6 @@ def augment_with_batch_mean(args, X_train, X_train_aug):
         # randomly select 100 groups of 100 samples each and get mean
         aug_inds = np.random.choice(inds, inds.size*num2average, replace=True).reshape(-1, num2average)  # random pick 10000 samples and take mean every num2average samples
         mean_batch = np.mean(X_train[:, 3:][aug_inds], axis=1)   # get a batch of spectra to get the mean
-        # get zscore of the mean_batch. Out of scale! NOt a good idea
-        # mean_batch = (mean_batch - np.mean(mean_batch, axis=1)[:, np.newaxis]) / np.std(mean_batch, axis=1)[:, np.newaxis]
 
         plot_aug_examples(mean_batch, num2average, X_train[:, 3:], X_train[:, 2], args)
 

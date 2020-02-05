@@ -45,7 +45,7 @@ tf.compat.v1.set_random_seed(args.seed)
 
 # Get augmentation of the data
 if args.if_from_certain:
-    certain_dir ="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-08T14-22-53-data-lout40-data5-1d-class-2-Res_ECG_CAM-relu-aug_ops_meanx10-0.3-train-auc0.766/network"
+    certain_dir ="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/10-fold-cross_validation/2019-12-19-20-36-45_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_5_train/network"
     print("______________________________________________")
     print(certain_dir)
     print("______________________________________________")

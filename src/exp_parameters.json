@@ -7,7 +7,7 @@
             "num_classes": 2,
             "batch_size": 32,
             "test_bs": 211,
-            "seed": 4977,
+            "seed": null,
 
             "out_format": "m",
             "data_len": 288,
@@ -26,8 +26,8 @@
             "learning_rate": 0.0005,
             "data_source": "lout40-data5",
             "postfix": "0.776",
-            "if_from_certain": false,
-            "if_save_certain": true,
+            "if_from_certain": true,
+            "if_save_certain": false,
             "test_data": "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
         },
 

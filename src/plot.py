@@ -127,7 +127,7 @@ def all_figures(sess, args, data, training=False, epoch=0):
 
             plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], data["test_logits"][rand_inds], epoch, args)
         plot_wrong_examples(args, data, training=training)
-        # plot_prob_distr_on_ids(data, args.output_path)
+        plot_prob_distr_on_ids(data, args.output_path)
 
     # plot_tsne(args, data)
     # plot_hierarchy_cluster(args, data)
@@ -332,7 +332,7 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, sa
     col = min(row, 5)
     counts = (np.arange(row*col).reshape(-1, col)[np.arange(0, row, 2)]).reshape(-1)# put attention beneath the signal
     fig, axs = plt.subplots(row, col, 'col')
-    # plt.title("Individual samples from class {} with attention".format(class_id))
+    plt.suptitle("Individual samples from class {} with attention".format(class_id))
     for j, vis, ori, label, pred in zip(counts, class_maps_plot, samples_plot, labels_plot, pred_plot):
         att_c = 'deepskyblue' if label == pred else 'r'
         axs[j // col, np.mod(j, col)].plot(np.arange(ori.size), ori, 'darkorchid', label='original', linewidth=0.8)
@@ -345,6 +345,7 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, sa
     plt.tight_layout()
     plt.subplots_adjust(top=0.90, hspace=0.01, wspace=0.01)
     plt.savefig(save_dir + '/CAMs/class_activity_map-step-test{:.1f}-auc-{:.3f}-class{}.png'.format(global_step, auc, class_id), format='png')
+    plt.savefig(save_dir + '/CAMs/class_activity_map-step-test{:.1f}-auc-{:.3f}-class{}.pdf'.format(global_step, auc, class_id), format='pdf')
     plt.close()
     
     ## Plot the mean attention
@@ -477,7 +478,8 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
     plt.xlabel("probability for class 1")
     plt.ylabel("Normalized frequency")
     plt.legend(loc="best")
-    plt.savefig(output_dir + '/prob_distri_of_all_class_voxels.png'.format(class_id), format="png")
+    # plt.savefig(output_dir + '/prob_distri_of_all_class_voxels.png'.format(class_id), format="png")
+    plt.savefig(output_dir + '/prob_distri_of_all_class_voxels.pdf'.format(class_id), format="pdf")
     plt.close()
 
     # # Plot prob. histogram of each individual
@@ -491,6 +493,7 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
         pred_of_id = 0 if vote_pred < 0.5 else 1
 
         color = "slateblue" if label_of_id == pred_of_id else "r"
+        eval = "right" if label_of_id == pred_of_id else "wrong"
         ax = plt.subplot(1, 1, 1)
         pred_hist = plt.hist(np.array(predictions[id_inds][:, 1]), align='mid', bins=10, range=(0.0, 1.0), color=color, label="predicted")
         ymin, ymax = ax.get_ylim()
@@ -503,7 +506,7 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
         plt.xlabel("probability of classified as class 1")
         plt.title("True label {} - pred as {} / (in total {} voxels for id {})".format(label_of_id, pred_of_id, id_inds.size, id))
         plt.tight_layout()
-        plt.savefig(output_dir + '/prob_distri_of_id_{}.png'.format(id), format="png")
+        plt.savefig(output_dir + '/{}_prob_distri_of_id_{}.png'.format(eval, id), format="png")
         plt.close()
 
 

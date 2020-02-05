@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 import matplotlib.pylab as pylab
+import pickle
 base = 22
 params = {'legend.fontsize': base-8,
           'figure.figsize': (10, 7),
@@ -37,6 +38,18 @@ def find_folderes(directory, pattern='*.csv'):
             folders.append(os.path.join(root, subfolder))
 
     return folders
+
+
+def find_optimal_cutoff(true_lbs, predicted):
+    fpr, tpr, threshold = metrics.roc_curve(true_lbs, predicted)
+    auc = metrics.roc_auc_score(true_lbs, predicted)
+    ind = np.argsort(np.abs(tpr - (1-fpr)))[1]
+    # i = np.arange(len(tpr))
+    # roc = pd.DataFrame({'tf' : pd.Series(tpr-(1-fpr), index=i), 'threshold' : pd.Series(threshold, index=i)})
+    # roc_t = roc.ix[(roc.tf-0).abs().argsort()[:2]]
+
+    # return list(roc_t['threshold']), auc
+    return threshold[ind], auc
 
 
 def plot_confusion_matrix(confm, num_classes, title='Confusion matrix', cmap='Blues', normalize=False, save_name="results/"):  # plt.cm.Blues):
@@ -114,7 +127,7 @@ def plot_auc_curve(labels_hot, pred, epoch=0, save_dir='./results'):
     plt.close()
 
 
-def get_auc_as_factor(epoch=5, factor=0.5, aug_meth=["same", "ops"], colors=pylab.cm.Set2(np.linspace(0, 1, 6)), fix_name="epoch"):
+def get_auc_as_factor(data_dir, fold=None, epoch=5, factor=0.5, aug_meth=["same", "ops"], colors=pylab.cm.Set2(np.linspace(0, 1, 6))):
     """
     Get auc as a function of aug factor with three different aug methods
     header = np.array(["method", "fold", "factor", "epoch", "auc"])
@@ -123,32 +136,53 @@ def get_auc_as_factor(epoch=5, factor=0.5, aug_meth=["same", "ops"], colors=pyla
     :return:
     """
     colors = ["royalblue", "paleturquoise", "orangered", "mistyrose", "limegreen", "palegreen"]
+    fold_ind = 1
+    factor_ind = 2
+    epoch_ind = 3
+    header = ["mothod", "fold", "factor", "epoch", "auc"]
     if not epoch:
-        base_var = np.linspace(1, 10, 9)
+        base_var = [1, 3, 5, 8, 10]
         var_name = "epoch"
-        fix_value = factor
-        fix_ind = 2
         var_ind = 3
-        fold = 5
+        fix_ind1 = 1
+        fix_ind2 = 2
+        fix_value1 = fold
+        fix_value2 = factor
     elif not factor:
-        base_var = np.linspace(0, 1.0, 10)
+        base_var = [0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95]
+        # base_var = np.linspace(0.05, 1.0, 7)
         var_name = "factor"
-        fix_value = epoch
-        fix_ind = 3
+        fix_value1 = fold
+        fix_value2 = epoch
         var_ind = 2
-        fold = 5
+        fix_ind1 = 1
+        fix_ind2 = 3
+    elif not fold:
+        base_var = [1, 3, 5, 7, 9, 11]
+        var_name = "fold"
+        var_ind = 1
+        fix_ind1 = 2
+        fix_ind2 = 3
+        fix_value1 = factor
+        fix_value2 = epoch
+
+    baseline_fn = 0.7
+    baseline_rf = 0.635
+    baseline_svm = 0.623
+
+
     plt.figure()
     for ind, method in enumerate(aug_meth):
-        files = find_files(file_dir, pattern='*aug_{}*.txt'.format(method))
+        files = find_files(data_dir, pattern='*aug_{}*.txt'.format(method))
 
         sum_aucs = []
 
         for fn in files:
-            print("Model {}, fix_name {}: {}".format(os.path.basename(fn).split("_")[1], fix_name, fix_value))
+            print("Model {}, fix_name1 {}: {}, fix_name2 {}: {}".format(os.path.basename(fn).split("_")[1], header[fix_ind1], fix_value1, header[fix_ind2], fix_value2))
             data = pd.read_csv(fn, header=0).values
             need_inds = np.where(
-                (data[:, fix_ind] == fix_value) &
-                (data[:, 1] == fold))[0]
+                (data[:, fix_ind1] == fix_value1) &
+                (data[:, fix_ind2] == fix_value2))[0]
             new_data = data[need_inds]
 
             sort_data = sorted(new_data, key=lambda x: x[var_ind])
@@ -159,31 +193,141 @@ def get_auc_as_factor(epoch=5, factor=0.5, aug_meth=["same", "ops"], colors=pyla
             print("ok")
 
         mean_auc = np.mean(np.array(sum_aucs), axis=0)
-        std_auc = np.std(np.array(sum_aucs), axis=0)
+        std_auc = scipy.stats.sem(np.array(sum_aucs))
+        # std_auc = np.std(np.array(sum_aucs), axis=0) / np.sqrt(np.array(sum_aucs).size)
 
-        plt.plot(base_var, mean_auc, color=colors[ind * 2], linewidth=2.5, label=method)
-        plt.fill_between(base_var, mean_auc - std_auc, mean_auc + std_auc, color=colors[ind * 2 + 1])
+        plt.plot(base_var, mean_auc, color=colors[ind * 2], marker="o", markersize=8, linewidth=2.5, label=method)
+        plt.errorbar(base_var, mean_auc, yerr=std_auc, capsize=5, color=colors[ind * 2])
+        # plt.fill_between(base_var, mean_auc - std_auc, mean_auc + std_auc, color=colors[ind * 2 + 1])
 
+    # plt.hlines(baseline_fn, base_var[0], base_var[-1], label="MLP")
+    plt.hlines(baseline_rf, base_var[0], base_var[-1], label="Random forest")
+    plt.hlines(baseline_svm, base_var[0], base_var[-1], label="SVM")
     plt.legend()
     plt.ylim([0.4, 0.82])
     plt.xlabel("{}".format(var_name))
     plt.ylabel("area under the curve")
-    plt.savefig(os.path.dirname(file_dir) + "/auc_as_factor_all_fix_{}_var_{}.png".format(fix_name, var_name), format="png")
-    plt.savefig(os.path.dirname(file_dir) + "/auc_as_factor_all_fix_{}_var_{}.pdf".format(fix_name, var_name), format="pdf")
+    plt.savefig(os.path.dirname(data_dir) + "/auc_as_factor_all_fix_{}-{}_and_{}-{}_var_{}-errbar.png".format(header[fix_ind1], fix_value1, header[fix_ind2], fix_value2, header[var_ind]), format="png")
+    plt.savefig(os.path.dirname(data_dir) + "/auc_as_factor_all_fix_{}-{}_and_{}-{}_var_{}-errbar.pdf".format(header[fix_ind1], fix_value1, header[fix_ind2], fix_value2, header[var_ind]), format="pdf")
     plt.close()
+
+
+def plot_mean_spec_in_cluster(mean, std, cluster_id, num_clusters, postfix, crosstab_count=[10, 100], save_folder="/results"):
+
+    """
+
+    :param fea:
+    :param cluster_id:
+    :param num_clusters:
+    :param postfix:
+    :param save_folder:
+    :return:
+    """
+    data = np.hstack((mean.reshape(-1, 1), std.reshape(-1, 1)))
+    plt.figure()
+    # plt.errorbar(np.arange(spec_mean.size), spec_mean, spec_std, alpha=0.25)
+    plt.fill_between(np.arange(mean.size), mean - std, mean + std,  facecolor='c')
+    plt.plot(np.arange(mean.size), mean, 'm')
+    plt.xlabel("index")
+    plt.title("{}-clusters No. {} cluster, count {}".format(num_clusters, cluster_id, crosstab_count))
+    ylabel = "normalized value [a.u.]"
+    plt.ylabel(ylabel)
+    plt.savefig(os.path.join(save_folder, "{}_clusters_label_{}-spec-{}-mean.png".format(num_clusters, cluster_id, postfix)), format="png")
+    plt.savefig(os.path.join(save_folder, "{}_clusters_label_{}-spec-{}-mean.pdf".format(num_clusters, cluster_id, postfix)), format="pdf")
+    plt.close()
+
+
+def get_scaler_performance_metrices(folders):
+    """
+    Plot violin plots given the target dir of the test trials. Get the agg level [true-lb, agg-probability]
+    :param pool_len:
+    :param task_id:
+    :return:
+    """
+    postfix = ""
+
+    performance = {"ACC": np.empty((0,)), "patient_ACC": np.empty((0,)), "AUC": np.empty((0,)), "SEN": np.empty((0,)), "SPE": np.empty((0,))}
+
+    for fd in folders:
+        file = find_files(fd, pattern="AUC_curve_step*.csv")
+        num_patient = find_files(fd, pattern="*prob_distri_of*.png")
+        # rat_id = os.path.basename(fn).split("-")[-3]
+        values = pd.read_csv(file[0], header=0).values
+
+        true_labels = values[:, 0]   # assign true-lbs and probs in aggregation
+        prob = values[:, 1]
+        cutoff_thr, auc = find_optimal_cutoff(true_labels, prob)
+        pred_lbs = (prob > cutoff_thr).astype(np.int)
+
+        class0_inds = np.where(true_labels == 0.0)[0]
+        class1_inds = np.where(true_labels == 1.0)[0]
+        class0_prob = prob[class0_inds]
+        class1_prob = prob[class1_inds]
+
+        patient_acc = np.sum(["right" in name for name in num_patient]) / len(num_patient)
+        acc = np.sum(pred_lbs == true_labels) / true_labels.size
+        # sen = np.sum(pred_lbs[class1_inds] == true_labels[class1_inds]) / class1_inds.size
+        sen = np.sum(pred_lbs[np.where(true_labels == 1.0)[0]] == 1.0) / len(np.where(true_labels == 1.0)[0])
+        spe = np.sum(pred_lbs[class0_inds] == true_labels[class0_inds]) / class0_inds.size
+
+        scores["class0"] = np.append(scores["class0"],
+                                     class0_prob)
+        scores["class1"] = np.append(scores["class1"],
+                                     class1_prob)
+        performance["ACC"] = np.append(performance["ACC"], acc)
+        performance["SEN"] = np.append(performance["SEN"], sen)
+        performance["SPE"] = np.append(performance["SPE"], spe)
+        performance["AUC"] = np.append(performance["AUC"], auc)
+        performance["patient_ACC"] = np.append(performance["patient_ACC"], patient_acc)
+
+
+    ## Human performance
+    human_file = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class-human-ratings.mat"
+    original = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
+    values = scipy.io.loadmat(human_file)["data_ratings"]
+
+    true_v = scipy.io.loadmat(original)["DATA"]
+    ids = true_v[:, 0]
+    pred_lbs = values[:, 0]
+    true_lbs = true_v[:, 1]
+    count = dict(Counter(list(ids)))
+    human_diagnosis = []
+    right_count = 0
+    for id in count.keys():
+        id_inds = np.where(ids == id)[0]
+        vote_label = (np.sum(true_lbs[id_inds]) * 1.0 / id_inds.size).astype(np.int)
+        vote_pred = ((np.sum(pred_lbs[id_inds]) / id_inds.size) > 0.5).astype(np.int)
+        right_count = right_count + 1 if vote_label==vote_pred else right_count
+        human_diagnosis.append((id, vote_label, vote_pred))
+
+    human_diagnosis = np.array(human_diagnosis)
+    sen = np.sum(human_diagnosis[:, 2][np.where(human_diagnosis[:, 1] == 1)[0]] == 1) / len(
+        np.where(human_diagnosis[:, 1] == 1)[0])
+    spe = np.sum(human_diagnosis[:, 2][np.where(human_diagnosis[:, 1] == 0)[0]] == 0) / len(
+        np.where(human_diagnosis[:, 1] == 0)[0])
+
+    np.savetxt("/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/" + "human_patient_wise_diagnosis.csv", np.array(human_diagnosis), header="id,true,pred", fmt="%d", delimiter=",")
+
+
+    print("ave sen", np.mean(performance["SEN"]), "std sen", np.std(performance["SEN"]), '\n', "min", performance["SEN"].min(), "max", performance["SEN"].max(), '\n'),
+    print("ave spe", np.mean(performance["SPE"]), "std sen", np.std(performance["SPE"]), '\n', "min", performance["SPE"].min(), "max", performance["SPE"].max(), '\n')
+    print("ave auc", np.mean(performance["AUC"]), "std auc", np.std(performance["AUC"]), '\n', "min", performance["AUC"].min(), "max", performance["AUC"].max(), '\n')
+    print("ave acc", np.mean(performance["ACC"]), "std acc", np.std(performance["ACC"]), '\n', "min", performance["ACC"].min(), "max", performance["ACC"].max(), '\n')
+    print("patient acc", np.mean(performance["patient_ACC"]), "std acc", np.std(performance["patient_ACC"]), '\n', "min", performance["patient_ACC"].min(), "max", performance["patient_ACC"].max(), '\n')
+
 
 # ------------------------------------------------
 
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "test_aucs"
+plot_name = "get_performance_metrices"
 
 
 if plot_name == "indi_rating_with_model":
     data_dir = "../data/20190325"
 
-    model_results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-09T13-47-36-data-lout40-datas-1d-class2-Res_ECG_CAM-0.766certainEp3-aug_ops_meanx10-0.3-test-auc0.79/AUCs/AUC_curve_step_0.00-auc_0.7905-lout40-datas.csv"
+    model_res_with_aug = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-09T13-47-36-data-lout40-datas-1d-class2-Res_ECG_CAM-0.766certainEp3-aug_ops_meanx10-0.3-test-auc0.79/AUCs/AUC_curve_step_0.00-auc_0.7905-lout40-datas.csv"
 
     human_indi_rating = "../data/20190325/lout40-data5-doctor_ratings_individual.mat"
     # Get individual rater's prediction
@@ -198,9 +342,9 @@ if plot_name == "indi_rating_with_model":
     true_label = true_data[:, 1].astype(np.int)
 
     # Get model's prediction
-    model_auc = pd.read_csv(model_results, header=0).values
-    true_model_label = model_auc[:, 0].astype(np.int)
-    pred_logits = model_auc[:, 1]
+    model_auc_with_aug = pd.read_csv(model_res_with_aug, header=0).values
+    true_model_label = model_auc_with_aug[:, 0].astype(np.int)
+    pred_logits = model_auc_with_aug[:, 1]
     pred_lb = np.argmax(pred_logits, axis=0)
     model_fpr, model_tpr, _ = metrics.roc_curve(true_model_label, pred_logits)
 
@@ -264,10 +408,15 @@ elif plot_name == "human_whole_with_model":
     true_label = ori[:, 1]
 
     # Get model's prediction
-    model_results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-09T13-47-36-data-lout40-datas-1d-class2-Res_ECG_CAM-0.766certainEp3-aug_ops_meanx10-0.3-test-auc0.79/AUCs/AUC_curve_step_0.00-auc_0.7905-lout40-datas.csv"
-    model_auc = pd.read_csv(model_results, header=0).values
-    label = model_auc[:, 0].astype(np.int)
-    pred_logits = model_auc[:, 1]
+    model_res_with_aug = "/home/epilepsy-data/data/metabolites/results/2019-10-09T13-47-36-data-lout40-datas-1d-class2-Res_ECG_CAM-0.766certainEp3-aug_ops_meanx10-0.3-test-auc0.79/AUCs/AUC_curve_step_0.00-auc_0.7905-lout40-datas.csv"
+    model_res_wo_aug = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-30T16-00-14-data-lout40-datas-1d-class2-Res_ECG_CAM-0.900-aug_ops_meanx0-0-test-0.714/AUCs/AUC_curve_step_0.00-auc_0.7246-lout40-datas.csv"
+    model_auc_with_aug = pd.read_csv(model_res_with_aug, header=0).values
+    label_with_aug = model_auc_with_aug[:, 0].astype(np.int)
+    pred_logits_with_aug = model_auc_with_aug[:, 1]
+
+    model_auc_wo_aug = pd.read_csv(model_res_wo_aug, header=0).values
+    label_wo_aug = model_auc_wo_aug[:, 0].astype(np.int)
+    pred_logits_wo_aug = model_auc_wo_aug[:, 1]
     # pred_lb = np.argmax(pred_logits, axis=0)
 
     # Get human's total labels
@@ -282,11 +431,13 @@ elif plot_name == "human_whole_with_model":
     plt.plot(hum_fpr[1], hum_tpr[1], 'purple', marker="*", markersize=10, label='human AUC: {:.2f}'.format(hum_score))
 
     # Plot trained model prediction
-    fpr, tpr, _ = metrics.roc_curve(label, pred_logits)
-    score = metrics.roc_auc_score(label, pred_logits)
+    fpr_with_aug, tpr_with_aug, _ = metrics.roc_curve(label_with_aug, pred_logits_with_aug)
+    fpr_wo_aug, tpr_wo_aug, _ = metrics.roc_curve(label_wo_aug, pred_logits_wo_aug)
+    score_with_aug = metrics.roc_auc_score(label_with_aug, pred_logits_with_aug)
+    score_wo_aug = metrics.roc_auc_score(label_wo_aug, pred_logits_wo_aug)
 
-    plt.plot(hum_fpr[1], hum_tpr[1], 'purple', marker="*", markersize=10, label='human AUC: {:.2f}'.format(hum_score))
-    plt.plot(fpr, tpr, 'royalblue', linewidth=2, label='model AUC: {:.2f}'.format(score))
+    plt.plot(fpr_with_aug, tpr_with_aug, 'royalblue', linestyle="-", linewidth=2, label='With aug. AUC: {:.2f}'.format(score_with_aug))
+    plt.plot(fpr_wo_aug, tpr_wo_aug, 'violet', linestyle="-.", linewidth=2, label='Without aug. AUC: {:.2f}'.format(score_wo_aug))
     plt.title("Receiver Operating Characteristic", fontsize=20)
     plt.xlim([-0.02, 1.02])
     plt.ylim([-0.02, 1.02])
@@ -297,6 +448,7 @@ elif plot_name == "human_whole_with_model":
     # plt.savefig(os.path.join(data_dir, "model_with_human_rating.eps"), format='eps')
     plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively_certain.png"), format='png')
     plt.close()
+
 elif plot_name == "all_ROCs":
     data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/1-20190325-data-trained-models/TEST/Res_CNN_CAM-LOUT40"
     files = find_files(data_dir, pattern="AUC_curve_step_0.00-auc*.csv")
@@ -307,11 +459,11 @@ elif plot_name == "all_ROCs":
         values = pd.read_csv(fn, header=0).values
         true_lbs = values[:, 0]
         prob_1 = values[:, 1]
-        fpr, tpr, _ = metrics.roc_curve(true_lbs, prob_1)
+        fpr_with_aug, tpr_with_aug, _ = metrics.roc_curve(true_lbs, prob_1)
         score = metrics.roc_auc_score(true_lbs, prob_1)
-        plt.plot(fpr, tpr, 'royalblue', alpha=0.35, label='cross val {} AUC: {:.3f}'.format(ind, score))
+        plt.plot(fpr_with_aug, tpr_with_aug, 'royalblue', alpha=0.35, label='cross val {} AUC: {:.3f}'.format(ind, score))
 
-        tpr_temp = interp(base_fpr, fpr, tpr)
+        tpr_temp = interp(base_fpr, fpr_with_aug, tpr_with_aug)
         tprs.append(tpr_temp)
         print("ok")
     mean_model_tpr = np.mean(np.array(tprs), axis=0)
@@ -341,13 +493,23 @@ elif plot_name == "average_models":
         else:
             agg_pred += values[:, 1]
     print("ok")
-elif plot_name == "certain":
-    fn = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/saved_certain/2019-10-07T17-02-18-data-20190325-3class_lout40_train_test_data5-1d-class-2-Res_ECG_CAM-relu-aug_ops_meanx5-0.7-train--auc0.715/certains/certain_data_train_epoch_0_num660.csv"
+elif plot_name == "plot_mean_cluster":
+    data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/KMeans/metabolites_clustering-spec-whole-20190325/2019-12-16T13-34-47/7-cluster/plots"
+    mean_files = find_files(data_dir, pattern="*.csv")
+    for fn in mean_files:
+        num_clusters = fn.split("_")[0]
+        cluster_id = fn.split("_")[-1].split("-")[0]
+        data = pd.read_csv(fn, header=0).values
+        mean = data[:, 0]
+        std = data[:, 1]
+
+        plot_mean_spec_in_cluster(mean, std, cluster_id, num_clusters, "train", crosstab_count=[None], save_folder=data_dir)
+
 elif plot_name == "test_aucs":
-    from_dirs = True
+    from_dirs = False
     if from_dirs:
-        results = "/home/epilepsy-data/data/metabolites/paper_results_2700/saved_all_models_and_tests"
-        model = "0.776"
+        results = "/home/epilepsy-data/data/metabolites/paper_results_2700/train_with_aug_new_models"
+        model = "new"
         pattern = "*exp{}*_train_test-*".format(model)
         folders = find_folderes(results, pattern=pattern)
         configs = [] # "aug_method": [], "aug_factor": [], "aug_fold": [], "from_epoch": []
@@ -372,12 +534,17 @@ elif plot_name == "test_aucs":
         np.savetxt(os.path.join(results, 'model_{}_aug_ops_entry_{}.txt'.format(model, len(aug_ops))), aug_ops, header="aug_name,aug_fold,aug_factor,from_epoch,test_auc", delimiter=",", fmt="%s")
         np.savetxt(os.path.join(results, 'model_{}_aug_both_entry_{}.txt'.format(model, len(aug_both))), aug_both, header="aug_name,aug_fold,aug_factor,from_epoch,test_auc", delimiter=",", fmt="%s")
     else:
-        file_dir = "/home/epilepsy-data/data/metabolites/paper_results_2700/Z-Summary-results"
+        file_dir = "/home/epilepsy-data/data/metabolites/paper_results_2700/saved_all_models_and_tests"
         aug_meth = ["same", "ops", "both"]
 
         colors = pylab.cm.Set2(np.linspace(0, 1, 6))
         factor = 0.5
-        get_auc_as_factor(epoch=None, factor=factor, aug_meth=aug_meth, colors=colors, fix_name="factor")
+        epoch = 3
+        fold = 3
+
+        for vars in [[None, epoch, factor], [fold, None, factor], [fold, epoch, None]]:
+
+            get_auc_as_factor(file_dir, fold=vars[0], epoch=vars[1], factor=vars[2], aug_meth=aug_meth, colors=colors)
 
     # for fold in [5, 10]:
     #     same = aug_same[np.where(aug_same[:, 1].astype(np.int) == fold)[0]]
@@ -403,17 +570,20 @@ elif plot_name == "test_aucs":
 
 
 elif plot_name == "rename_test_folders":
+    pattern = "accuracy_step_0.0_acc_*"
     results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results"
-    pattern = "*train_test"
-    folders = find_folderes(results, pattern=pattern)
+    folders = find_folderes(results, pattern="*_train_test")
     for fn in folders:
         print(fn)
-        test_result = find_files(fn, pattern="accuracy_step_0.0_acc_*")
+        test_result = find_files(fn, pattern=pattern)
         splits = os.path.basename(test_result[0]).split("_")
         auc = splits[-2]
         os.rename(fn, fn+'-{}'.format(auc))
 
-    ## plot aug_method, from_epoch, mix_factor, aug_fold
+elif plot_name == "get_performance_metrices":
+    data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/10-fold-cross_validation"
+    folders = find_folderes(data_dir, pattern="*train_test-0.*")
+    get_scaler_performance_metrices(folders)
 
 
 
