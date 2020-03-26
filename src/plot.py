@@ -4,7 +4,6 @@ import itertools
 import matplotlib.pyplot as plt
 import logging as log
 import numpy as np
-import matplotlib.pylab as pylab
 from collections import Counter
 # import tsne
 import ipdb
@@ -12,15 +11,16 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
 from sklearn import metrics
 import tensorflow as tf
-
+import os
+import matplotlib.pylab as pylab
 base = 22
 params = {'legend.fontsize': base-8,
           'figure.figsize': (13, 8.6),
          'axes.labelsize': base-4,
          #'weight' : 'bold',
          'axes.titlesize':base,
-         'xtick.labelsize':base-6,
-         'ytick.labelsize':base-6}
+         'xtick.labelsize':base-8,
+         'ytick.labelsize':base-8}
 pylab.rcParams.update(params)
 
 logger = log.getLogger("classifier")
@@ -42,14 +42,14 @@ def loss_plot(ax, data, training=False):
 def accuracy_plot(ax, data, training=False):
     if training:
         train_accuracy = data["train_accuracy"]
-        ax.plot(range(1, len(train_accuracy) + 1), train_accuracy, color='darkviolet', linestyle='--', marker='o', label='Train', alpha=0.8)
+        ax.plot(range(1, len(train_accuracy) + 1), train_accuracy, color='darkviolet', linestyle='--', marker='o', label='Train', alpha=0.7)
         test_accuracy = data["test_accuracy"]
-        ax.plot(range(1, len(test_accuracy) + 1), test_accuracy, color='g', linestyle='--', marker='*',label='Validation', alpha=0.8)
+        ax.plot(range(1, len(test_accuracy) + 1), test_accuracy, color='g', linestyle='--', marker='*',label='Validation', alpha=0.7)
         highest = max(test_accuracy)
     else:
         test_accuracy = data["test_accuracy"]
         ax.plot(range(1, test_accuracy.size + 1), test_accuracy, color='g', linestyle='--', marker='*', label='Validation',
-                alpha=0.8)
+                alpha=0.7)
         highest = test_accuracy
     ax.plot([np.argmax(test_accuracy) + 1, 0], [highest, highest], '-.k')
     plt.text(np.argmax(test_accuracy) + 1, highest, "%.4f" % (highest), horizontalalignment="center", color="k", size=18)
@@ -66,11 +66,14 @@ def loss_figure(args, data, training=False):
     logger.info("Loss plot saved")
 
 
-def accuracy_figure(args, data, training=False):
+def accuracy_figure(args, data, training=False, epoch=0):
     f = plt.figure()
     ax = f.add_subplot(111)
+    auc = metrics.roc_auc_score(data["test_labels"], data["test_logits"])
     max_acc = accuracy_plot(ax, data, training=training)
-    f.savefig(args.output_path + '/accuracy_step_{}.png'.format(data["current_step"]))
+
+    f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}.png'.format(epoch, max_acc, auc, args.data_source))
+    plt.close()
     logger.info("Accuracy plot saved")
 
 
@@ -82,13 +85,15 @@ def plot_auc_curve(args, data, epoch=0):
     :return:
     """
     f = plt.figure()
-    fpr, tpr, _ = metrics.roc_curve(np.argmax(data["test_labels"], 1), data["test_pred"][:, 1])  # input the positive label's prob distribution
-    auc = metrics.roc_auc_score(data["test_labels"], data["test_pred"])
+    fpr, tpr, _ = metrics.roc_curve(np.argmax(data["test_labels"], 1), data["test_logits"][:, 1])  # input the positive label's prob distribution
+    auc = metrics.roc_auc_score(data["test_labels"], data["test_logits"])
     plt.plot(fpr, tpr, label="auc={0:.4f}".format(auc))
     plt.legend(loc=4)
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
-    f.savefig(args.output_path + '/AUC_curve_step_{:.2f}-auc_{:.4}.png'.format(epoch, auc))
+    f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.png'.format(epoch, auc, args.data_source))
+    np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.csv'.format(epoch, auc, args.data_source),
+               np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_logits"][:, 1].reshape(-1,1))), fmt="%.8f", delimiter=',', header="labels,pred[:,1]")
     plt.close()
 
 def accuracy_loss_figure(args, data, training=False, epoch=0):
@@ -107,17 +112,22 @@ def accuracy_loss_figure(args, data, training=False, epoch=0):
 
 
 def all_figures(sess, args, data, training=False, epoch=0):
-    # loss_figure(args, data, training=training)
-    # accuracy_figure(args, data, training=training)
-    accuracy_loss_figure(args, data, training=training, epoch=epoch)
-    plot_confusion_matrix(args, data, ifnormalize=True, training=training)
+    # print("labels: ", np.argmax(data["test_labels"], axis=1))
+    print("accuracy: ", data["test_accuracy"],
+          "auc: ", metrics.roc_auc_score(np.argmax(data["test_labels"], axis=1), data["test_logits"][:, 1]))
+    accuracy_figure(args, data, training=training, epoch=epoch)
+    # accuracy_loss_figure(args, data, training=training, epoch=epoch)
+    # plot_confusion_matrix(args, data, ifnormalize=True, training=training)
     plot_auc_curve(args, data, epoch=epoch)
+    plot_wrong_examples(args, data, training=training)
+
     if not training:
-        if args.model_name == 'CNN_CAM':
-            class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.data_len, 1, number2use=1000)
-            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], np.argmax(data["test_pred"][rand_inds], 1), epoch, args)
-        # plot_wrong_examples(args, data, training=training)
-        # plot_prob_distr_on_ids(data, args.output_path)
+        if 'CAM' in args.model_name:
+            class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.height, 1, number2use=1000)
+
+            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], data["test_logits"][rand_inds], epoch, args)
+        plot_wrong_examples(args, data, training=training)
+        plot_prob_distr_on_ids(data, args.output_path)
 
     # plot_tsne(args, data)
     # plot_hierarchy_cluster(args, data)
@@ -151,9 +161,9 @@ def plot_confusion_matrix(args, data, ifnormalize=False, training=False):
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     if training:
-        f.savefig(args.output_path + '/confusion_matrix_step_{}.png'.format(data["current_step"]))
+        f.savefig(args.output_path + '/confusion_matrix_step_{}_{}.png'.format(data["current_step"], args.data_source))
     else:
-        f.savefig(args.output_path + '/confusion_matrix_step_{}.png'.format("VALID"))
+        f.savefig(args.output_path + '/confusion_matrix_step_{}_{}.png'.format("VALID", args.data_source))
     plt.close()
     logger.info("Confusion matrix saved")
 
@@ -164,9 +174,9 @@ def plot_wrong_examples(args, data, training=False):
     :param data: dict,
     :return:
     """
-    labels = np.argmax(data["test_wrong_labels"], axis=1)
+    labels = data["test_wrong_labels"]
     colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
-    num_classes = data["test_wrong_labels"].shape[-1]
+    num_classes = args.num_classes
     f, axs = plt.subplots(num_classes, 1, 'col')
     plt.suptitle("Mistakes", x=0.5, y=0.925, fontsize=base)
     for i in range(num_classes):
@@ -178,9 +188,10 @@ def plot_wrong_examples(args, data, training=False):
         axs[i].legend(loc="best")
     f.subplots_adjust(hspace=0)
     if training:
-        f.savefig(args.output_path + '/{}-class_wrong_examples_{}.png'.format(num_classes, data["current_step"]))
+        f.savefig(args.output_path + '/wrong_examples/{}-class_wrong_examples_{}.png'.format(num_classes, data["current_step"]))
     else:
-        f.savefig(args.output_path + '/{}-class_wrong_examples_{}.png'.format(num_classes, "VALID"))
+        f.savefig(args.output_path + '/wrong_examples/{}-class_wrong_examples_{}.png'.format(num_classes, "VALID"))
+
     plt.close()
     logger.info("Mistakes plot saved")
 
@@ -190,18 +201,18 @@ def plot_tsne(args, data):
     :param args: contains hyperparams
     :param acti: dict,
     :return:
+    #
+    # colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
+    # markers = np.random.choice(['o', '*', '^', 'D', 's', 'p'], args.num_classes)
+    # target_names = ["label {}".format(i) for i in range(args.num_classes)]
     """
     f = plt.figure()
     acti = data["test_activity"].astype(np.float64)
     labels = np.argmax(data["test_labels"], axis=1).astype(np.int)
     tsne_results = tsne.bh_sne(acti, d=2)
-    #
-    # colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
-    # markers = np.random.choice(['o', '*', '^', 'D', 's', 'p'], args.num_classes)
-    # target_names = ["label {}".format(i) for i in range(args.num_classes)]
     colors = ["orchid", "deepskyblue"]
     markers = ['o', '^']
-    target_names = ["label {}".format(i) for i in [1, 3]] # np.arange(args.num_classes)
+    target_names = ["label {}".format(i) for i in [1, 3]] #
 
     ax = f.add_subplot(111)
     for color, marker, i, target_name in zip(colors, markers, [1, 3], target_names):
@@ -247,13 +258,13 @@ def get_class_map(labels, conv_out, weights, seq_len, seq_width, number2use=200)
     :param im_width: The length of the input sample
     :return: class map
     """
-    conv_out = np.expand_dims(conv_out, 2)
+    # conv_out = np.expand_dims(conv_out, 2)
     channels = conv_out.shape[-1]
     num_samples = min(conv_out.shape[0], number2use)
     classmaps = []
     labels_int = np.argmax(labels, axis=1)
-    conv_resized = tf.image.resize_nearest_neighbor(conv_out, [seq_len, seq_width])
-    rand_inds = np.random.choice(conv_out.shape[0], num_samples)
+    conv_resized = tf.compat.v1.image.resize_nearest_neighbor(conv_out, [seq_len, seq_width])
+    rand_inds = np.random.choice(conv_out.shape[0], min(num_samples, conv_out.shape[0]))
     for ind, label in enumerate(labels_int[rand_inds]):
         label_w = tf.gather(tf.transpose(weights), label)
         label_w = tf.reshape(label_w, [-1, channels, 1])
@@ -265,7 +276,8 @@ def get_class_map(labels, conv_out, weights, seq_len, seq_width, number2use=200)
 
 
 def plot_class_activation_map(sess, class_activation_map,
-                              samples_test, labels_test, pred_labels, global_step,
+                              samples_test, labels_test,
+                              predictions, global_step,
                               args):
     """TODO, the labels are all stacked not like test_conv is only the first batch
     Plot the class activation
@@ -274,7 +286,7 @@ def plot_class_activation_map(sess, class_activation_map,
     :param top_conv:
     :param samples_test:
     :param labels_test:
-    :param pred_labels:
+    :param predictions: softmax output
     :param global_step:
     :param args:
     :param rand_inds:
@@ -288,15 +300,31 @@ def plot_class_activation_map(sess, class_activation_map,
 
     # PLot samples from different classes seperately
     for class_id in range(args.num_classes):
-        plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step)
+        plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step, postfix=args.data_source)
         # plot_class_maps_in1(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, box_position=(0.15, 1.05, 0.7, 0.1), class_id=class_id, global_step=global_step)
 
-def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), class_id=0, global_step=0):
+def plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), class_id=0, global_step=0, postfix="data1"):
+    """
+    PLot class maps grouped by class ids
+    :param labels_int:
+    :param classmap_high:
+    :param samples_test:
+    :param predictions: softmax output
+    :param save_dir:
+    :param row:
+    :param box_position:
+    :param class_id:
+    :param global_step:
+    :param postfix:
+    :return:
+    """
     inds = np.where(labels_int == class_id)[0]
     class_maps_plot = np.array(classmap_high)[inds]
     samples_plot = samples_test[inds]
     labels_plot = labels_int[inds]
-    pred_plot = pred_labels[inds]
+
+    pred_plot = np.argmax(predictions, axis=1)[inds]
+    auc = metrics.roc_auc_score(labels_int, predictions[:, 1])
     if not row:
         row = np.int(np.sqrt(len(inds)))
     else:
@@ -304,18 +332,20 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, sa
     col = min(row, 5)
     counts = (np.arange(row*col).reshape(-1, col)[np.arange(0, row, 2)]).reshape(-1)# put attention beneath the signal
     fig, axs = plt.subplots(row, col, 'col')
-    # plt.title("Individual samples from class {} with attention".format(class_id))
+    plt.suptitle("Individual samples from class {} with attention".format(class_id))
     for j, vis, ori, label, pred in zip(counts, class_maps_plot, samples_plot, labels_plot, pred_plot):
         att_c = 'deepskyblue' if label == pred else 'r'
         axs[j // col, np.mod(j, col)].plot(np.arange(ori.size), ori, 'darkorchid', label='original', linewidth=0.8)
-        axs[j // col + 1, np.mod(j, col)].plot(np.arange(vis.size), vis, '-.', color=att_c, label="attention")
-        axs[0, 0].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=3, numpoints=3)  # [x, y, width, height]
-        axs[0, col-1].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=3, numpoints=3)  # [x, y, width, height]
+        axs[j // col + 1, np.mod(j, col)].plot(np.arange(vis.size), vis, '--', color=att_c, label="attention")
+        axs[0, 0].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=1)  # [x, y, width, height]
+        # axs[1, col-1].legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=1)  # [x, y, width, height]
+        if np.mod(j, col) > 0:
+            plt.setp(axs[j // col + 1, np.mod(j, col)].get_yticklabels(), visible=False)
+            plt.setp(axs[j // col, np.mod(j, col)].get_yticklabels(), visible=False)
     plt.tight_layout()
-    plt.subplots_adjust(top=0.90)
-    fig.subplots_adjust(hspace=0)
-    fig.subplots_adjust(wspace=0)
-    plt.savefig(save_dir + '/class_activity_map-step-test{}-class{}_{}.png'.format(global_step, class_id, box_position), format='png')
+    plt.subplots_adjust(top=0.90, hspace=0.01, wspace=0.01)
+    plt.savefig(save_dir + '/CAMs/class_activity_map-step-test{:.1f}-auc-{:.3f}-class{}.png'.format(global_step, auc, class_id), format='png')
+    plt.savefig(save_dir + '/CAMs/class_activity_map-step-test{:.1f}-auc-{:.3f}-class{}.pdf'.format(global_step, auc, class_id), format='pdf')
     plt.close()
     
     ## Plot the mean attention
@@ -326,8 +356,8 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, pred_labels, sa
     plt.errorbar(np.arange(288), mean, yerr=std, fmt='--o', ecolor='deepskyblue', label='mean attention')
     plt.plot(samples_plot[0], 'darkorchid', label='original', linewidth=0.8)
     plt.legend(loc="best")
-    plt.savefig(save_dir + '/mean_class_activity_map-step-test{}-class{}_{}.png'.format(global_step, class_id, box_position),
-                format='png')
+    plt.title("Mean attention for class {}".format(class_id))
+    plt.savefig(save_dir + '/CAMs/mean/mean_class_activity_map-step-{:.1f}-auc-{:.3f}-class{}-{}.png'.format(global_step, auc, class_id, postfix), format='png')
     plt.close()
 
 
@@ -361,18 +391,31 @@ def plot_class_maps_in1(labels_int, classmap_high, samples_test, pred_labels, sa
     ax.legend(bbox_to_anchor=box_position, loc="lower left", mode="expand", borderaxespad=0, ncol=3, numpoints=3)  # [x, y, width, height]
     plt.tight_layout()
     plt.subplots_adjust(top=0.85)
-    plt.savefig(save_dir + '/class_activity_map-step-test{}-class{}_{}-all-in-one.png'.format(global_step, class_id, box_position),
+    plt.savefig(save_dir + '/CAMs/class_activity_map-step-test{}-class{}_{}-all-in-one.png'.format(global_step, class_id, box_position),
                 format='png')
     plt.close()
 
-def plot_random_class_maps(labels_int, classmap_answer, classmap_high, samples_test, pred_labels, args, global_step=0, num_images=20):
+def plot_random_class_maps(labels_int, classmap_answer, classmap_high, samples_test, predictions, args, global_step=0, num_images=20):
+    """
+    Plot class maps randomly
+    :param labels_int:
+    :param classmap_answer:
+    :param classmap_high:
+    :param samples_test:
+    :param predictions:
+    :param args:
+    :param global_step:
+    :param num_images:
+    :return:
+    """
     plots_per_fig = 10
     counts = np.arange(plots_per_fig)
     rand_inds = np.random.choice(np.arange(len(classmap_answer)), num_images)
     classmap_high = np.array(classmap_high)[rand_inds]
     samples_plot = samples_test[rand_inds]
     labels_plot = labels_int[rand_inds]
-    pred_plot = pred_labels[rand_inds]
+    pred_plot = np.argmax(predictions, axis=1)[inds]
+    auc = metrics.roc_auc_score(labels_int, predictions[:, 1])
     row = plots_per_fig//2
     col = 2
     fig, axs = plt.subplots(row, col, 'col')
@@ -392,7 +435,7 @@ def plot_random_class_maps(labels_int, classmap_answer, classmap_high, samples_t
 
         plt.tight_layout()
         plt.subplots_adjust(top=0.90)
-        plt.savefig(args.output_path + '/class_activity_map-step-test{}-count{}.pdf'.format(global_step, j), format='pdf')
+        plt.savefig(args.output_path + '/CAMs/class_activity_map-step-test{:1f}-auc-{:.3f}-count{}.pdf'.format(global_step, auc, j), format='pdf')
         plt.close()#
 
 
@@ -419,11 +462,14 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
     :param test_data:
     :return:
     """
-    predictions = test_data["test_pred"]
-    pred_int = np.argmax(test_data["test_pred"], axis=1)
+    predictions = test_data["test_logits"]
+    pred_int = np.argmax(test_data["test_logits"], axis=1)
     ids = test_data["test_ids"]
     labels_int = np.argmax(test_data["test_labels"], axis=1)
     count = dict(Counter(list(ids)))  # c
+    
+    rignt_patients = np.empty((0))
+    wrong_patients = np.empty((0))
 
     # Plot prob. histogram all the voxels from each class
     distr_color = ["m", "lawngreen"]
@@ -435,7 +481,8 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
     plt.xlabel("probability for class 1")
     plt.ylabel("Normalized frequency")
     plt.legend(loc="best")
-    plt.savefig(output_dir + '/prob_distri_of_all_class_voxels.png'.format(class_id), format="png")
+    # plt.savefig(output_dir + '/prob_distri_of_all_class_voxels.png'.format(class_id), format="png")
+    plt.savefig(output_dir + '/prob_distri_of_all_class_voxels.pdf'.format(class_id), format="pdf")
     plt.close()
 
     # # Plot prob. histogram of each individual
@@ -449,6 +496,8 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
         pred_of_id = 0 if vote_pred < 0.5 else 1
 
         color = "slateblue" if label_of_id == pred_of_id else "r"
+        eval = "right" if label_of_id == pred_of_id else "wrong"
+            
         ax = plt.subplot(1, 1, 1)
         pred_hist = plt.hist(np.array(predictions[id_inds][:, 1]), align='mid', bins=10, range=(0.0, 1.0), color=color, label="predicted")
         ymin, ymax = ax.get_ylim()
@@ -461,5 +510,74 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
         plt.xlabel("probability of classified as class 1")
         plt.title("True label {} - pred as {} / (in total {} voxels for id {})".format(label_of_id, pred_of_id, id_inds.size, id))
         plt.tight_layout()
-        plt.savefig(output_dir + '/prob_distri_of_id_{}.png'.format(id), format="png")
+        plt.savefig(output_dir + '/{}_prob_distri_of_id_{}.png'.format(eval, id), format="png")
         plt.close()
+        
+        if label_of_id == pred_of_id:  # record all right/wrong classifications
+            rignt_patients = np.append(rignt_patients, id)
+        else:
+            wrong_patients = np.append(wrong_patients, id)
+        
+    np.savetxt(output_dir + '/wrong_patient_ids.csv', wrong_patients, fmt="%d", delimiter=",")
+    np.savetxt(output_dir + '/right_patient_ids.csv', rignt_patients, fmt="%d", delimiter=",")
+
+
+def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
+    """
+    new_mean, num2average, X_train[:, 3:], X_train[:, 2], args
+    :param new_mean:
+    :param num2average:
+    :param spec:
+    :param true_labels:
+    :param args:
+    :return:
+    """
+    row, col = 4, 2
+    true_labels = true_labels.astype(np.int)
+    plt.figure()
+    rand_inds = np.random.choice(spec.shape[0], row * col)
+    f, axs = plt.subplots(row, col, 'col')
+    colors = ["royalblue", "darkviolet"]
+    class_names = ["healthy", "tumor"]
+    num_to_plot = 5
+    for jj in range(row):
+        for ii in range(col):
+            start = np.random.choice((len(new_mean) - 40))
+            end = start + num_to_plot
+            ind = jj * col + ii
+            NEW = args.aug_scale * new_mean[start:end] + np.tile((1 - args.aug_scale) * spec[ind], (num_to_plot, 1))
+            axs[jj, ii].plot(NEW.T, linewidth=0.8)
+            axs[jj, ii].plot(spec[ind], colors[true_labels[ind]], linewidth=2.0, label=class_names[true_labels[ind]])
+            axs[jj, ii].legend(loc="best")
+    f.text(0.5, 0.05, 'index', fontsize=16),
+    f.text(0.05, 0.5, 'Normalized amplitude', fontsize=16, rotation=90, verticalalignment='center'),
+    f.subplots_adjust(hspace=0, wspace=0.06)
+    # f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale, num2average)), format="png")
+    # f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.pdf".format(args.aug_method, args.aug_scale, num2average)), format="pdf")
+    plt.close()
+
+
+def plot_mean_of_each_class(train_spec, train_lbs, test_spec, test_args):
+    row, col = 2, 2
+    plt.figure()
+    num_to_plot = 50
+    rand_inds = np.random.choice(test_spec.shape[0], num_to_plot)
+    f, axs = plt.subplots(row, col, 'col')
+    colors = ["royalblue", "darkviolet"]
+    class_names = ["healthy", "tumor"]
+    mean_train = np.mean(train_spec, axis=0)
+    mean_test = np.mean(test_spec, axis=0)
+    for class_id in range(args.num_classes):
+        inds = np.where()
+    for jj, ind in enumerate(rand_inds):
+        NEW = args.aug_scale * new_mean[start:end] + np.tile((1 - args.aug_scale) * spec[ind], (num_to_plot, 1))
+        axs[jj].plot(NEW.T, alpha=0.65, linewidth=0.8)
+        axs[jj].plot(mean_train, colors[true_labels[ind]], label=class_names[true_labels[ind]])
+        axs[jj].legend(loc="best")
+
+    f.text(0.5, 0.05, 'index', fontsize=16),
+    f.text(0.05, 0.5, 'Normalized amplitude', fontsize=16, rotation=90, verticalalignment='center'),
+    f.savefig(os.path.join(args.output_path,
+                           "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale,
+                                                                               num2average)), format="png")
+    plt.close()

@@ -3,7 +3,7 @@ import os
 import random
 import itertools
 import scipy as scipy
-
+from collections import Counter
 from sklearn import metrics
 from scipy import interp
 import pandas as pd
@@ -11,7 +11,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 import matplotlib.pylab as pylab
-
+import pickle
+base = 22
+params = {'legend.fontsize': base-8,
+          'figure.figsize': (10, 7),
+         'axes.labelsize': base-4,
+         #'weight' : 'bold',
+         'axes.titlesize':base,
+         'xtick.labelsize':base-8,
+         'ytick.labelsize':base-8}
+pylab.rcParams.update(params)
 
 def find_files(directory, pattern='*.csv'):
     files = []
@@ -20,6 +29,28 @@ def find_files(directory, pattern='*.csv'):
             files.append(os.path.join(root, filename))
 
     return files
+
+
+def find_folderes(directory, pattern='*.csv'):
+    folders = []
+    for root, dirnames, filenames in os.walk(directory):
+        for subfolder in fnmatch.filter(dirnames, pattern):
+            folders.append(os.path.join(root, subfolder))
+
+    return folders
+
+
+def find_optimal_cutoff(true_lbs, predicted):
+    fpr, tpr, threshold = metrics.roc_curve(true_lbs, predicted)
+    auc = metrics.roc_auc_score(true_lbs, predicted)
+    ind = np.argsort(np.abs(tpr - (1-fpr)))[1]
+    # i = np.arange(len(tpr))
+    # roc = pd.DataFrame({'tf' : pd.Series(tpr-(1-fpr), index=i), 'threshold' : pd.Series(threshold, index=i)})
+    # roc_t = roc.ix[(roc.tf-0).abs().argsort()[:2]]
+
+    # return list(roc_t['threshold']), auc
+    return threshold[ind], auc
+
 
 def plot_confusion_matrix(confm, num_classes, title='Confusion matrix', cmap='Blues', normalize=False, save_name="results/"):  # plt.cm.Blues):
     """
@@ -95,116 +126,718 @@ def plot_auc_curve(labels_hot, pred, epoch=0, save_dir='./results'):
 
     plt.close()
 
+
+def get_auc_as_factor(data_dir, fold=None, epoch=5, factor=0.5, aug_meth=["same", "ops"], colors=pylab.cm.Set2(np.linspace(0, 1, 6))):
+    """
+    Get auc as a function of aug factor with three different aug methods
+    header = np.array(["method", "fold", "factor", "epoch", "auc"])
+    :param epoch:
+    :param aug_meth:
+    :return:
+    """
+    colors = ["royalblue", "paleturquoise", "orangered", "mistyrose", "limegreen", "palegreen"]
+    fold_ind = 1
+    factor_ind = 2
+    epoch_ind = 3
+    header = ["mothod", "fold", "factor", "epoch", "auc"]
+    if not epoch:
+        base_var = [1, 3, 5, 8, 10]
+        var_name = "epoch"
+        var_ind = 3
+        fix_ind1 = 1
+        fix_ind2 = 2
+        fix_value1 = fold
+        fix_value2 = factor
+    elif not factor:
+        base_var = [0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95]
+        # base_var = np.linspace(0.05, 1.0, 7)
+        var_name = "factor"
+        fix_value1 = fold
+        fix_value2 = epoch
+        var_ind = 2
+        fix_ind1 = 1
+        fix_ind2 = 3
+    elif not fold:
+        base_var = [1, 3, 5, 7, 9, 11]
+        var_name = "fold"
+        var_ind = 1
+        fix_ind1 = 2
+        fix_ind2 = 3
+        fix_value1 = factor
+        fix_value2 = epoch
+
+    baseline_fn = 0.7
+    baseline_rf = 0.635
+    baseline_svm = 0.623
+
+
+    plt.figure()
+    for ind, method in enumerate(aug_meth):
+        files = find_files(data_dir, pattern='*aug_{}*.txt'.format(method))
+
+        sum_aucs = []
+
+        for fn in files:
+            print("Model {}, fix_name1 {}: {}, fix_name2 {}: {}".format(os.path.basename(fn).split("_")[1], header[fix_ind1], fix_value1, header[fix_ind2], fix_value2))
+            data = pd.read_csv(fn, header=0).values
+            need_inds = np.where(
+                (data[:, fix_ind1] == fix_value1) &
+                (data[:, fix_ind2] == fix_value2))[0]
+            new_data = data[need_inds]
+
+            sort_data = sorted(new_data, key=lambda x: x[var_ind])
+            var_values = np.array(sort_data)[:, var_ind].astype(np.float)
+            auc = np.array(sort_data)[:, -1].astype(np.float)
+            auc_interp = interp(base_var, var_values, auc)
+            sum_aucs.append(auc_interp)
+            print("ok")
+
+        mean_auc = np.mean(np.array(sum_aucs), axis=0)
+        std_auc = scipy.stats.sem(np.array(sum_aucs))
+        # std_auc = np.std(np.array(sum_aucs), axis=0) / np.sqrt(np.array(sum_aucs).size)
+        
+
+        plt.plot(base_var, mean_auc, color=colors[ind * 2], marker="o", markersize=8, linewidth=2.5, label=method)
+        plt.errorbar(base_var, mean_auc, yerr=std_auc, capsize=5, color=colors[ind * 2])
+        # plt.fill_between(base_var, mean_auc - std_auc, mean_auc + std_auc, color=colors[ind * 2 + 1])
+
+    # plt.hlines(baseline_fn, base_var[0], base_var[-1], label="MLP")
+    plt.hlines(baseline_rf, base_var[0], base_var[-1], label="Random forest")
+    plt.hlines(baseline_svm, base_var[0], base_var[-1], label="SVM")
+    plt.legend()
+    plt.ylim([0.4, 0.82])
+    plt.xlabel("{}".format(var_name))
+    plt.ylabel("area under the curve")
+    plt.savefig(os.path.dirname(data_dir) + "/auc_as_factor_all_fix_{}-{}_and_{}-{}_var_{}-errbar.png".format(header[fix_ind1], fix_value1, header[fix_ind2], fix_value2, header[var_ind]), format="png")
+    plt.savefig(os.path.dirname(data_dir) + "/auc_as_factor_all_fix_{}-{}_and_{}-{}_var_{}-errbar.pdf".format(header[fix_ind1], fix_value1, header[fix_ind2], fix_value2, header[var_ind]), format="pdf")
+    plt.close()
+
+
+def plot_mean_spec_in_cluster(mean, std, cluster_id, num_clusters, postfix, crosstab_count=[10, 100], save_folder="/results"):
+
+    """
+
+    :param fea:
+    :param cluster_id:
+    :param num_clusters:
+    :param postfix:
+    :param save_folder:
+    :return:
+    """
+    data = np.hstack((mean.reshape(-1, 1), std.reshape(-1, 1)))
+    plt.figure()
+    # plt.errorbar(np.arange(spec_mean.size), spec_mean, spec_std, alpha=0.25)
+    plt.fill_between(np.arange(mean.size), mean - std, mean + std,  facecolor='c')
+    plt.plot(np.arange(mean.size), mean, 'm')
+    plt.xlabel("index")
+    plt.title("{}-clusters No. {} cluster, count {}".format(num_clusters, cluster_id, crosstab_count))
+    ylabel = "normalized value [a.u.]"
+    plt.ylabel(ylabel)
+    plt.savefig(os.path.join(save_folder, "{}_clusters_label_{}-spec-{}-mean.png".format(num_clusters, cluster_id, postfix)), format="png")
+    plt.savefig(os.path.join(save_folder, "{}_clusters_label_{}-spec-{}-mean.pdf".format(num_clusters, cluster_id, postfix)), format="pdf")
+    plt.close()
+
+
+def get_scaler_performance_metrices(folders):
+    """
+    Plot violin plots given the target dir of the test trials. Get the agg level [true-lb, agg-probability]
+    :param pool_len:
+    :param task_id:
+    :return:
+    """
+    postfix = ""
+
+    performance = {"ACC": np.empty((0,)), "patient_ACC": np.empty((0,)), "AUC": np.empty((0,)), "SEN": np.empty((0,)), "SPE": np.empty((0,))}
+
+    for fd in folders:
+        file = find_files(fd, pattern="AUC_curve_step*.csv")
+        num_patient = find_files(fd, pattern="*prob_distri_of*.png")
+        # rat_id = os.path.basename(fn).split("-")[-3]
+        values = pd.read_csv(file[0], header=0).values
+
+        true_labels = values[:, 0]   # assign true-lbs and probs in aggregation
+        prob = values[:, 1]
+        cutoff_thr, auc = find_optimal_cutoff(true_labels, prob)
+        pred_lbs = (prob > cutoff_thr).astype(np.int)
+
+        class0_inds = np.where(true_labels == 0.0)[0]
+        class1_inds = np.where(true_labels == 1.0)[0]
+        class0_prob = prob[class0_inds]
+        class1_prob = prob[class1_inds]
+
+        patient_acc = np.sum(["right" in name for name in num_patient]) / len(num_patient)
+        acc = np.sum(pred_lbs == true_labels) / true_labels.size
+        # sen = np.sum(pred_lbs[class1_inds] == true_labels[class1_inds]) / class1_inds.size
+        sen = np.sum(pred_lbs[np.where(true_labels == 1.0)[0]] == 1.0) / len(np.where(true_labels == 1.0)[0])
+        spe = np.sum(pred_lbs[class0_inds] == true_labels[class0_inds]) / class0_inds.size
+
+        scores["class0"] = np.append(scores["class0"],
+                                     class0_prob)
+        scores["class1"] = np.append(scores["class1"],
+                                     class1_prob)
+        performance["ACC"] = np.append(performance["ACC"], acc)
+        performance["SEN"] = np.append(performance["SEN"], sen)
+        performance["SPE"] = np.append(performance["SPE"], spe)
+        performance["AUC"] = np.append(performance["AUC"], auc)
+        performance["patient_ACC"] = np.append(performance["patient_ACC"], patient_acc)
+
+
+    ## Human performance
+    human_file = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class-human-ratings.mat"
+    original = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
+    values = scipy.io.loadmat(human_file)["data_ratings"]
+
+    true_v = scipy.io.loadmat(original)["DATA"]
+    ids = true_v[:, 0]
+    pred_lbs = values[:, 0]
+    true_lbs = true_v[:, 1]
+    count = dict(Counter(list(ids)))
+    human_diagnosis = []
+    right_count = 0
+    for id in count.keys():
+        id_inds = np.where(ids == id)[0]
+        vote_label = (np.sum(true_lbs[id_inds]) * 1.0 / id_inds.size).astype(np.int)
+        vote_pred = ((np.sum(pred_lbs[id_inds]) / id_inds.size) > 0.5).astype(np.int)
+        right_count = right_count + 1 if vote_label==vote_pred else right_count
+        human_diagnosis.append((id, vote_label, vote_pred))
+
+    human_diagnosis = np.array(human_diagnosis)
+    sen = np.sum(human_diagnosis[:, 2][np.where(human_diagnosis[:, 1] == 1)[0]] == 1) / len(
+        np.where(human_diagnosis[:, 1] == 1)[0])
+    spe = np.sum(human_diagnosis[:, 2][np.where(human_diagnosis[:, 1] == 0)[0]] == 0) / len(
+        np.where(human_diagnosis[:, 1] == 0)[0])
+
+    np.savetxt("/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/" + "human_patient_wise_diagnosis.csv", np.array(human_diagnosis), header="id,true,pred", fmt="%d", delimiter=",")
+
+
+    print("ave sen", np.mean(performance["SEN"]), "std sen", np.std(performance["SEN"]), '\n', "min", performance["SEN"].min(), "max", performance["SEN"].max(), '\n'),
+    print("ave spe", np.mean(performance["SPE"]), "std sen", np.std(performance["SPE"]), '\n', "min", performance["SPE"].min(), "max", performance["SPE"].max(), '\n')
+    print("ave auc", np.mean(performance["AUC"]), "std auc", np.std(performance["AUC"]), '\n', "min", performance["AUC"].min(), "max", performance["AUC"].max(), '\n')
+    print("ave acc", np.mean(performance["ACC"]), "std acc", np.std(performance["ACC"]), '\n', "min", performance["ACC"].min(), "max", performance["ACC"].max(), '\n')
+    print("patient acc", np.mean(performance["patient_ACC"]), "std acc", np.std(performance["patient_ACC"]), '\n', "min", performance["patient_ACC"].min(), "max", performance["patient_ACC"].max(), '\n')
+
+
 # ------------------------------------------------
 
-data_dir = "../data/20190325"
+
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
-model_results = data_dir + "/AUC_curve_step_0.00-auc_0.7257-labels.csv"
 
-human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
-human_indi_rating = "../data/20190325/doctor_ratings_individual.mat"
+plot_name = "move_folder"
 
-# GET original labels
-mat = scipy.io.loadmat(original)["DATA"]
-true_label = mat[:, 1]
-true_features = mat[:, 2:]
 
-# Get individual rater's prediction
-true_indi_lbs = {}
-human_indi_lbs = {}
-model_indi_lbs = {}
-indi_mat = scipy.io.loadmat(human_indi_rating)['a1']
-indi_ratings = np.array(indi_mat)
+if plot_name == "indi_rating_with_model":
+    data_dir = "../data/20190325"
 
-# Get model's prediction
-model_auc = pd.read_csv(model_results, header=0).values
-label = model_auc[:, 0].astype(np.int)
-pred_logits = model_auc[:, 1]
-pred_lb = np.argmax(pred_logits, axis=0)
+    model_res_with_aug = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-09T13-47-36-data-lout40-datas-1d-class2-Res_ECG_CAM-0.766certainEp3-aug_ops_meanx10-0.3-test-auc0.79/AUCs/AUC_curve_step_0.00-auc_0.7905-lout40-datas.csv"
 
-# Get human's total labels
-hum_whole = scipy.io.loadmat(human_rating)["data_ratings"]
-human_lb = hum_whole[:, 0]
-human_features = hum_whole[:, 1:]
-hum_fpr, hum_tpr, _ = metrics.roc_curve(true_label, human_lb)
-hum_score = metrics.roc_auc_score(true_label, human_lb)
+    human_indi_rating = "../data/20190325/lout40-data5-doctor_ratings_individual.mat"
+    # Get individual rater's prediction
+    true_indi_lbs = {}
+    true_indi_model_lbs = {}
+    human_indi_lbs = {}
+    model_indi_lbs = {}
+    indi_mat = scipy.io.loadmat(human_indi_rating)['a']
+    indi_ratings = np.array(indi_mat)
 
-start = 0
-plt.figure(figsize=[12, 10])
-colors = pylab.cm.cool(np.linspace(0, 1, 8))
+    true_data = scipy.io.loadmat("/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat")["DATA"]
+    true_label = true_data[:, 1].astype(np.int)
 
-lbs = true_label[0: 100]
-features = human_features[0: 100]
+    # Get model's prediction
+    model_auc_with_aug = pd.read_csv(model_res_with_aug, header=0).values
+    true_model_label = model_auc_with_aug[:, 0].astype(np.int)
+    pred_logits = model_auc_with_aug[:, 1]
+    pred_lb = np.argmax(pred_logits, axis=0)
+    model_fpr, model_tpr, _ = metrics.roc_curve(true_model_label, pred_logits)
 
-lb0 = np.where(lbs == 0)[0]
-lb1 = np.where(lbs == 1)[0]
+    mean_fpr = []
+    mean_tpr = []
+    mean_score = []
+    base_fpr = np.linspace(0, 1, 20)
 
-f, axs = plt.subplots(5, 2, 'col')
-colors = ['green', 'purple']
-rand_inds = np.random.choice(30, 5)
-for jj in range(5):
-    if jj == 0:
-        axs[jj, 0].plot(features[lb0[rand_inds[jj]]], color=colors[0], label='healthy')
-        axs[jj, 1].plot(features[lb1[rand_inds[jj]]], color=colors[1], label='tumor')
+    tpr_model = []
+
+    start = 0
+    plt.figure()
+    colors = pylab.cm.cool(np.linspace(0, 1, 8))
+    for i in range(indi_ratings.shape[1]):
+        key = "{}".format(i)
+        print(key)
+        end = start + min(len(indi_ratings[0, i]), len(true_model_label) - start)
+        true_indi_lbs[key] = true_label[start: start + len(indi_ratings[0, i])]
+        true_indi_model_lbs[key] = true_model_label[start: end]
+
+        human_indi_lbs[key] = indi_ratings[0, i][:, 0]
+        model_indi_lbs[key] = pred_logits[start: end]
+        start = end
+
+        indi_fpr, indi_tpr, _ = metrics.roc_curve(true_indi_lbs[key], human_indi_lbs[key])
+        indi_score = metrics.roc_auc_score(true_indi_lbs[key], human_indi_lbs[key])
+        mean_fpr.append(indi_fpr)
+        mean_tpr.append(indi_tpr)
+        mean_score.append(indi_score)
+
+        indi_model_fpr, indi_model_tpr, _ = metrics.roc_curve(true_indi_model_lbs[key], model_indi_lbs[key])
+        indi_model_score = metrics.roc_auc_score(true_indi_model_lbs[key], model_indi_lbs[key])
+        tpr_temp = interp(base_fpr, indi_model_fpr, indi_model_tpr)
+        tpr_model.append(tpr_temp)
+
+        plt.plot(indi_fpr[1], indi_tpr[1], color="r", marker="o", markersize=10, alpha=0.65)
+        # plt.plot(indi_model_fpr, indi_model_tpr, color=colors[i], alpha=0.15, label='model {} AUC:  {:.2f}'.format(i+1, indi_model_score))
+
+    mean_model_tpr = np.mean(np.array(tpr_model), axis=0)
+    std_model_tpr = np.std(np.array(tpr_model), axis=0)
+    mean_model_score = metrics.auc(base_fpr, mean_model_tpr)
+
+    plt.plot(indi_fpr[1], indi_tpr[1], alpha=0.65, color="r", marker="o", markersize=10, label="individual radiologists")
+    plt.plot(np.mean(np.array(mean_fpr)[:, 1]), np.mean(np.array(mean_tpr)[:, 1]), color="r", marker="d", markersize=16, label='human average AUC: {:.2f}'.format(np.mean(np.array(mean_score))))
+    plt.plot(model_fpr, model_tpr, color="royalblue", linewidth=3.0, label='model AUC:  {:.2f}'.format(mean_model_score))
+
+    plt.title("Receiver Operating Characteristic")
+    plt.xlim([-0.02, 1.02])
+    plt.ylim([-0.02, 1.02])
+    plt.legend(loc=4)
+    plt.ylabel('true positive rate')
+    plt.xlabel('false positive rate')
+    plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.png"), format='png')
+    plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.pdf"), format='pdf')
+    plt.close()
+elif plot_name == "human_whole_with_model":
+    data_dir = "../data/20190325"
+    human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
+    original = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
+    ori = scipy.io.loadmat(original)["DATA"]
+    true_label = ori[:, 1]
+
+    # Get model's prediction
+    model_res_with_aug = "/home/epilepsy-data/data/metabolites/results/2019-10-09T13-47-36-data-lout40-datas-1d-class2-Res_ECG_CAM-0.766certainEp3-aug_ops_meanx10-0.3-test-auc0.79/AUCs/AUC_curve_step_0.00-auc_0.7905-lout40-datas.csv"
+    model_res_wo_aug = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-30T16-00-14-data-lout40-datas-1d-class2-Res_ECG_CAM-0.900-aug_ops_meanx0-0-test-0.714/AUCs/AUC_curve_step_0.00-auc_0.7246-lout40-datas.csv"
+    model_auc_with_aug = pd.read_csv(model_res_with_aug, header=0).values
+    label_with_aug = model_auc_with_aug[:, 0].astype(np.int)
+    pred_logits_with_aug = model_auc_with_aug[:, 1]
+
+    model_auc_wo_aug = pd.read_csv(model_res_wo_aug, header=0).values
+    label_wo_aug = model_auc_wo_aug[:, 0].astype(np.int)
+    pred_logits_wo_aug = model_auc_wo_aug[:, 1]
+    # pred_lb = np.argmax(pred_logits, axis=0)
+
+    # Get human's total labels
+    hum_whole = scipy.io.loadmat(human_rating)["data_ratings"]
+    human_lb = hum_whole[:, 0]
+    human_features = hum_whole[:, 1:]
+    hum_fpr, hum_tpr, _ = metrics.roc_curve(true_label, human_lb)
+    hum_score = metrics.roc_auc_score(true_label, human_lb)
+
+    # PLot human average rating
+    plt.figure(figsize=[10, 7])
+    plt.plot(hum_fpr[1], hum_tpr[1], 'purple', marker="*", markersize=10, label='human AUC: {:.2f}'.format(hum_score))
+
+    # Plot trained model prediction
+    fpr_with_aug, tpr_with_aug, _ = metrics.roc_curve(label_with_aug, pred_logits_with_aug)
+    fpr_wo_aug, tpr_wo_aug, _ = metrics.roc_curve(label_wo_aug, pred_logits_wo_aug)
+    score_with_aug = metrics.roc_auc_score(label_with_aug, pred_logits_with_aug)
+    score_wo_aug = metrics.roc_auc_score(label_wo_aug, pred_logits_wo_aug)
+
+    plt.plot(fpr_with_aug, tpr_with_aug, 'royalblue', linestyle="-", linewidth=2, label='With aug. AUC: {:.2f}'.format(score_with_aug))
+    plt.plot(fpr_wo_aug, tpr_wo_aug, 'violet', linestyle="-.", linewidth=2, label='Without aug. AUC: {:.2f}'.format(score_wo_aug))
+    plt.title("Receiver Operating Characteristic", fontsize=20)
+    plt.xlim([-0.02, 1.02])
+    plt.ylim([-0.02, 1.02])
+    plt.legend(loc=4)
+    plt.ylabel('true positive rate', fontsize=18)
+    plt.xlabel('false positive rate', fontsize=18)
+    plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively_certain.pdf"), format='pdf')
+    # plt.savefig(os.path.join(data_dir, "model_with_human_rating.eps"), format='eps')
+    plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively_certain.png"), format='png')
+    plt.close()
+
+elif plot_name == "all_ROCs":
+    data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/1-20190325-data-trained-models/TEST/Res_CNN_CAM-LOUT40"
+    files = find_files(data_dir, pattern="AUC_curve_step_0.00-auc*.csv")
+    plt.figure(figsize=[10, 6.8])
+    base_fpr = np.linspace(0, 1, 20)
+    tprs = []
+    for ind, fn in enumerate(files):
+        values = pd.read_csv(fn, header=0).values
+        true_lbs = values[:, 0]
+        prob_1 = values[:, 1]
+        fpr_with_aug, tpr_with_aug, _ = metrics.roc_curve(true_lbs, prob_1)
+        score = metrics.roc_auc_score(true_lbs, prob_1)
+        plt.plot(fpr_with_aug, tpr_with_aug, 'royalblue', alpha=0.35, label='cross val {} AUC: {:.3f}'.format(ind, score))
+
+        tpr_temp = interp(base_fpr, fpr_with_aug, tpr_with_aug)
+        tprs.append(tpr_temp)
+        print("ok")
+    mean_model_tpr = np.mean(np.array(tprs), axis=0)
+    std_model_tpr = np.std(np.array(tprs), axis=0)
+    mean_model_score = metrics.auc(base_fpr, mean_model_tpr)
+
+    plt.plot(base_fpr, mean_model_tpr, 'violet', linewidth=4.0, label='average AUC: {:.3f}'.format(mean_model_score))
+    plt.title("ROC curves in cross validation test trials", fontsize=20)
+    plt.xlim([-0.02, 1.02])
+    plt.ylim([-0.02, 1.02])
+    plt.legend(loc="best")
+    plt.ylabel('true positive rate', fontsize=18)
+    plt.xlabel('false positive rate', fontsize=18)
+    plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.png"), format='png')
+    plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.pdf"), format='pdf')
+    plt.close()
+elif plot_name == "average_models":
+    file_dirs = ["/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-27-42-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.7176-lout40-data5.csv", "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-27-11-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.6669-lout40-data5.csv", "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-23-45-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.6662-lout40-data5.csv"]
+    predictions = {}
+
+    for ind, fn in enumerate(file_dirs):
+        values = pd.read_csv(fn, header=0).values
+        true_lbs = values[:, 0]
+        predictions["{}".format(ind)] = values[:, 1]
+        if ind == 0:
+            agg_pred = values[:, 1]
+        else:
+            agg_pred += values[:, 1]
+    print("ok")
+elif plot_name == "plot_mean_cluster":
+    data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/KMeans/metabolites_clustering-spec-whole-20190325/2019-12-16T13-34-47/7-cluster/plots"
+    mean_files = find_files(data_dir, pattern="*.csv")
+    for fn in mean_files:
+        num_clusters = fn.split("_")[0]
+        cluster_id = fn.split("_")[-1].split("-")[0]
+        data = pd.read_csv(fn, header=0).values
+        mean = data[:, 0]
+        std = data[:, 1]
+
+        plot_mean_spec_in_cluster(mean, std, cluster_id, num_clusters, "train", crosstab_count=[None], save_folder=data_dir)
+
+elif plot_name == "test_aucs":
+    from_dirs = False
+    if from_dirs:
+        results = "/home/epilepsy-data/data/metabolites/paper_results_2700/train_with_aug_new_models"
+        model = "new"
+        pattern = "*exp{}*_train_test-*".format(model)
+        folders = find_folderes(results, pattern=pattern)
+        configs = [] # "aug_method": [], "aug_factor": [], "aug_fold": [], "from_epoch": []
+        for fn in folders:
+            print(fn)
+            splits = os.path.basename(fn).split("_")
+            aug_name = splits[2]
+            aug_fold = splits[3].split("x")[-1]
+            aug_factor = splits[5]
+            from_epoch = splits[7]
+            test_auc = splits[-1].split("-")[-1]
+            configs.append((aug_name, aug_fold, aug_factor, from_epoch, test_auc))
+
+        ## plot same_mean aug, auc w.r.t.
+        print("ok")
+        configs = np.array(configs)
+        aug_same = configs[np.where(configs[:, 0] == "same")[0]]
+        aug_ops = configs[np.where(configs[:, 0] == "ops")[0]]
+        aug_both = configs[np.where(configs[:, 0] == "both")[0]]
+
+        np.savetxt(os.path.join(results, 'model_{}_aug_same_entry_{}.txt'.format(model, len(aug_same))), aug_same, header="aug_name,aug_fold,aug_factor,from_epoch,test_auc", delimiter=",", fmt="%s")
+        np.savetxt(os.path.join(results, 'model_{}_aug_ops_entry_{}.txt'.format(model, len(aug_ops))), aug_ops, header="aug_name,aug_fold,aug_factor,from_epoch,test_auc", delimiter=",", fmt="%s")
+        np.savetxt(os.path.join(results, 'model_{}_aug_both_entry_{}.txt'.format(model, len(aug_both))), aug_both, header="aug_name,aug_fold,aug_factor,from_epoch,test_auc", delimiter=",", fmt="%s")
     else:
-        axs[jj, 0].plot(features[lb0[rand_inds[jj]]], color=colors[0])
-        axs[jj, 1].plot(features[lb1[rand_inds[jj]]], color=colors[1])
-# plt.title("Spectra examples from healthy and tumor tissues", fontsize=20)
-# plt.legend(bbox_to_anchor=(0.15, 1.05, 0.7, 0.1),
-#                                        loc="lower left", mode="expand",
-#                                        borderaxespad=0, ncol=2, numpoints=4)
-plt.subplots_adjust(hspace=0)
-plt.savefig(os.path.join(data_dir, "spectra examples.png"), format='png')
-plt.savefig(os.path.join(data_dir, "spectra examples.pdf"), format='pdf')
-plt.close()
+        file_dir = "/home/epilepsy-data/data/metabolites/paper_results_2700/saved_all_models_and_tests"
+        aug_meth = ["same", "ops", "both"]
+
+        colors = pylab.cm.Set2(np.linspace(0, 1, 6))
+        factor = 0.5
+        epoch = 3
+        fold = 3
+
+        for vars in [[None, epoch, factor], [fold, None, factor], [fold, epoch, None]]:
+
+            get_auc_as_factor(file_dir, fold=vars[0], epoch=vars[1], factor=vars[2], aug_meth=aug_meth, colors=colors)
+
+    # for fold in [5, 10]:
+    #     same = aug_same[np.where(aug_same[:, 1].astype(np.int) == fold)[0]]
+    #     ops = aug_ops[np.where(aug_ops[:, 1].astype(np.int) == fold)[0]]
+    #     both = aug_both[np.where(aug_both[:, 1].astype(np.int) == fold)[0]]
+    #
+    #     epoch_counter_same = list(Counter(list(same[:, 3])))
+    #     epoch_counter_ops = list(Counter(list(ops[:, 3])))
+    #     epoch_counter_both = list(Counter(list(both[:, 3])))
+    #
+    #     plt.figure(),
+    #     for epo in [3, 4, 5, 6]:
+    #         for data, name in zip([same, ops, both], ["same", "ops", "both"]):
+    #             subdata = data[np.where(data[:, 3].astype(np.int) == epo)[0]]
+    #             sortdata = np.array(sorted(zip(subdata[:, 2], subdata[:, 4], subdata[:, 1]), key=lambda x: x[0]))
+    #
+    #             if len(subdata) > 0:
+    #                 plt.plot(sortdata[:, 0].astype(np.float), sortdata[:, 1].astype(np.float), label="{} class".format(name)),
+    #         plt.title("Augment by {} fold from epoch {}".format(fold, epo))
+    #         plt.legend(),
+    #         plt.savefig(os.path.join(results, "model-{}-Augment by {} fold from epoch {}.png".format(model, fold, epo)))
+    #         plt.close()
 
 
-# colors = ["royalblue"] * 8
-for i in range(indi_ratings.shape[1]):
-    key = "{}".format(i)
-    true_indi_lbs[key] = true_label[start: start+len(indi_ratings[0, i])]
 
-    human_indi_lbs[key] = indi_ratings[0, i][:, 0]
-    model_indi_lbs[key] = pred_logits[start: start+len(indi_ratings[0, i])]
-    start = start + len(indi_ratings[0, i])
+elif plot_name == "rename_test_folders":
+    pattern = "accuracy_step_0.0_acc_*"
+    results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results"
+    folders = find_folderes(results, pattern="*_train_test")
+    for fn in folders:
+        print(fn)
+        test_result = find_files(fn, pattern=pattern)
+        splits = os.path.basename(test_result[0]).split("_")
+        auc = splits[-2]
+        os.rename(fn, fn+'-{}'.format(auc))
 
-    indi_fpr, indi_tpr, _ = metrics.roc_curve(true_indi_lbs[key], human_indi_lbs[key])
-    indi_score = metrics.roc_auc_score(true_indi_lbs[key], human_indi_lbs[key])
-
-    indi_model_fpr, indi_model_tpr, _ = metrics.roc_curve(true_indi_lbs[key], model_indi_lbs[key])
-    indi_model_score = metrics.roc_auc_score(true_indi_lbs[key], model_indi_lbs[key])
-    plt.scatter(indi_fpr[1], indi_tpr[1], color='royalblue', marker="*")
-    plt.plot(indi_model_fpr, indi_model_tpr, color=colors[i], label='model AUC {}: {:.3f}'.format(i+1, indi_model_score))
+elif plot_name == "get_performance_metrices":
+    data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/10-fold-cross_validation"
+    folders = find_folderes(data_dir, pattern="*train_test-0.*")
+    get_scaler_performance_metrices(folders)
     
-plt.scatter(indi_fpr[1], indi_tpr[1], color='royalblue', marker="*", label="individual radiologists")
-plt.title("Receiver Operating Characteristic", fontsize=20)
-plt.xlim([-0.02, 1.02])
-plt.ylim([-0.02, 1.02])
-plt.legend(loc=4)
-plt.ylabel('true positive rate', fontsize=18)
-plt.xlabel('false positive rate', fontsize=18)
-plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual_with_humans.pdf"), format='pdf')
-plt.savefig(os.path.join(data_dir, "model_with_human_rating_individual_with_humans.png"), format='png')
-plt.close()
+elif plot_name == "move_folder":
+    import shutil
+    # target = "C:\\Users\\LDY\\Desktop\\metabolites-0301\\metabolites_tumour_classifier\\dest"
+    target = "/home/epilepsy-data/data/metabolites/paper_results_2700/results"
+    need2move = [
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-05-32_exp0.766_same_meanx5_factor_0.5_from-epoch_3_from-lout40_5_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-05-32_exp0.766_same_meanx5_factor_0.5_from-epoch_3_from-lout40_5_train_test-0.736",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-05-33_exp0.766_ops_meanx5_factor_0.5_from-epoch_3_from-lout40_5_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-05-33_exp0.766_ops_meanx5_factor_0.5_from-epoch_3_from-lout40_5_train_test-0.691",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-05-34_exp0.766_both_meanx5_factor_0.5_from-epoch_3_from-lout40_5_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-05-34_exp0.766_both_meanx5_factor_0.5_from-epoch_3_from-lout40_5_train_test-0.752",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-05-35_exp0.766_same_meanx5_factor_0.5_from-epoch_5_from-lout40_5_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-05-35_exp0.766_same_meanx5_factor_0.5_from-epoch_5_from-lout40_5_train_test-0.738",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-05-36_exp0.766_ops_meanx5_factor_0.5_from-epoch_5_from-lout40_5_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-05-36_exp0.766_ops_meanx5_factor_0.5_from-epoch_5_from-lout40_5_train_test-0.725",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-05-37_exp0.766_both_meanx5_factor_0.5_from-epoch_5_from-lout40_5_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-05-37_exp0.766_both_meanx5_factor_0.5_from-epoch_5_from-lout40_5_train_test-0.707",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-06-16_exp8944_same_meanx5_factor_0.5_from-epoch_3_from-lout40_5_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-06-16_exp8944_same_meanx5_factor_0.5_from-epoch_3_from-lout40_5_train_test-0.709",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-06-17_exp8944_ops_meanx5_factor_0.5_from-epoch_3_from-lout40_5_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-06-17_exp8944_ops_meanx5_factor_0.5_from-epoch_3_from-lout40_5_train_test-0.734",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-06-18_exp8944_both_meanx5_factor_0.5_from-epoch_3_from-lout40_5_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-06-18_exp8944_both_meanx5_factor_0.5_from-epoch_3_from-lout40_5_train_test-0.689",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-06-19_exp8944_same_meanx5_factor_0.5_from-epoch_5_from-lout40_5_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-06-19_exp8944_same_meanx5_factor_0.5_from-epoch_5_from-lout40_5_train_test-0.724",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-06-20_exp8944_ops_meanx5_factor_0.5_from-epoch_5_from-lout40_5_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-06-20_exp8944_ops_meanx5_factor_0.5_from-epoch_5_from-lout40_5_train_test-0.724",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-06-21_exp8944_both_meanx5_factor_0.5_from-epoch_5_from-lout40_5_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-20-17-06-21_exp8944_both_meanx5_factor_0.5_from-epoch_5_from-lout40_5_train_test-0.731",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-05_exp8944_same_meanx1_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-07_exp8944_same_meanx3_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-08_exp8944_same_meanx5_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-09_exp8944_same_meanx7_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-10_exp8944_same_meanx9_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-11_exp8944_same_meanx11_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-12_exp8944_same_meanx1_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-13_exp8944_same_meanx3_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-14_exp8944_same_meanx5_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-16_exp8944_same_meanx7_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-17_exp8944_same_meanx9_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-18_exp8944_same_meanx11_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-19_exp8944_same_meanx1_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-20_exp8944_same_meanx3_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-21_exp8944_same_meanx5_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-22_exp8944_same_meanx7_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-23_exp8944_same_meanx9_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-24_exp8944_same_meanx11_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-26_exp8944_same_meanx1_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-27_exp8944_same_meanx3_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-28_exp8944_same_meanx5_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-29_exp8944_same_meanx7_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-30_exp8944_same_meanx9_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-31_exp8944_same_meanx11_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-32_exp8944_ops_meanx1_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-33_exp8944_ops_meanx3_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-34_exp8944_ops_meanx5_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-35_exp8944_ops_meanx7_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-36_exp8944_ops_meanx9_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-38_exp8944_ops_meanx11_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-39_exp8944_ops_meanx1_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-40_exp8944_ops_meanx3_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-41_exp8944_ops_meanx5_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-42_exp8944_ops_meanx7_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-43_exp8944_ops_meanx9_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-44_exp8944_ops_meanx11_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-45_exp8944_ops_meanx1_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-46_exp8944_ops_meanx3_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-47_exp8944_ops_meanx5_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-49_exp8944_ops_meanx7_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-50_exp8944_ops_meanx9_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-51_exp8944_ops_meanx11_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-52_exp8944_ops_meanx1_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-53_exp8944_ops_meanx3_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-54_exp8944_ops_meanx5_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-55_exp8944_ops_meanx7_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-56_exp8944_ops_meanx9_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-57_exp8944_ops_meanx11_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-58_exp8944_both_meanx1_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-42-59_exp8944_both_meanx3_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-01_exp8944_both_meanx5_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-02_exp8944_both_meanx7_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-03_exp8944_both_meanx9_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-04_exp8944_both_meanx11_factor_0.05_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-05_exp8944_both_meanx1_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-06_exp8944_both_meanx3_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-07_exp8944_both_meanx5_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-08_exp8944_both_meanx7_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-09_exp8944_both_meanx9_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-10_exp8944_both_meanx11_factor_0.35_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-12_exp8944_both_meanx1_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-13_exp8944_both_meanx3_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-14_exp8944_both_meanx5_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-15_exp8944_both_meanx7_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-16_exp8944_both_meanx9_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-17_exp8944_both_meanx11_factor_0.5_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-18_exp8944_both_meanx1_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-19_exp8944_both_meanx3_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-20_exp8944_both_meanx5_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-21_exp8944_both_meanx7_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-22_exp8944_both_meanx9_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-24_exp8944_both_meanx11_factor_0.95_from-epoch_3_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-25_exp8944_same_meanx1_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-26_exp8944_same_meanx3_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-27_exp8944_same_meanx5_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-28_exp8944_same_meanx7_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-29_exp8944_same_meanx9_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-30_exp8944_same_meanx11_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-31_exp8944_same_meanx1_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-32_exp8944_same_meanx3_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-33_exp8944_same_meanx5_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-35_exp8944_same_meanx7_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-36_exp8944_same_meanx9_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-37_exp8944_same_meanx11_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-38_exp8944_same_meanx1_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-39_exp8944_same_meanx3_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-40_exp8944_same_meanx5_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-41_exp8944_same_meanx7_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-42_exp8944_same_meanx9_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-43_exp8944_same_meanx11_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-44_exp8944_same_meanx1_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-45_exp8944_same_meanx3_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-47_exp8944_same_meanx5_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-48_exp8944_same_meanx7_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-49_exp8944_same_meanx9_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-50_exp8944_same_meanx11_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-51_exp8944_ops_meanx1_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-52_exp8944_ops_meanx3_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-53_exp8944_ops_meanx5_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-54_exp8944_ops_meanx7_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-55_exp8944_ops_meanx9_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-56_exp8944_ops_meanx11_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-57_exp8944_ops_meanx1_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-43-59_exp8944_ops_meanx3_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-00_exp8944_ops_meanx5_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-01_exp8944_ops_meanx7_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-02_exp8944_ops_meanx9_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-03_exp8944_ops_meanx11_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-04_exp8944_ops_meanx1_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-05_exp8944_ops_meanx3_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-06_exp8944_ops_meanx5_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-07_exp8944_ops_meanx7_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-08_exp8944_ops_meanx9_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-09_exp8944_ops_meanx11_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-11_exp8944_ops_meanx1_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-12_exp8944_ops_meanx3_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-13_exp8944_ops_meanx5_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-14_exp8944_ops_meanx7_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-15_exp8944_ops_meanx9_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-16_exp8944_ops_meanx11_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-17_exp8944_both_meanx1_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-18_exp8944_both_meanx3_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-19_exp8944_both_meanx5_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-20_exp8944_both_meanx7_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-22_exp8944_both_meanx9_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-23_exp8944_both_meanx11_factor_0.05_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-24_exp8944_both_meanx1_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-25_exp8944_both_meanx3_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-26_exp8944_both_meanx5_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-27_exp8944_both_meanx7_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-28_exp8944_both_meanx9_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-29_exp8944_both_meanx11_factor_0.35_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-30_exp8944_both_meanx1_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-31_exp8944_both_meanx3_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-32_exp8944_both_meanx5_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-34_exp8944_both_meanx7_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-35_exp8944_both_meanx9_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-36_exp8944_both_meanx11_factor_0.5_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-37_exp8944_both_meanx1_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-38_exp8944_both_meanx3_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-39_exp8944_both_meanx5_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-40_exp8944_both_meanx7_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-41_exp8944_both_meanx9_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-42_exp8944_both_meanx11_factor_0.95_from-epoch_5_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-43_exp8944_same_meanx1_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-44_exp8944_same_meanx3_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-46_exp8944_same_meanx5_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-47_exp8944_same_meanx7_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-48_exp8944_same_meanx9_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-49_exp8944_same_meanx11_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-50_exp8944_same_meanx1_factor_0.35_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-51_exp8944_same_meanx3_factor_0.35_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-52_exp8944_same_meanx5_factor_0.35_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-53_exp8944_same_meanx7_factor_0.35_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-54_exp8944_same_meanx9_factor_0.35_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-55_exp8944_same_meanx11_factor_0.35_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-57_exp8944_same_meanx1_factor_0.5_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-58_exp8944_same_meanx3_factor_0.5_from-epoch_8_from-lout40_2_train",
 
-# PLot human average rating
-plt.figure()
-plt.plot(hum_fpr[1], hum_tpr[1], 'purple', marker="*", markersize=4, label='human average AUC: {:.3f}'.format(hum_score))
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-44-59_exp8944_same_meanx5_factor_0.5_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-00_exp8944_same_meanx7_factor_0.5_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-01_exp8944_same_meanx9_factor_0.5_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-02_exp8944_same_meanx11_factor_0.5_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-03_exp8944_same_meanx1_factor_0.95_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-04_exp8944_same_meanx3_factor_0.95_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-05_exp8944_same_meanx5_factor_0.95_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-06_exp8944_same_meanx7_factor_0.95_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-08_exp8944_same_meanx9_factor_0.95_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-09_exp8944_same_meanx11_factor_0.95_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-10_exp8944_ops_meanx1_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-11_exp8944_ops_meanx3_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-12_exp8944_ops_meanx5_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-13_exp8944_ops_meanx7_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-14_exp8944_ops_meanx9_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-15_exp8944_ops_meanx11_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-16_exp8944_ops_meanx1_factor_0.35_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-17_exp8944_ops_meanx3_factor_0.35_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-18_exp8944_ops_meanx5_factor_0.35_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-20_exp8944_ops_meanx7_factor_0.35_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-21_exp8944_ops_meanx9_factor_0.35_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-22_exp8944_ops_meanx11_factor_0.35_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-23_exp8944_ops_meanx1_factor_0.5_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-24_exp8944_ops_meanx3_factor_0.5_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-25_exp8944_ops_meanx5_factor_0.5_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-26_exp8944_ops_meanx7_factor_0.5_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-27_exp8944_ops_meanx9_factor_0.5_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-28_exp8944_ops_meanx11_factor_0.5_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-29_exp8944_ops_meanx1_factor_0.95_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-30_exp8944_ops_meanx3_factor_0.95_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-32_exp8944_ops_meanx5_factor_0.95_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-33_exp8944_ops_meanx7_factor_0.95_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-34_exp8944_ops_meanx9_factor_0.95_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-35_exp8944_ops_meanx11_factor_0.95_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-36_exp8944_both_meanx1_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-37_exp8944_both_meanx3_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-38_exp8944_both_meanx5_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-39_exp8944_both_meanx7_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-40_exp8944_both_meanx9_factor_0.05_from-epoch_8_from-lout40_2_train",
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2020-02-14-09-45-41_exp8944_both_meanx11_factor_0.05_from-epoch_8_from-lout40_2_train",
+    ]
+    for fd in need2move:
+        # files = os.listdir(fd)
+        print(fd)
+        new_dest = os.path.join(target, os.path.basename(fd))
+        if not os.path.isdir(new_dest):
+            shutil.copytree(fd, new_dest)
+    
+        # for f in files:
+        #     # shutil.move(os.path.join(fd, f), new_dest)
+        #     shutil.copytree(os.path.join(fd, f), new_dest)
+        
 
-# Plot trained model prediction
-fpr, tpr, _ = metrics.roc_curve(label, pred_logits)
-score = metrics.roc_auc_score(label, pred_logits)
-plt.plot(fpr, tpr, 'royalblue', linewidth=2, label='model AUC: {:.3f}'.format(score))
+# wrong = [14.0, 417.0, 421.0, 427.0, 436.0, 478.0, 489.0, 498.0, 501.0, 514.0, 555.0, 1274.0, 14.0, 411.0, 421.0, 436.0, 442.0, 443.0, 478.0, 489.0, 498.0, 514.0, 543.0, 551.0, 1092., 1274.0, 14.0, 417.0, 421.0, 427.0, 436.0, 478.0, 489.0, 498.0, 501.0, 514.0, 555.0, 1274.0, 14.0, 427.0, 436.0, 442.0, 489.0, 498.0, 514.0, 516.0, 543.0, 551.0, 555.0, 556.0, 1274.0,]
+#
+# count = dict(Counter(list(wrong)))
 
-plt.title("ROC", fontsize=20)
-plt.xlim([-0.02, 1.02])
-plt.ylim([-0.02, 1.02])
-plt.legend(loc=4)
-plt.ylabel('true positive rate', fontsize=18)
-plt.xlabel('false positive rate', fontsize=18)
-plt.savefig(os.path.join(data_dir, "model_with_human_rating.pdf"), format='pdf')
-# plt.savefig(os.path.join(data_dir, "model_with_human_rating.eps"), format='eps')
-plt.savefig(os.path.join(data_dir, "model_with_human_rating.png"), format='png')
-plt.close()
+
+
+
+
+
+
+
 
 
