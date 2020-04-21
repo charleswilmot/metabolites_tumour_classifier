@@ -15,7 +15,7 @@ from collections import Counter
 from scipy.stats import zscore
 import matplotlib.pyplot as plt
 import ipdb
-from plot import plot_aug_examples
+import plot as Plot
 logger = log.getLogger("classifier")
 from sklearn.model_selection import train_test_split
 import pandas as pd
@@ -402,15 +402,14 @@ def augment_with_batch_mean(args, X_train, X_train_aug):
             inds = np.arange(len(X_train[:, 2]))   # use all labels to augment
 
         # randomly select 100 groups of 100 samples each and get mean
-        aug_inds = np.random.choice(inds, inds.size*num2average, replace=True).reshape(-1, num2average)  # random pick 10000 samples and take mean every num2average samples
+        aug_inds = np.random.choice(inds, args.aug_folds*len(np.where(X_train[:, 2] == class_id)[0])*num2average, replace=True).reshape(-1, num2average)
+        target_inds = np.random.choice(np.where(X_train[:, 2] == class_id)[0], args.aug_folds*len(np.where(X_train[:, 2] == class_id)[0])*num2average).reshape(-1, num2average)
         mean_batch = np.mean(X_train[:, 3:][aug_inds], axis=1)   # get a batch of spectra to get the mean
+        aug_zspec = (1 - args.aug_scale)*X_train[:, 3:][np.squeeze(target_inds)] + mean_batch* args.aug_scale
+        combine = np.concatenate((X_train[:, 0][target_inds].reshape(-1, 1), X_train[:, 1][target_inds].reshape(-1, 1), X_train[:, 2][target_inds].reshape(-1, 1), aug_zspec), axis=1)
+        X_train_aug = np.vstack((X_train_aug, combine))
 
-        plot_aug_examples(mean_batch, num2average, X_train[:, 3:], X_train[:, 2], args)
-
-        for fold in range(args.aug_folds):
-            aug_zspec = (1 - args.aug_scale) * X_train[:, 3:][inds] + mean_batch[np.random.choice(mean_batch.shape[0], inds.size)] * args.aug_scale
-            combine = np.concatenate((X_train[:, 0][inds].reshape(-1, 1), X_train[:, 1][inds].reshape(-1, 1), X_train[:, 2][inds].reshape(-1, 1), aug_zspec), axis=1)
-            X_train_aug = np.vstack((X_train_aug, combine))
+        Plot.plot_train_samples(aug_zspec, X_train[:, 2][target_inds], args, postfix="samples")
 
     print("original spec total shape", class_id, X_train[:, 3:].shape, "augment spec shape: ", X_train_aug[:, 3:].shape)
     return X_train_aug
@@ -424,7 +423,7 @@ def augment_with_random_noise(args, X_train, train_aug):
     :return: train_data_aug: dict
     """
     noise = args.aug_scale * \
-            np.random.uniform(size=[args.aug_folds, X_train[:, 2].size, X_train[:, 3:].shape[-1]])
+            np.random.uniform(low=0.0, high=0.3, size=[args.aug_folds, X_train[:, 2].size, X_train[:, 3:].shape[-1]])
     combine = np.empty((0, args.data_len))
     for fold in range(args.aug_folds):
         aug_zspec = X_train[:, 3:] + noise[fold]
@@ -434,6 +433,9 @@ def augment_with_random_noise(args, X_train, train_aug):
     patient_ids = np.tile(X_train[:, 1].reshape(-1, 1), [args.aug_folds, 1])
     labels = np.tile(X_train[:, 2].reshape(-1, 1), [args.aug_folds, 1])
     train_aug = np.concatenate((sample_ids, patient_ids,  labels, combine), axis=1)
+    
+
+    Plot.plot_train_samples(train_aug[:, 3:], train_aug[:,2], args, postfix="samples")
 
     return train_aug
 

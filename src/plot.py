@@ -96,6 +96,7 @@ def plot_auc_curve(args, data, epoch=0):
                np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_logits"][:, 1].reshape(-1,1))), fmt="%.8f", delimiter=',', header="labels,pred[:,1]")
     plt.close()
 
+
 def accuracy_loss_figure(args, data, training=False, epoch=0):
     f = plt.figure()
     ax = f.add_subplot(121)
@@ -167,6 +168,7 @@ def plot_confusion_matrix(args, data, ifnormalize=False, training=False):
     plt.close()
     logger.info("Confusion matrix saved")
 
+
 def plot_wrong_examples(args, data, training=False):
     """
     Plot the wrongly classified examples
@@ -194,6 +196,7 @@ def plot_wrong_examples(args, data, training=False):
 
     plt.close()
     logger.info("Mistakes plot saved")
+
 
 def plot_tsne_activity(args, data):
     """
@@ -619,8 +622,8 @@ def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
     f.text(0.5, 0.05, 'index', fontsize=16),
     f.text(0.05, 0.5, 'Normalized amplitude', fontsize=16, rotation=90, verticalalignment='center'),
     f.subplots_adjust(hspace=0, wspace=0.06)
-    # f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale, num2average)), format="png")
-    # f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.pdf".format(args.aug_method, args.aug_scale, num2average)), format="pdf")
+    f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale, num2average)), format="png")
+    f.savefig(os.path.join(args.output_path, "augmenting_with_{}*{}_using_{}-samples.pdf".format(args.aug_method, args.aug_scale, num2average)), format="pdf")
     plt.close()
 
 
@@ -648,3 +651,22 @@ def plot_mean_of_each_class(train_spec, train_lbs, test_spec, test_args):
                            "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale,
                                                                                num2average)), format="png")
     plt.close()
+
+
+def plot_train_samples(samples, true_labels, args, postfix="samples"):
+    """plot the trainin samples"""
+    row, col = 6, 4
+    f, axs = plt.subplots(row, col, sharex=True)
+    for class_id in range(args.num_classes):
+        indices = np.random.choice(np.where(true_labels == class_id)[0], min(row*col, np.where(true_labels == class_id)[0].size))
+        if len(indices) > 0:
+            samp_plot = samples[indices]
+            f.suptitle("Training samples in class {}".format(class_id), fontsize=base)
+            for ii in range(indices.size):
+                axs[ii // col, np.mod(ii, col)].plot(samp_plot[ii])
+            plt.tight_layout()
+            # plt.setp(ax1.get_xticklabels(), visible=False)
+            plt.subplots_adjust(hspace=0.00, wspace=0.15)
+            plt.savefig(args.output_path + '/augmented_samples-class-{}-{}.png'.format(class_id, args.aug_method), format = 'png')
+
+            plt.close()

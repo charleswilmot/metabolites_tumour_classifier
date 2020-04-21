@@ -104,7 +104,7 @@ def compute(sess, fetches, compute_batches=100, lr=0.0005,
                 results[key] = results[key] + run_all[key]
             elif key in exp_keys:
                 results[key] = run_all[key]  #if np.isnan(run_all[key]).any()
-
+        
         if if_get_wrong:
             results = get_wrong_examples(results)
         if if_get_certain:
