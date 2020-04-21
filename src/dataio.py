@@ -372,7 +372,7 @@ def augment_data(X_train, args):
     if "both" == args.aug_method:
         X_train_aug =  augment_with_batch_mean(args, X_train, X_train_aug)
     elif args.aug_method == "noise":
-        X_train_aug =  augment_with_random_noise(args, X_train, X_train_aug)
+        X_train_aug = augment_with_random_noise(args, X_train, X_train_aug)
     #
     # print("Augmentation number of class 0", np.where(X_train_aug[:, 2] == 0)[0].size, "number of class 1", np.where(X_train_aug[:, 2] == 1)[0].size)
     train_data_aug["spectra"] = X_train_aug[:, 3:].astype(np.float32)
@@ -425,14 +425,15 @@ def augment_with_random_noise(args, X_train, train_aug):
     """
     noise = args.aug_scale * \
             np.random.uniform(size=[args.aug_folds, X_train[:, 2].size, X_train[:, 3:].shape[-1]])
-
+    combine = np.empty((0, args.data_len))
     for fold in range(args.aug_folds):
         aug_zspec = X_train[:, 3:] + noise[fold]
-        combine = np.concatenate((X_train[:, 0][inds].reshape(-1, 1),
-                                  X_train[:, 1][inds].reshape(-1, 1),
-                                  X_train[:, 2][inds].reshape(-1, 1),
-                                  aug_zspec))
-        train_aug = np.vstack((train_aug, combine))
+        combine = np.vstack((combine, aug_zspec))
+        
+    sample_ids = np.tile(X_train[:, 0].reshape(-1, 1), [args.aug_folds, 1])
+    patient_ids = np.tile(X_train[:, 1].reshape(-1, 1), [args.aug_folds, 1])
+    labels = np.tile(X_train[:, 2].reshape(-1, 1), [args.aug_folds, 1])
+    train_aug = np.concatenate((sample_ids, patient_ids,  labels, combine), axis=1)
 
     return train_aug
 
@@ -452,7 +453,7 @@ def get_data_tensors(args, certain_fns=None):
         train_data, test_data = get_data_from_certain_ids(args, certain_fns=certain_fns)
     
     test_spectra, test_labels, test_ids, test_sample_ids = tf.constant(test_data["spectra"]), tf.constant(test_data["labels"]), tf.constant(test_data["ids"]), tf.constant(test_data["sample_ids"])
-    test_ds = tf.data.Dataset.from_tensor_slices((test_spectra, test_labels, test_ids, test_sample_ids)).batch(args.test_bs)
+    test_ds = tf.compat.v1.data.Dataset.from_tensor_slices((test_spectra, test_labels, test_ids, test_sample_ids)).batch(args.test_bs)
     if test_data["num_samples"] < args.test_bs:
         args.test_bs = test_data["num_samples"]
     
@@ -468,7 +469,7 @@ def get_data_tensors(args, certain_fns=None):
     print("test samples: ", test_data["num_samples"], "num_batches: ", data["test_batches"])
     if args.test_or_train == 'train':
         train_spectra, train_labels, train_sample_ids = tf.constant(train_data["spectra"]), tf.constant(train_data["labels"]), tf.constant(train_data["sample_ids"])
-        train_ds = tf.data.Dataset.from_tensor_slices((train_spectra, train_labels, train_sample_ids)).shuffle(buffer_size=8000).repeat().batch(
+        train_ds = tf.compat.v1.data.Dataset.from_tensor_slices((train_spectra, train_labels, train_sample_ids)).shuffle(buffer_size=8000).repeat().batch(
             args.batch_size)
         iter_train = train_ds.make_initializable_iterator()
         batch_train = iter_train.get_next()
@@ -508,9 +509,9 @@ def save_command_line(args):
         f.write(cmd)
 
 
-def save_plots(sess, args, output_data, training=False, epoch=0):
+def save_plots(sess, args, output_data, training=False, epoch=0, auc=0.5):
     logger.info("Saving output data")
-    plot.all_figures(sess, args, output_data, training=training, epoch=epoch)
+    plot.all_figures(sess, args, output_data, training=training, epoch=epoch, auc=auc)
     logger.info("Output data saved to {}".format("TODO"))
 
 

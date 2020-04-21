@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import logging as log
 import numpy as np
 from collections import Counter
-# import tsne
+from sklearn.manifold import TSNE
 import ipdb
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
@@ -111,10 +111,10 @@ def accuracy_loss_figure(args, data, training=False, epoch=0):
     logger.info("Accuracy + Loss plot saved")
 
 
-def all_figures(sess, args, data, training=False, epoch=0):
+def all_figures(sess, args, data, training=False, epoch=0, auc=0.5):
     # print("labels: ", np.argmax(data["test_labels"], axis=1))
     print("accuracy: ", data["test_accuracy"],
-          "auc: ", metrics.roc_auc_score(np.argmax(data["test_labels"], axis=1), data["test_logits"][:, 1]))
+          "auc: ", auc)
     accuracy_figure(args, data, training=training, epoch=epoch)
     # accuracy_loss_figure(args, data, training=training, epoch=epoch)
     # plot_confusion_matrix(args, data, ifnormalize=True, training=training)
@@ -125,7 +125,7 @@ def all_figures(sess, args, data, training=False, epoch=0):
         if 'CAM' in args.model_name:
             class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.height, 1, number2use=1000)
 
-            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], data["test_logits"][rand_inds], epoch, args)
+            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], data["test_logits"][rand_inds], epoch, args, auc=auc)
         plot_wrong_examples(args, data, training=training)
         plot_prob_distr_on_ids(data, args.output_path)
 
@@ -195,7 +195,7 @@ def plot_wrong_examples(args, data, training=False):
     plt.close()
     logger.info("Mistakes plot saved")
 
-def plot_tsne(args, data):
+def plot_tsne_activity(args, data):
     """
     Plot the wrongly classified examples
     :param args: contains hyperparams
@@ -223,6 +223,74 @@ def plot_tsne(args, data):
     f.savefig(args.output_path + '/{}-tsne-on-activity-{}.png'.format(args.num_classes, data["current_step"]))
     plt.close()
     logger.info("TSNE saved")
+
+
+def plot_tsne(data, labels, epoch=0, n_components=3, random_pick=500, save_dir="../results", postfix="latent"):
+    """
+	Plot the wrongly classified examples
+	:param args: contains hyperparams
+	:param acti: dict,
+	:return:
+	#
+	# colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
+	# markers = np.random.choice(['o', '*', '^', 'D', 's', 'p'], args.num_classes)
+	# target_names = ["label {}".format(i) for i in range(args.num_classes)]
+	"""
+    tsne = TSNE(n_components=n_components, random_state=0)
+    inds = []
+    for i in range(2):
+        rand_inds = list(np.random.choice(np.where(labels == i)[0], min(random_pick, len(np.where(labels == i)[0]))))
+        inds += rand_inds
+    tsne_results = tsne.fit_transform(data[inds])
+    labels = labels[inds].astype(np.int)
+    
+    colors = ["deepskyblue", "orchid"]
+    markers = ['o', '^']
+    target_names = ["label {}".format(i) for i in [0, 1]]  #
+    center_color = ["b", "purple"]
+    
+    if n_components == 3:
+        from mpl_toolkits.mplot3d import Axes3D
+        from matplotlib import animation
+        fig = plt.figure(figsize=(10, 10))
+        ax = Axes3D(fig)
+        for i, c, label in zip([0, 1], colors, target_names):
+            ax.scatter(tsne_results[np.where(labels == i)[0], 0], tsne_results[np.where(labels == i)[0], 1],
+                       tsne_results[np.where(labels == i)[0], 2], s=30, c=c, label=label, alpha=0.5)
+            meanx, meany, meanz = np.mean(tsne_results[np.where(labels == i)[0], 0]), np.mean(
+                tsne_results[np.where(labels == i)[0], 1]), np.mean(tsne_results[np.where(labels == i)[0], 2])
+            ax.scatter(meanx, meany, meanz, s=50, c=center_color[i])
+        
+        for i, plt_label in zip(np.arange(n_components), [ax.set_xlabel, ax.set_ylabel, ax.set_zlabel]):
+            label0 = tsne_results[np.where(labels == 0)[0], i]
+            label1 = tsne_results[np.where(labels == 1)[0], i]
+            stat, p = ks_2samp(label0, label1)
+            plt_label("p-value: {:.2e}".format(p))
+        
+        fig.legend()
+        fig.savefig(save_dir + '/3d-tsne-on-{}-{}.png'.format(postfix, epoch))
+        plt.close()
+    elif n_components == 2:
+        f = plt.figure()
+        ax = f.add_subplot(111)
+        for color, marker, i, target_name in zip(colors, markers, [0, 1], target_names):
+            ax.scatter(tsne_results[labels == i, 0], tsne_results[labels == i, 1], color=color, alpha=.8, linewidth=2,
+                       marker=marker, label=target_name)  ###lw=2,
+            meanx, meany = np.mean(tsne_results[np.where(labels == i)[0], 0]), np.mean(
+                tsne_results[np.where(labels == i)[0], 1])
+            ax.scatter(meanx, meany, s=50, c=center_color[i])
+        plt.setp(ax.get_xticklabels(), visible=False)
+        plt.setp(ax.get_yticklabels(), visible=False)
+        
+        for i, plt_label in zip([0, 1], [plt.xlabel, plt.ylabel]):
+            label0 = tsne_results[np.where(labels == 0)[0], i]
+            label1 = tsne_results[np.where(labels == 1)[0], i]
+            stat, p = ks_2samp(label0, label1)
+            plt_label("p-value: {:.2e}".format(p))
+        
+        plt.legend(loc='best', shadow=False, scatterpoints=3)
+        f.savefig(save_dir + '/2d-tsne-on-{}-{}.png'.format(postfix, epoch))
+        plt.close()
 
 
 def plot_hierarchy_cluster(args, data):
@@ -278,7 +346,7 @@ def get_class_map(labels, conv_out, weights, seq_len, seq_width, number2use=200)
 def plot_class_activation_map(sess, class_activation_map,
                               samples_test, labels_test,
                               predictions, global_step,
-                              args):
+                              args, auc=0.5):
     """TODO, the labels are all stacked not like test_conv is only the first batch
     Plot the class activation
     :param sess:
@@ -300,10 +368,10 @@ def plot_class_activation_map(sess, class_activation_map,
 
     # PLot samples from different classes seperately
     for class_id in range(args.num_classes):
-        plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step, postfix=args.data_source)
+        plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step, postfix=args.data_source, auc=auc)
         # plot_class_maps_in1(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, box_position=(0.15, 1.05, 0.7, 0.1), class_id=class_id, global_step=global_step)
 
-def plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), class_id=0, global_step=0, postfix="data1"):
+def plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), auc=0.5, class_id=0, global_step=0, postfix="data1"):
     """
     PLot class maps grouped by class ids
     :param labels_int:
@@ -324,7 +392,6 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, sa
     labels_plot = labels_int[inds]
 
     pred_plot = np.argmax(predictions, axis=1)[inds]
-    auc = metrics.roc_auc_score(labels_int, predictions[:, 1])
     if not row:
         row = np.int(np.sqrt(len(inds)))
     else:

@@ -222,12 +222,12 @@ train_parser.add_argument(
 )
 train_parser.add_argument(
     '--aug_method', type=log_debug_arg(str, "the augmentation method"),
-    default='ops_mean',
+    default='noise',
     help="augmentation methods: mean, ops_mean, both"
 )
 train_parser.add_argument(
     '--aug_scale', type=log_debug_arg(float, "augmenatation scale w: w*another + (1-w)*self"),
-     default=0.8,
+     default=0.25,
     help="a float number of aug scale."
 )
 

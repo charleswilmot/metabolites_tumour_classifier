@@ -391,7 +391,7 @@ def training(sess, args, graph, saver):
     :return:
     """
     logger.info("Starting training procedure")
-    best_saver = tf.train.Saver(max_to_keep=2)  # keep the top 3 best models
+    best_saver = tf.compat.v1.train.Saver(max_to_keep=2)  # keep the top 3 best models
 
     output_data = {}
     output_data["train_loss"] = []
@@ -481,6 +481,7 @@ def training(sess, args, graph, saver):
                                        ret_test["test_confusion"],
                                        args.output_path))
             best_accuracy = output_data["test_accuracy"][-1]
+            auc = metrics.roc_auc_score(output_data["test_labels"], output_data["test_logits"])
             save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]),
                           name=np.str("{:.4f}".format(best_accuracy)))
             save_plots(sess, args, output_data, training=True, epoch=epoch)
@@ -681,7 +682,7 @@ def condition(end, output_data, epoch, number_of_epochs):
 # @param graph the graph (cf See also)
 # @param input_data training and testing data
 def main_train(sess, args, graph):
-    saver = tf.train.Saver()
+    saver = tf.compat.v1.train.Saver()
     if args.restore_from:
         print("restore_from", args.restore_from)
         global_step = load_model(saver, sess, args.restore_from)
@@ -689,7 +690,7 @@ def main_train(sess, args, graph):
     else:
         # raise(NotImplementedError("Initialize train iterator here..."))
         logger.info("Initializing network with random weights")
-        sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
+        sess.run([tf.compat.v1.global_variables_initializer(), tf.compat.v1.local_variables_initializer()])
 
     if args.test_or_train == 'train':
         initialize(sess, graph, test_only=False)

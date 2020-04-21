@@ -14,7 +14,7 @@
             "data_width": 1,
             "num_lout": 40,
             "data_shape": "1d",
-            "aug_meth": "ops_mean",
+            "aug_meth": "noise",
 
             "output_path": "../results/",
             "model_save_dir": null,

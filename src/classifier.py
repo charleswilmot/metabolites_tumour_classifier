@@ -19,7 +19,7 @@ import tensorflow as tf
 import numpy as np
 import logging
 from tensorflow.python.client import device_lib
-
+tf.compat.v1.disable_v2_behavior()
 
 def get_available_gpus():
     local_device_protos = device_lib.list_local_devices()
