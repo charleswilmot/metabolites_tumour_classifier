@@ -205,7 +205,11 @@ parser.add_argument(
     default=['lrelu', 'lrelu', 'lrelu', 'lrelu', 'sigmoid'],
     help="Activation functions for every layer. Taken in 'lrelu', 'relu', 'sigmoid', 'tanh'"
 )
-
+parser.add_argument(
+    '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
+    default=None,
+    help="which cross-validation set is used"
+)
 subparsers = parser.add_subparsers(dest="test_or_train")
 
 train_parser = subparsers.add_parser("train")
@@ -227,54 +231,60 @@ train_parser.add_argument(
 )
 train_parser.add_argument(
     '--aug_scale', type=log_debug_arg(float, "augmenatation scale w: w*another + (1-w)*self"),
-     default=0.25,
+     default=None,
     help="a float number of aug scale."
 )
 
 train_parser.add_argument(
     '--from_epoch', type=log_debug_arg(int, "Use certain examples from epoch "),
-    default=3,
+    default=None,
     help="Certain examples from which epoch to use for training"
 )
 train_parser.add_argument(
     '--aug_folds', type=log_debug_arg(int, "How many folds to augment"),
-    default=5,
+    default=None,
     help="How many folds to augment the data"
 )
 train_parser.add_argument(
+    '--theta_thr', type=float, dest="theta_thr",
+    default=0.999,
+    help="the threshold to determine certain"
+)
+# when use cluster
+train_parser.add_argument(
     '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
-    default='../data/20190325/20190325-3class_lout40_train_test_data5.mat',
+    default=None,
     help="which cross-validation set is used"
 )
 train_parser.add_argument(
-    '--output_path', type=log_debug_arg(str, "results save dir"),
+    '--output_path', type=log_debug_arg(str, "output path"),
     default=None,
-    help="results save dir"
 )
-
 
 test_parser = subparsers.add_parser("test")
 test_parser.add_argument(
     '--restore_from', metavar='restore from MODEL',
     type=log_debug_arg(str, "Restore model from:"),
-    help="Path to a previously trained model."
-)
-
-test_parser.add_argument(
-    '--output_path', metavar='OUTPUT',
-    type=log_debug_arg(str, "Output path:"),
-    nargs='?', default='../results',
-    help="Path to the output data."
-)
-test_parser.add_argument(
-    '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
-    default='/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat',
-    help="which cross-validation set is used"
+    help="Path to a previously trained model.",
+    default=None
 )
 test_parser.add_argument(
     '-x', '--data-not-labeled', action='store_true',
     help="Set this flag if the data you want to classify is not labeled."
 )
+test_parser.add_argument(
+    '--output_path', type=log_debug_arg(str, "output path"),
+    default=None,
+)
+test_parser.add_argument(
+    '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
+    default=None,
+    help="which cross-validation set is used"
+)
+# test_parser.add_argument(
+#     '--output_path', type=log_debug_arg(str, "Test Output path"),
+#     default='/home/epilepsy-data/data/metabolites/results',
+# )
 
 
 ## Read arguments once to get the verbosity level
@@ -308,14 +318,28 @@ if params.data_shape == "2d":
 else:
     params.width = 1
     params.height = params.data_len
+    
 
-if not args.output_path:
-    params.output_path = os.path.join("../results",
-                                time_str + "class{}-{}-{}-aug_{}x{}-{}-{}".format(params.num_classes, params.model_name, params.postfix, args.aug_method, args.aug_folds, args.aug_scale, args.test_or_train))
-else:
+# TODO, cluster and param.json all give this parameter
+if args.input_data is None:  # don't run on the cluster
+    params.data_source = os.path.basename(params.input_data).split("_")[-1].split(".")[0]
+else: # run on the cluster
+    params.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
+if args.restore_from is None and args.output_path is None:  #cluster.py
+    # params.output_path = os.path.join(params.output_root,
+    #                             time_str + "data-{}-class{}-{}-{}-aug_{}x{}-{}-{}".format(params.data_source, params.num_classes, params.model_name, params.postfix, args.aug_method, args.aug_folds, args.aug_scale, args.test_or_train))
+    params.output_path = os.path.join(params.output_root,
+                 "{}{}x{}_factor_{}_from-epoch_{}_from-lout40_{}_{}".format(time_str, args.aug_method, args.aug_folds, args.aug_scale, args.from_epoch, params.data_source, args.test_or_train))
+elif args.restore_from is None and args.output_path is not None:
     params.output_path = args.output_path
+elif  args.restore_from is not None:
+    params.output_path = os.path.dirname(args.restore_from ) + "-test"
 
 params.model_save_dir = os.path.join(params.output_path, "network")
+dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+
+
+
 params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from
 params.test_or_train = args.test_or_train
@@ -324,18 +348,14 @@ params.resume_training = (args.restore_from != None)
 if params.test_or_train == "test":
     params.if_from_certain = False
     params.if_save_certain = False
-    params.input_data = args.input_data
 elif params.test_or_train == "train":
     params.aug_scale = args.aug_scale
     params.aug_method = args.aug_method
     params.aug_folds = args.aug_folds
     params.from_epoch = args.from_epoch
-    params.input_data = args.input_data
+    params.theta_thr = args.theta_thr
+    # params.input_data = args.input_data
     params.if_save_certain = not params.if_from_certain
-# Make the output directory
-if not args.output_path:
-    dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
-
 
 # Verbosity level:
 level = 50 - (args.verbose * 10) + 1

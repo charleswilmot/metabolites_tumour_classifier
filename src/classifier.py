@@ -29,6 +29,8 @@ def get_available_gpus():
 
 logger = log.getLogger("classifier")
 args = argument.params
+logger.info("------------args.aug_method", args.aug_method)
+logger.info("------------args.theta_thr", args.theta_thr)
 dataio.save_command_line(args)
 get_available_gpus()
 
@@ -45,18 +47,21 @@ tf.compat.v1.set_random_seed(args.seed)
 
 # Get augmentation of the data
 if args.if_from_certain:
-    certain_dir ="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/10-fold-cross_validation/2019-12-19-20-36-48_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_2_train/network"
-    print("______________________________________________")
+    certain_dir ="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-30T15-18-21-data-lout40-data5-1d-class2-Res_ECG_CAM-step1-collect-aug_ops_meanx0-0-train-0.889/certains"
+    logger.info("______________________________________________")
     print(certain_dir)
-    print("______________________________________________")
+    logger.info("______________________________________________")
     certain_files = dataio.find_files(certain_dir, pattern="*_epoch_{}_*.csv".format(args.from_epoch))
     print("certain_files", certain_files)
     data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files)
 else:
     data_tensors, args = dataio.get_data_tensors(args)
 
+logger.info("------------Successfully get data tensors")
+
 
 graph = graph.get_graph(args, data_tensors)
+
 with tf.compat.v1.Session() as sess:
     output_data = procedure.main_train(sess, args, graph)
 logger.info("Success")

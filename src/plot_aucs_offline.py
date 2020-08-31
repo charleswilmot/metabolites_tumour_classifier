@@ -346,7 +346,7 @@ def get_data_from_certain_ids(certain_fns, m_file="../data/lout40_train_val_data
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "move_folder"
+plot_name = "rename_test_folders"
 
 
 if plot_name == "indi_rating_with_model":
@@ -597,8 +597,8 @@ elif plot_name == "test_aucs":
 
 elif plot_name == "rename_test_folders":
     pattern = "accuracy_step_0.0_acc_*"
-    results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results"
-    folders = find_folderes(results, pattern="*_train_test")
+    results = "/home/epilepsy-data/data/metabolites/results"
+    folders = find_folderes(results, pattern="*_train-test")
     for fn in folders:
         print(fn)
         test_result = find_files(fn, pattern=pattern)

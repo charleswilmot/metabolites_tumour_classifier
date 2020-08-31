@@ -95,6 +95,7 @@ def plot_auc_curve(args, data, epoch=0):
     np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.csv'.format(epoch, auc, args.data_source),
                np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_logits"][:, 1].reshape(-1,1))), fmt="%.8f", delimiter=',', header="labels,pred[:,1]")
     plt.close()
+    return auc
 
 
 def accuracy_loss_figure(args, data, training=False, epoch=0):
@@ -112,15 +113,15 @@ def accuracy_loss_figure(args, data, training=False, epoch=0):
     logger.info("Accuracy + Loss plot saved")
 
 
-def all_figures(sess, args, data, training=False, epoch=0, auc=0.5):
+def all_figures(sess, args, data, training=False, epoch=0):
     # print("labels: ", np.argmax(data["test_labels"], axis=1))
-    print("accuracy: ", data["test_accuracy"],
-          "auc: ", auc)
     accuracy_figure(args, data, training=training, epoch=epoch)
     # accuracy_loss_figure(args, data, training=training, epoch=epoch)
     # plot_confusion_matrix(args, data, ifnormalize=True, training=training)
-    plot_auc_curve(args, data, epoch=epoch)
+    auc = plot_auc_curve(args, data, epoch=epoch)
     plot_wrong_examples(args, data, training=training)
+    print("accuracy: ", data["test_accuracy"],
+          "auc: ", auc)
 
     if not training:
         if 'CAM' in args.model_name:

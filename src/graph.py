@@ -433,8 +433,7 @@ class Res_ECG_CAM:
         _to_format = [out_ch, bn, drop, training]
         layer_name = "cnn_layer_{}".format(layer_number)
         logger.debug("Creating new layer:")
-        string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\t (training = {})"
-        logger.debug(string.format(*_to_format))
+
         out = inp
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
@@ -452,7 +451,6 @@ class Res_ECG_CAM:
                 out, training=training) if bn else out
             out = tf.nn.relu(out)
             # out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
-        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
 
         return out
 
@@ -495,7 +493,7 @@ class Res_ECG_CAM:
                                                strides=[self.stride, 1],
                                                padding='same')
             output = tf.nn.relu(shortcut + out)
-            print("ResiBlock_start-output pooling shape", out.shape.as_list())
+            logger.info("ResiBlock_start-output pooling shape", out.shape.as_list())
             return output
 
     def build_res_blocks_ecg(self, x, out_channel, stride, layer_id=0, training=True):

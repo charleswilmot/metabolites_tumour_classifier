@@ -56,7 +56,7 @@ def sum_confusion(ret):
 
 
 def compute(sess, fetches, compute_batches=100, lr=0.0005,
-            if_get_wrong=False, if_get_certain=False):
+            if_get_wrong=False, if_get_certain=False, theta=0.99):
     """
     Compute the interested tensors and ops
     :param sess:
@@ -108,7 +108,7 @@ def compute(sess, fetches, compute_batches=100, lr=0.0005,
         if if_get_wrong:
             results = get_wrong_examples(results)
         if if_get_certain:
-            results = get_most_cer_uncertain_samples(results, cer_thsh=0.999, if_check_cam=if_check_cam)
+            results = get_most_cer_uncertain_samples(results, cer_thr=theta, if_check_cam=if_check_cam)
     return results
 
 
@@ -167,21 +167,21 @@ def compute_test_only(sess, fetches, compute_batches=100, lr=0.0005,
             if init_certrin:
                 for key in ret.keys():
                     collections[key] = ret[key]
-                collections = get_most_cer_uncertain_samples(collections, cer_thsh=0.9999,
+                collections = get_most_cer_uncertain_samples(collections, cer_thr=0.9999,
                                                              if_check_cam=if_check_cam)
                 init_certrin = True if len(collections["certain_labels"]) == 0 \
                     else False
             else:
-                collections = get_most_cer_uncertain_samples(collections, cer_thsh=0.9999,
+                collections = get_most_cer_uncertain_samples(collections, cer_thr=0.9999,
                                                              if_check_cam=if_check_cam)
     return run_all, collections
 
 
-def get_most_cer_uncertain_samples(results, cer_thsh=0.999, if_check_cam=True):
+def get_most_cer_uncertain_samples(results, cer_thr=0.999, if_check_cam=True):
     """
     Get num2get wrong examples
     :param results: dict, with keys "wrong_BL", "wrong_EPG"
-    :param cer_thsh: how many examples to collect
+    :param cer_thr: how many examples to collect
     :return:
     """
     if len(np.array(results["labels"]).shape) > 1:
@@ -189,7 +189,7 @@ def get_most_cer_uncertain_samples(results, cer_thsh=0.999, if_check_cam=True):
     else:
         labels_int = results["labels"]
     sample_ids = results["sample_ids"]
-    certain_inds = np.where(np.sum((results["logits"] > cer_thsh), axis=1) == 1)[0].astype(np.int)
+    certain_inds = np.where(np.sum((results["logits"] > cer_thr), axis=1) == 1)[0].astype(np.int)
 
     if certain_inds.size != 0:
         if len(results["certain_sample_ids"]) == 0:
@@ -419,12 +419,12 @@ def training(sess, args, graph, saver):
                 factor=0.5, patience=3,
                 epsilon=1e-04, min_lr=10e-8)
 
-        ret_train = train_phase(sess, graph, args.test_every,
-                                epoch, lr=lr, if_get_wrong=False,
-                                if_get_certain=True)
-        if len(ret_train["train_certain_sample_ids"]) > 0 and epoch < 20 and args.if_save_certain:
+        ret_train = train_phase(sess, graph, args,
+                                lr=lr, if_get_wrong=False,
+                                if_get_certain=True, train_or_test="train")
+        if len(ret_train["train_certain_sample_ids"]) > 0 and epoch < 10 and args.if_save_certain:
             certain_data = np.concatenate((ret_train["train_certain_sample_ids"].reshape(-1, 1), ret_train["train_certain_labels"].reshape(-1, 1), ret_train["train_certain_logits"]), axis=1)
-            np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}_num_{}_{}.csv".format("train", epoch, ret_train["train_certain_sample_ids"].size, args.data_source)),
+            np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}_num_{}_{}_theta_{}.csv".format("train", epoch, ret_train["train_certain_sample_ids"].size, args.data_source. args.theta_thr)),
                        certain_data, header="sample_ids,labels"+",logits" * args.num_classes, delimiter=",")
 
         if ret_train is not None:
@@ -474,7 +474,7 @@ def training(sess, args, graph, saver):
         if output_data["test_accuracy"][-1] > best_accuracy:
             print(
                 "Epoch {:0.1f} Best test accuracy {}, "
-                "test AUC {}\n Test Confusion:\n{}\n, "
+                "test AUC {}\n Test Confusion:\n{}\n"
                 "saved_dir: {}".format(epoch,
                                        output_data["test_accuracy"][-1],
                                        metrics.roc_auc_score(ret_test["test_labels"],ret_test[ "test_logits"]),
@@ -502,14 +502,16 @@ def training(sess, args, graph, saver):
     return output_data
 
 
-def train_phase(sess, graph, nbatches, epoch, lr=0.001,
+def train_phase(sess, graph, args, lr=0.001,
                 if_get_wrong=False, if_get_certain=False,
                 train_or_test="train"): # change
+    # sess, graph, args.test_every, lr=lr, if_get_wrong=False,
+    #                                 if_get_certain=True
     """
     Train phase
     :param sess:
     :param graph:
-    :param nbatches:
+    :param test_every:
     :param epoch:
     :param lr:
     :param if_get_wrong:
@@ -522,8 +524,8 @@ def train_phase(sess, graph, nbatches, epoch, lr=0.001,
              'learning_rate_op', "sample_ids"]
     fetches = get_fetches(graph, names, train_or_test=train_or_test)
 
-    ret = compute(sess, fetches, compute_batches=nbatches, lr=lr,
-            if_get_wrong=if_get_wrong, if_get_certain=if_get_certain)
+    ret = compute(sess, fetches, compute_batches=args.test_every, lr=lr,
+                  if_get_wrong=if_get_wrong, if_get_certain=if_get_certain, theta=args.theta_thr)
 
     return_names = ["accuracy", "loss", "confusion", "batch_size",
                     "certain_labels", "certain_logits", "certain_sample_ids"]
@@ -693,11 +695,13 @@ def main_train(sess, args, graph):
         sess.run([tf.compat.v1.global_variables_initializer(), tf.compat.v1.local_variables_initializer()])
 
     if args.test_or_train == 'train':
+        logger.info("Starting training")
         initialize(sess, graph, test_only=False)
         output_data = training(sess, args, graph, saver)
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
         dataio.save_plots(sess, args, output_data, training=True)
     else:
+        logger.info("Starting testing")
         initialize(sess, graph, test_only=True)
         if_check_cam = True if "CAM" in args.model_name else False
         output_data = test_phase(sess, graph, compute_batches=graph["test_batches"],
@@ -705,13 +709,14 @@ def main_train(sess, args, graph):
 
         if len(output_data["test_certain_labels"]) > 0:
             certain_data = np.concatenate((output_data["test_certain_sample_ids"].reshape(-1, 1), output_data["test_certain_labels"].reshape(-1, 1), output_data["test_certain_logits"]), axis=1)
-            np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}.csv".format("test", "TEST")), certain_data, header="sample_ids,labels" + ",logits" * args.num_classes, delimiter=",")
+            np.savetxt(os.path.join(args.output_path,  "certain_data_{}_epoch_{}.csv".format("test", "TEST")), certain_data, header="sample_ids,labels" + ",logits" * args.num_classes, delimiter=",")
 
         with open(args.output_path + '/Data{}_class{}_model{}_test_return_data_acc_{:.3f}.txt'.format(
                     args.data_source, args.num_classes, args.model_name,
                     output_data["test_accuracy"]), 'wb') as ff:
             pickle.dump({"output_data": output_data}, ff)
         dataio.save_plots(sess, args, output_data, training=False)
+        logger.debug("Starting training")
 
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
         
