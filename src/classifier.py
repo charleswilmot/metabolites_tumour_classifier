@@ -19,13 +19,12 @@ import tensorflow as tf
 import numpy as np
 import logging
 from tensorflow.python.client import device_lib
-
+tf.compat.v1.disable_v2_behavior()
 
 def get_available_gpus():
     local_device_protos = device_lib.list_local_devices()
     logging.info("-------------------Available GPU-----------------------")
     logging.info([x.name for x in local_device_protos if x.device_type == 'GPU'])
-
 
 
 logger = log.getLogger("classifier")
@@ -37,6 +36,7 @@ if not args.seed:
     temp_seed = np.random.randint(0, 9999)
     args.seed = temp_seed
 
+    
 np.random.seed(seed=args.seed)
 tf.compat.v1.set_random_seed(args.seed)
 
@@ -44,20 +44,23 @@ tf.compat.v1.set_random_seed(args.seed)
 ## get leave-out train and test sets: dataio.split_data_for_lout_val(args)\ dataio.split_data_for_val(args)
 
 # Get augmentation of the data
-if args.if_from_certain:
-    certain_dir ="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/10-fold-cross_validation/2019-12-19-20-36-45_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_5_train/network"
-    print("______________________________________________")
+if args.if_from_certain and args.test_or_train == 'train':
+    certain_dir ="/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-28-None-meanx0-factor-0-from-ep-0-from-lout40-data5-theta-0.95-train/certains"
+    logger.info("______________________________________________")
     print(certain_dir)
-    print("______________________________________________")
+    logger.info("______________________________________________")
     certain_files = dataio.find_files(certain_dir, pattern="*_epoch_{}_*.csv".format(args.from_epoch))
     print("certain_files", certain_files)
     data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files)
 else:
     data_tensors, args = dataio.get_data_tensors(args)
 
+logger.info("------------Successfully get data tensors")
+
 
 graph = graph.get_graph(args, data_tensors)
-with tf.Session() as sess:
+
+with tf.compat.v1.Session() as sess:
     output_data = procedure.main_train(sess, args, graph)
 logger.info("Success")
 print("args.seed", args.seed)

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import logging as log
 import numpy as np
 from collections import Counter
-# import tsne
+from sklearn.manifold import TSNE
 import ipdb
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
@@ -72,7 +72,7 @@ def accuracy_figure(args, data, training=False, epoch=0):
     auc = metrics.roc_auc_score(data["test_labels"], data["test_logits"])
     max_acc = accuracy_plot(ax, data, training=training)
 
-    f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}.png'.format(epoch, max_acc, auc, args.data_source))
+    f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}-{}.png'.format(epoch, max_acc, auc, args.data_source, args.test_or_train))
     plt.close()
     logger.info("Accuracy plot saved")
 
@@ -91,10 +91,12 @@ def plot_auc_curve(args, data, epoch=0):
     plt.legend(loc=4)
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
-    f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.png'.format(epoch, auc, args.data_source))
-    np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.csv'.format(epoch, auc, args.data_source),
+    f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.png'.format(epoch, auc, args.data_source, args.test_or_train))
+    np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.csv'.format(epoch, auc, args.data_source, args.test_or_train),
                np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_logits"][:, 1].reshape(-1,1))), fmt="%.8f", delimiter=',', header="labels,pred[:,1]")
     plt.close()
+    return auc
+
 
 def accuracy_loss_figure(args, data, training=False, epoch=0):
     f = plt.figure()
@@ -113,19 +115,19 @@ def accuracy_loss_figure(args, data, training=False, epoch=0):
 
 def all_figures(sess, args, data, training=False, epoch=0):
     # print("labels: ", np.argmax(data["test_labels"], axis=1))
-    print("accuracy: ", data["test_accuracy"],
-          "auc: ", metrics.roc_auc_score(np.argmax(data["test_labels"], axis=1), data["test_logits"][:, 1]))
     accuracy_figure(args, data, training=training, epoch=epoch)
     # accuracy_loss_figure(args, data, training=training, epoch=epoch)
     # plot_confusion_matrix(args, data, ifnormalize=True, training=training)
-    plot_auc_curve(args, data, epoch=epoch)
+    auc = plot_auc_curve(args, data, epoch=epoch)
     plot_wrong_examples(args, data, training=training)
+    print("accuracy: ", data["test_accuracy"],
+          "auc: ", auc)
 
     if not training:
         if 'CAM' in args.model_name:
             class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.height, 1, number2use=1000)
 
-            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], data["test_logits"][rand_inds], epoch, args)
+            plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], data["test_logits"][rand_inds], epoch, args, auc=auc)
         plot_wrong_examples(args, data, training=training)
         plot_prob_distr_on_ids(data, args.output_path)
 
@@ -167,6 +169,7 @@ def plot_confusion_matrix(args, data, ifnormalize=False, training=False):
     plt.close()
     logger.info("Confusion matrix saved")
 
+
 def plot_wrong_examples(args, data, training=False):
     """
     Plot the wrongly classified examples
@@ -195,7 +198,8 @@ def plot_wrong_examples(args, data, training=False):
     plt.close()
     logger.info("Mistakes plot saved")
 
-def plot_tsne(args, data):
+
+def plot_tsne_activity(args, data):
     """
     Plot the wrongly classified examples
     :param args: contains hyperparams
@@ -223,6 +227,74 @@ def plot_tsne(args, data):
     f.savefig(args.output_path + '/{}-tsne-on-activity-{}.png'.format(args.num_classes, data["current_step"]))
     plt.close()
     logger.info("TSNE saved")
+
+
+def plot_tsne(data, labels, epoch=0, n_components=3, random_pick=500, save_dir="../results", postfix="latent"):
+    """
+	Plot the wrongly classified examples
+	:param args: contains hyperparams
+	:param acti: dict,
+	:return:
+	#
+	# colors = ["orchid", "deepskyblue", "plum", "darkturquoise", "m", "darkcyan"]
+	# markers = np.random.choice(['o', '*', '^', 'D', 's', 'p'], args.num_classes)
+	# target_names = ["label {}".format(i) for i in range(args.num_classes)]
+	"""
+    tsne = TSNE(n_components=n_components, random_state=0)
+    inds = []
+    for i in range(2):
+        rand_inds = list(np.random.choice(np.where(labels == i)[0], min(random_pick, len(np.where(labels == i)[0]))))
+        inds += rand_inds
+    tsne_results = tsne.fit_transform(data[inds])
+    labels = labels[inds].astype(np.int)
+    
+    colors = ["deepskyblue", "orchid"]
+    markers = ['o', '^']
+    target_names = ["label {}".format(i) for i in [0, 1]]  #
+    center_color = ["b", "purple"]
+    
+    if n_components == 3:
+        from mpl_toolkits.mplot3d import Axes3D
+        from matplotlib import animation
+        fig = plt.figure(figsize=(10, 10))
+        ax = Axes3D(fig)
+        for i, c, label in zip([0, 1], colors, target_names):
+            ax.scatter(tsne_results[np.where(labels == i)[0], 0], tsne_results[np.where(labels == i)[0], 1],
+                       tsne_results[np.where(labels == i)[0], 2], s=30, c=c, label=label, alpha=0.5)
+            meanx, meany, meanz = np.mean(tsne_results[np.where(labels == i)[0], 0]), np.mean(
+                tsne_results[np.where(labels == i)[0], 1]), np.mean(tsne_results[np.where(labels == i)[0], 2])
+            ax.scatter(meanx, meany, meanz, s=50, c=center_color[i])
+        
+        for i, plt_label in zip(np.arange(n_components), [ax.set_xlabel, ax.set_ylabel, ax.set_zlabel]):
+            label0 = tsne_results[np.where(labels == 0)[0], i]
+            label1 = tsne_results[np.where(labels == 1)[0], i]
+            stat, p = ks_2samp(label0, label1)
+            plt_label("p-value: {:.2e}".format(p))
+        
+        fig.legend()
+        fig.savefig(save_dir + '/3d-tsne-on-{}-{}.png'.format(postfix, epoch))
+        plt.close()
+    elif n_components == 2:
+        f = plt.figure()
+        ax = f.add_subplot(111)
+        for color, marker, i, target_name in zip(colors, markers, [0, 1], target_names):
+            ax.scatter(tsne_results[labels == i, 0], tsne_results[labels == i, 1], color=color, alpha=.8, linewidth=2,
+                       marker=marker, label=target_name)  ###lw=2,
+            meanx, meany = np.mean(tsne_results[np.where(labels == i)[0], 0]), np.mean(
+                tsne_results[np.where(labels == i)[0], 1])
+            ax.scatter(meanx, meany, s=50, c=center_color[i])
+        plt.setp(ax.get_xticklabels(), visible=False)
+        plt.setp(ax.get_yticklabels(), visible=False)
+        
+        for i, plt_label in zip([0, 1], [plt.xlabel, plt.ylabel]):
+            label0 = tsne_results[np.where(labels == 0)[0], i]
+            label1 = tsne_results[np.where(labels == 1)[0], i]
+            stat, p = ks_2samp(label0, label1)
+            plt_label("p-value: {:.2e}".format(p))
+        
+        plt.legend(loc='best', shadow=False, scatterpoints=3)
+        f.savefig(save_dir + '/2d-tsne-on-{}-{}.png'.format(postfix, epoch))
+        plt.close()
 
 
 def plot_hierarchy_cluster(args, data):
@@ -278,7 +350,7 @@ def get_class_map(labels, conv_out, weights, seq_len, seq_width, number2use=200)
 def plot_class_activation_map(sess, class_activation_map,
                               samples_test, labels_test,
                               predictions, global_step,
-                              args):
+                              args, auc=0.5):
     """TODO, the labels are all stacked not like test_conv is only the first batch
     Plot the class activation
     :param sess:
@@ -300,10 +372,10 @@ def plot_class_activation_map(sess, class_activation_map,
 
     # PLot samples from different classes seperately
     for class_id in range(args.num_classes):
-        plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step, postfix=args.data_source)
+        plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, save_dir=args.output_path, row=8, box_position=(0.15, 1.05, 2, 0.1), class_id=class_id, global_step=global_step, postfix=args.data_source, auc=auc)
         # plot_class_maps_in1(labels_int, classmap_high, samples_test, pred_labels, save_dir=args.output_path, box_position=(0.15, 1.05, 0.7, 0.1), class_id=class_id, global_step=global_step)
 
-def plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), class_id=0, global_step=0, postfix="data1"):
+def plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, save_dir='./', row=None, box_position=(0.15, 1.05, 2, 0.1), auc=0.5, class_id=0, global_step=0, postfix="data1"):
     """
     PLot class maps grouped by class ids
     :param labels_int:
@@ -324,14 +396,13 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, sa
     labels_plot = labels_int[inds]
 
     pred_plot = np.argmax(predictions, axis=1)[inds]
-    auc = metrics.roc_auc_score(labels_int, predictions[:, 1])
     if not row:
         row = np.int(np.sqrt(len(inds)))
     else:
         row = row
     col = min(row, 5)
     counts = (np.arange(row*col).reshape(-1, col)[np.arange(0, row, 2)]).reshape(-1)# put attention beneath the signal
-    fig, axs = plt.subplots(row, col, 'col')
+    fig, axs = plt.subplots(row, col, sharex=True)
     plt.suptitle("Individual samples from class {} with attention".format(class_id))
     for j, vis, ori, label, pred in zip(counts, class_maps_plot, samples_plot, labels_plot, pred_plot):
         att_c = 'deepskyblue' if label == pred else 'r'
@@ -370,7 +441,7 @@ def plot_class_maps_in1(labels_int, classmap_high, samples_test, pred_labels, sa
     row = np.int(np.sqrt(len(inds)))
     col = min(row, 5)
     counts = np.arange(row * col)
-    fig, ax = plt.subplots(1,1,'col')
+    fig, ax = plt.subplots(1,1,sharex=True)
     first_correct = np.where(labels_plot == pred_plot)[0][0]
     first_wrong = np.where(labels_plot != pred_plot)[0][0]
 
@@ -418,7 +489,7 @@ def plot_random_class_maps(labels_int, classmap_answer, classmap_high, samples_t
     auc = metrics.roc_auc_score(labels_int, predictions[:, 1])
     row = plots_per_fig//2
     col = 2
-    fig, axs = plt.subplots(row, col, 'col')
+    fig, axs = plt.subplots(row, col, sharex=True)
     for j in range(num_images // plots_per_fig):
         for count, vis, ori in zip(counts, classmap_high[j*plots_per_fig : (j+1)*plots_per_fig], samples_plot[j*plots_per_fig : (j+1)*plots_per_fig]):
             label_c = 'k' if labels_plot[j*plots_per_fig+count] == pred_plot[j*plots_per_fig+count] else 'r'
@@ -467,6 +538,9 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
     ids = test_data["test_ids"]
     labels_int = np.argmax(test_data["test_labels"], axis=1)
     count = dict(Counter(list(ids)))  # c
+    
+    rignt_patients = np.empty((0))
+    wrong_patients = np.empty((0))
 
     # Plot prob. histogram all the voxels from each class
     distr_color = ["m", "lawngreen"]
@@ -494,6 +568,7 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
 
         color = "slateblue" if label_of_id == pred_of_id else "r"
         eval = "right" if label_of_id == pred_of_id else "wrong"
+            
         ax = plt.subplot(1, 1, 1)
         pred_hist = plt.hist(np.array(predictions[id_inds][:, 1]), align='mid', bins=10, range=(0.0, 1.0), color=color, label="predicted")
         ymin, ymax = ax.get_ylim()
@@ -508,6 +583,14 @@ def plot_prob_distr_on_ids(test_data, output_dir, num_classes=2):
         plt.tight_layout()
         plt.savefig(output_dir + '/{}_prob_distri_of_id_{}.png'.format(eval, id), format="png")
         plt.close()
+        
+        if label_of_id == pred_of_id:  # record all right/wrong classifications
+            rignt_patients = np.append(rignt_patients, id)
+        else:
+            wrong_patients = np.append(wrong_patients, id)
+        
+    np.savetxt(output_dir + '/wrong_patient_ids.csv', wrong_patients, fmt="%d", delimiter=",")
+    np.savetxt(output_dir + '/right_patient_ids.csv', rignt_patients, fmt="%d", delimiter=",")
 
 
 def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
@@ -524,7 +607,7 @@ def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
     true_labels = true_labels.astype(np.int)
     plt.figure()
     rand_inds = np.random.choice(spec.shape[0], row * col)
-    f, axs = plt.subplots(row, col, 'col')
+    f, axs = plt.subplots(row, col, sharex=True)
     colors = ["royalblue", "darkviolet"]
     class_names = ["healthy", "tumor"]
     num_to_plot = 5
@@ -550,7 +633,7 @@ def plot_mean_of_each_class(train_spec, train_lbs, test_spec, test_args):
     plt.figure()
     num_to_plot = 50
     rand_inds = np.random.choice(test_spec.shape[0], num_to_plot)
-    f, axs = plt.subplots(row, col, 'col')
+    f, axs = plt.subplots(row, col, sharex=True)
     colors = ["royalblue", "darkviolet"]
     class_names = ["healthy", "tumor"]
     mean_train = np.mean(train_spec, axis=0)
@@ -569,3 +652,22 @@ def plot_mean_of_each_class(train_spec, train_lbs, test_spec, test_args):
                            "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale,
                                                                                num2average)), format="png")
     plt.close()
+
+
+def plot_train_samples(samples, true_labels, args, postfix="samples"):
+    """plot the trainin samples"""
+    row, col = 6, 4
+    f, axs = plt.subplots(row, col, sharex=True)
+    for class_id in range(args.num_classes):
+        indices = np.random.choice(np.where(true_labels == class_id)[0], min(row*col, np.where(true_labels == class_id)[0].size))
+        if len(indices) > 0:
+            samp_plot = samples[indices]
+            f.suptitle("Training samples in class {}".format(class_id), fontsize=base)
+            for ii in range(indices.size):
+                axs[ii // col, np.mod(ii, col)].plot(samp_plot[ii])
+            plt.tight_layout()
+            # plt.setp(ax1.get_xticklabels(), visible=False)
+            plt.subplots_adjust(hspace=0.00, wspace=0.15)
+            plt.savefig(args.output_path + '/augmented_samples-class-{}-{}.png'.format(class_id, args.aug_method), format = 'png')
+
+            plt.close()

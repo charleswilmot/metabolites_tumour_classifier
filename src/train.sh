@@ -33,8 +33,12 @@ python3 classifier.py \
 -b 450 \
 -vvv train -L mse -S 50 -e 4000 -t 100 ../data/ /tmp/test3
 
+"
+/home/epilepsy-data/data/metabolites/results/2020-04-23T11-52-04-class2-Res_ECG_CAM-new-aug_noisex5-0.1-train/  2
+/home/epilepsy-data/data/metabolites/results/2020-04-23T12-16-53-class2-Res_ECG_CAM-new-aug_noisex5-0.1-train/  7
 
-srun -p sleuths -w jetski --mem=20000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py test /home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-26T11-53-19-data-20190325-3class_lout40_train_test_data5-class-2-Res_ECG_CAM--filter144-bl7-ch16--augmean-0.4-train/network
+"
+srun -p sleuths -w jetski --mem=8000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py test --restore_from=/home/epilepsy-data/data/metabolites/results/2020-04-23-17-48-34_noisex5_factor_0.02_from-epoch_99_from-lout40_data5_train/network
 
 srun -p sleuths -w jetski --mem=10000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py train
 

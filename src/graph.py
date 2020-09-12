@@ -55,10 +55,10 @@ class MLP:
         activity = net
 
         with tf.compat.v1.variable_scope("logits", reuse=tf.compat.v1.AUTO_REUSE):
-            net = tf.layers.dense(net, self.num_classes,
+            net = tf.compat.v1.layers.dense(net, self.num_classes,
                                       kernel_initializer=initializer,
                                       activation=None)
-            net = tf.layers.batch_normalization(net, training=training) if self.batch_norm else net
+            net = tf.compat.v1.layers.batch_normalization(net, training=training) if self.batch_norm else net
             logits = tf.nn.softmax(net)
         out["logits"] = logits
         out["activity"] = activity
@@ -84,12 +84,12 @@ class MLP:
 
         print("-------Building network-----------")
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
-            net = tf.layers.dense(inp, out_size,
+            net = tf.compat.v1.layers.dense(inp, out_size,
                                   kernel_initializer=initializer,
                                   activation=None)
-            net = tf.layers.batch_normalization(net, training=training) if self.batch_norm else net
+            net = tf.compat.v1.layers.batch_normalization(net, training=training) if self.batch_norm else net
             net = tf.nn.relu(net)
-            net = tf.layers.dropout(net, rate=dropout, training=training) if dropout != 0 else net
+            net = tf.compat.v1.layers.dropout(net, rate=dropout, training=training) if dropout != 0 else net
             print("layer: {}, in_size:{}, out_size:{}".format(layer_name, inp.get_shape().as_list(), net.get_shape().as_list()))
             return net
 
@@ -149,7 +149,7 @@ class CNN:
         :return: output tensors of the layers
         """
         layer_number = 1
-        net = tf.layers.flatten(inp)
+        net = tf.compat.v1.layers.flatten(inp)
         for (out_dim, bn, activation, drop) in zip(self.fc_dims, self.bn_cnn, self.activations_cnn, self.drop_cnn):
             net = self._make_fnn_layer(net, out_dim, bn, activation, drop, layer_number, training)
             layer_number += 1
@@ -175,17 +175,17 @@ class CNN:
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             kernel_size = inp.get_shape().as_list()[1]
-            out = tf.layers.conv2d(inp, out_ch,
+            out = tf.compat.v1.layers.conv2d(inp, out_ch,
                                    kernel_size, 1,
                                    padding='SAME',
                                    kernel_initializer=initializer)
-            out = tf.layers.max_pooling2d(out, pool_size=[self.pool_size, 1],
+            out = tf.compat.v1.layers.max_pooling2d(out, pool_size=[self.pool_size, 1],
                                                strides=[self.stride, 1],
                                                padding='same')
-            out = tf.layers.batch_normalization(
+            out = tf.compat.v1.layers.batch_normalization(
                 out, training=training) if bn else out
             out = out if activation is None else activation(out)
-            out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
+            out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
         print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
         
         return out
@@ -204,12 +204,12 @@ class CNN:
         logger.debug(string.format(*_to_format))
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_dim))
-            out = tf.layers.dense(inp, out_dim,
+            out = tf.compat.v1.layers.dense(inp, out_dim,
                                   kernel_initializer=initializer,
                                   activation=activation)
-            out = tf.layers.batch_normalization(
+            out = tf.compat.v1.layers.batch_normalization(
                 out, training=training) if bn else out
-            out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
+            out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
         print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
         return out
 
@@ -244,7 +244,7 @@ class CNN_CAM:
             net_gap = tf.reduce_mean(out["conv"], (1))  # get the mean of axis 1 and 2 resulting in shape [batch_size, filters]
             print("gap shape", net_gap.shape.as_list())
     
-            gap_w = tf.get_variable('W_gap', shape=[net_gap.get_shape().as_list()[-1], self.num_classes], initializer=tf.random_normal_initializer(0., 0.01))
+            gap_w = tf.compat.v1.get_variable('W_gap', shape=[net_gap.get_shape().as_list()[-1], self.num_classes], initializer=tf.random_normal_initializer(0., 0.01))
             logits = tf.nn.softmax(tf.matmul(net_gap, gap_w))
             
         out["logits"] = logits
@@ -274,7 +274,7 @@ class CNN_CAM:
         :return: output tensors of the layers
         """
         layer_number = 1
-        out = tf.layers.flatten(inp)
+        out = tf.compat.v1.layers.flatten(inp)
         for (out_dim, bn, activation, drop) in zip(self.fc_dims, self.bn_cnn, self.activations_cnn, self.drop_cnn):
             out = self._make_fnn_layer(out, out_dim, bn, activation, drop, layer_number, training)
             layer_number += 1
@@ -307,7 +307,7 @@ class CNN_CAM:
                 kernel_size = inp.get_shape().as_list()[1] // 2  # later layers, the filter size should be adjusted by the input
             else:
                 kernel_size = self.kernel_size
-            out = tf.layers.conv2d(inputs=out,
+            out = tf.compat.v1.layers.conv2d(inputs=out,
                                    filters=out_ch,
                                    kernel_size=[kernel_size, 1],
                                    strides=[1, 1],
@@ -316,13 +316,13 @@ class CNN_CAM:
                                    # kernel_regularizer = regularizer,
                                    activation=None)
             # if np.mod(layer_number, 2) == 1:  # only pool after odd number layer
-            out = tf.layers.max_pooling2d(out, pool_size=[self.pool_size, 1],
+            out = tf.compat.v1.layers.max_pooling2d(out, pool_size=[self.pool_size, 1],
                                           strides=[self.stride, 1],
                                           padding='same')
-            out = tf.layers.batch_normalization(
+            out = tf.compat.v1.layers.batch_normalization(
                 out, training=training) if bn else out
             out = out if activation is None else activation(out)
-            out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
+            out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
         print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
         
         return out
@@ -341,12 +341,12 @@ class CNN_CAM:
         logger.debug(string.format(*_to_format))
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_dim))
-            out = tf.layers.dense(inp, out_dim,
+            out = tf.compat.v1.layers.dense(inp, out_dim,
                                   kernel_initializer=initializer,
                                   activation=activation)
-            out = tf.layers.batch_normalization(
+            out = tf.compat.v1.layers.batch_normalization(
                 out, training=training) if bn else out
-            out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
+            out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
         print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
         return out
 
@@ -387,7 +387,7 @@ class Res_ECG_CAM:
 
             print("gap shape", net_gap.get_shape().as_list())
 
-            gap_w = tf.get_variable('W_gap', shape=[net_gap.get_shape().as_list()[-1], self.num_classes],
+            gap_w = tf.compat.v1.get_variable('W_gap', shape=[net_gap.get_shape().as_list()[-1], self.num_classes],
                                     initializer=tf.random_normal_initializer(0., 0.01))
             logits = tf.nn.softmax(tf.matmul(net_gap, gap_w))
 
@@ -433,13 +433,12 @@ class Res_ECG_CAM:
         _to_format = [out_ch, bn, drop, training]
         layer_name = "cnn_layer_{}".format(layer_number)
         logger.debug("Creating new layer:")
-        string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\t (training = {})"
-        logger.debug(string.format(*_to_format))
+
         out = inp
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             kernel_size = min(self.kernel_size, inp.get_shape().as_list()[1])
-            out = tf.layers.conv2d(inputs = out,
+            out = tf.compat.v1.layers.conv2d(inputs = out,
                                     filters = out_ch,
                                     kernel_size = [kernel_size, 1],
                                     strides = [1, 1],
@@ -448,11 +447,10 @@ class Res_ECG_CAM:
                                     # kernel_regularizer = regularizer,
                                     activation = None)
 
-            out = tf.layers.batch_normalization(
+            out = tf.compat.v1.layers.batch_normalization(
                 out, training=training) if bn else out
             out = tf.nn.relu(out)
-            # out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
-        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
+            # out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
 
         return out
 
@@ -469,7 +467,7 @@ class Res_ECG_CAM:
         out = inp
 
         with tf.compat.v1.variable_scope("res_block_start", reuse=tf.compat.v1.AUTO_REUSE):
-            out = tf.layers.conv2d(
+            out = tf.compat.v1.layers.conv2d(
                 inputs=out,
                 filters=self.channel_start,
                 kernel_size=[self.kernel_size, 1],
@@ -479,10 +477,10 @@ class Res_ECG_CAM:
                 # kernel_regularizer=regularizer,
                 activation=None
             )
-            out = tf.layers.batch_normalization(out, training=training)
+            out = tf.compat.v1.layers.batch_normalization(out, training=training)
             out = tf.nn.relu(out)
-            out = tf.layers.dropout(out, self.drop_cnn, training=training)
-            out = tf.layers.conv2d(
+            out = tf.compat.v1.layers.dropout(out, self.drop_cnn, training=training)
+            out = tf.compat.v1.layers.conv2d(
                 inputs=out,
                 filters=self.channel_start,
                 kernel_size=[self.kernel_size, 1],
@@ -491,11 +489,11 @@ class Res_ECG_CAM:
                 # kernel_regularizer=regularizer,
                 activation=None
             )
-            shortcut = tf.layers.max_pooling2d(inp, pool_size=[self.pool_size, 1],
+            shortcut = tf.compat.v1.layers.max_pooling2d(inp, pool_size=[self.pool_size, 1],
                                                strides=[self.stride, 1],
                                                padding='same')
             output = tf.nn.relu(shortcut + out)
-            print("ResiBlock_start-output pooling shape", out.shape.as_list())
+            logger.info("ResiBlock_start-output pooling shape", out.shape.as_list())
             return output
 
     def build_res_blocks_ecg(self, x, out_channel, stride, layer_id=0, training=True):
@@ -516,13 +514,13 @@ class Res_ECG_CAM:
         with tf.compat.v1.variable_scope("res_block" + str(layer_id), reuse=tf.compat.v1.AUTO_REUSE):
             for j in range(self.num_layers_in_res):  # there are two conv layers in one block
                 print(training)
-                out = tf.layers.batch_normalization(out, training=training)
+                out = tf.compat.v1.layers.batch_normalization(out, training=training)
                 out = tf.nn.relu(out)
                 if not (layer_id == 0 and j == 0):
                     drop = self.drop_cnn if j > 0 else 0
-                    out = tf.layers.dropout(out, drop, training=training)
+                    out = tf.compat.v1.layers.dropout(out, drop, training=training)
 
-                out = tf.layers.conv2d(
+                out = tf.compat.v1.layers.conv2d(
                     inputs=out,
                     filters=out_channel,
                     kernel_size=[self.kernel_size, 1],
@@ -533,7 +531,7 @@ class Res_ECG_CAM:
                     activation=None
                 )
 
-            shortcut = tf.layers.max_pooling2d(x, pool_size=[self.pool_size, 1], strides=[stride, 1], padding='same')
+            shortcut = tf.compat.v1.layers.max_pooling2d(x, pool_size=[self.pool_size, 1], strides=[stride, 1], padding='same')
             output = tf.nn.relu(shortcut + out)
             print("ResiBlock{}-output pooling shape".format(layer_id), out.shape.as_list())
             return output
@@ -588,7 +586,7 @@ class Inception:
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             kernel_size = min(self.kernel_size, inp.get_shape().as_list()[1])
-            out = tf.layers.conv2d(inputs = out,
+            out = tf.compat.v1.layers.conv2d(inputs = out,
                                     filters = out_ch,
                                     kernel_size = [kernel_size, 1],
                                     strides = [1, 1],
@@ -597,10 +595,10 @@ class Inception:
                                     kernel_regularizer = regularizer,
                                     activation = None)
 
-            out = tf.layers.batch_normalization(
+            out = tf.compat.v1.layers.batch_normalization(
                 out, training=training) if bn else out
             out = tf.nn.relu(out)
-            # out = tf.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
+            # out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
         print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
 
         return out
@@ -615,7 +613,7 @@ class Inception:
         input_channels = int(x.get_shape()[-1])
 
         with tf.compat.v1.variable_scope(name, reuse=tf.compat.v1.AUTO_REUSE) as scope:
-            out = tf.layers.conv2d(
+            out = tf.compat.v1.layers.conv2d(
                 inputs=x,
                 filters=num_filters,
                 kernel_size=[filter_height, 1],
@@ -625,14 +623,14 @@ class Inception:
                 # kernel_regularizer=regularizer,
                 activation=None
             )
-            out = tf.layers.batch_normalization(out, training=training)
+            out = tf.compat.v1.layers.batch_normalization(out, training=training)
             out = tf.nn.relu(out)
 
             # Create tf variables for the weights and biases of the conv layer
-            # W = tf.get_variable('weights', shape=[filter_height, filter_width, input_channels, num_filters],
+            # W = tf.compat.v1.get_variable('weights', shape=[filter_height, filter_width, input_channels, num_filters],
             #                     initializer=tf.random_normal_initializer(mean=0.0, stddev=0.01))
             #
-            # b = tf.get_variable('biases', shape=[num_filters], initializer=tf.constant_initializer(0.0))
+            # b = tf.compat.v1.get_variable('biases', shape=[num_filters], initializer=tf.constant_initializer(0.0))
             #
             # # Perform convolution.
             # conv = tf.nn.conv2d(x, W, strides=[1, stride, stride, 1], padding=padding)
@@ -680,7 +678,7 @@ class Inception:
             conv_5 = self.conv_layer(conv_5_reduce, filter_height=5, filter_width=1,
                                 num_filters=conv_5_size, name='{}_5x5'.format(name))
 
-            pool = tf.layers.max_pooling2d(x, pool_size=[self.pool_size, 1], strides=[1, 1], padding="SAME")
+            pool = tf.compat.v1.layers.max_pooling2d(x, pool_size=[self.pool_size, 1], strides=[1, 1], padding="SAME")
             pool_proj = self.conv_layer(pool, filter_height=1, filter_width=1, num_filters=pool_proj_size, name='{}_pool_proj'.format(name))
             # ipdb.set_trace()
 
@@ -695,7 +693,7 @@ class Inception:
 
         conv1 = self.conv_layer(inp, filter_height = 5, filter_width=1, num_filters=64, stride=1, name='conv1')
         print("layer {} out_size {}".format(conv1.name, conv1.get_shape().as_list()))
-        pool1 = tf.layers.max_pooling2d(conv1, pool_size=[self.pool_size, 1],
+        pool1 = tf.compat.v1.layers.max_pooling2d(conv1, pool_size=[self.pool_size, 1],
                                         strides=[self.stride, 1], padding="SAME",
                                         name="pool1")
         print("layer {} out_size {}".format(pool1.name, pool1.get_shape().as_list()))
@@ -713,7 +711,7 @@ class Inception:
                                            pool_proj_size=64//factor, name="inception1b")
         print("layer inception1b out_size {}".format(inception2b.get_shape().as_list()))
 
-        pool2 = tf.layers.max_pooling2d(inception2b, pool_size=[self.pool_size, 1],
+        pool2 = tf.compat.v1.layers.max_pooling2d(inception2b, pool_size=[self.pool_size, 1],
                                 strides=[self.stride, 1], padding="SAME",
                                 name="pool2")
         print("layer pool2 out_size {}".format(pool2.get_shape().as_list()))
@@ -735,11 +733,11 @@ class Inception:
         with tf.compat.v1.variable_scope("GAP", reuse=tf.compat.v1.AUTO_REUSE):
             gap = tf.reduce_mean(inception3b, (1))
             print("layer gap out_size {}".format(gap.get_shape().as_list()))
-            gap_dropout = tf.layers.dropout(gap, rate=self.drop_cnn, training=training) if self.drop_cnn != 0 else gap
-            flatten = tf.layers.flatten(gap_dropout)
+            gap_dropout = tf.compat.v1.layers.dropout(gap, rate=self.drop_cnn, training=training) if self.drop_cnn != 0 else gap
+            flatten = tf.compat.v1.layers.flatten(gap_dropout)
 
         with tf.compat.v1.variable_scope("logits", reuse=tf.compat.v1.AUTO_REUSE):
-            logits = tf.layers.dense(flatten, self.num_classes,
+            logits = tf.compat.v1.layers.dense(flatten, self.num_classes,
                                       kernel_initializer=initializer,
                                       activation=self.activations[-1])
 
@@ -763,7 +761,7 @@ class RNN(object):
         inputs = tf.unstack(tf.expand_dims(inp, axis=2), axis=1)
 
         self.rnn_cell = tf.keras.layers.LSTMCell(units, recurrent_dropout=self.drop_rnn, dropout=self.drop_rnn_ln, kernel_regularizer=regularizer)
-        rnn_outputs, rnn_state = tf.nn.static_rnn(self.rnn_cell, inputs, dtype=tf.float32)
+        rnn_outputs, rnn_state = tf.compat.v1.nn.static_rnn(self.rnn_cell, inputs, dtype=tf.float32)
         # enc_ouputs = tf.stack(rnn_outputs, axis=0)
 
         return rnn_outputs[-1]
@@ -775,12 +773,12 @@ class RNN(object):
 
         with tf.compat.v1.variable_scope("FCb4RNN", reuse=tf.compat.v1.AUTO_REUSE):
             for unit in self.fc_dim:
-                net = tf.layers.dense(net, unit,
+                net = tf.compat.v1.layers.dense(net, unit,
                                       kernel_initializer=initializer,
                                       activation=None)
-                net = tf.layers.batch_normalization(net)
+                net = tf.compat.v1.layers.batch_normalization(net)
                 net = tf.nn.relu(net)
-                net = tf.layers.dropout(net, rate=self.drop_fc)
+                net = tf.compat.v1.layers.dropout(net, rate=self.drop_fc)
 
         with tf.compat.v1.variable_scope("RNN", reuse=tf.compat.v1.AUTO_REUSE):
             for layer_id, rnn_dim in enumerate(self.rnn_dims):
@@ -789,7 +787,7 @@ class RNN(object):
         ret["rnn_state"] = net
 
         with tf.compat.v1.variable_scope("FC", reuse=tf.compat.v1.AUTO_REUSE):
-            logits = tf.layers.dense(net, self.num_classes,
+            logits = tf.compat.v1.layers.dense(net, self.num_classes,
                                      kernel_initializer=initializer,
                                      activation=tf.nn.softmax)
 
@@ -810,7 +808,7 @@ def get_loss_sum(args, out, out_true):
     if loss_type == "rmse":
         loss = tf.reduce_sum(tf.reduce_mean(tf.abs(out - out_true), axis=1))
     if loss_type == "softmax_ce":
-        loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits_v2(logits=out, labels=out_true))
+        loss = tf.reduce_sum(tf.compat.v1.nn.softmax_cross_entropy_with_logits_v2(logits=out, labels=out_true))
     return loss
 
 
@@ -828,7 +826,7 @@ def get_ncorrect(out, out_true):
 # @param net the network object
 # @see MLP example of a network object
 def get_confusion_matrix(predictions, labels, num_classes):
-    conf_matrix = tf.confusion_matrix(tf.argmax(labels, 1), tf.argmax(predictions, 1), num_classes=num_classes)
+    conf_matrix = tf.compat.v1.confusion_matrix(tf.argmax(labels, 1), tf.argmax(predictions, 1), num_classes=num_classes)
     return conf_matrix
 
 
@@ -852,15 +850,15 @@ def get_train_op(args, loss, learning_rate_op):
     logger.debug("Defining optimizer")
     optimizer_type = args.optimizer_type
     # lr = args.learning_rate
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         if optimizer_type == "adam":
             optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate_op).minimize(loss)
             print("learning rate", learning_rate_op)
         if optimizer_type == "rmsprop":
-            optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate_op).minimize(loss)
+            optimizer = tf.compat.v1.train.RMSPropOptimizer(learning_rate=learning_rate_op).minimize(loss)
         if optimizer_type == "gradient_descent":
-            optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate_op).minimize(loss)
+            optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=learning_rate_op).minimize(loss)
     return optimizer
 
 
@@ -906,8 +904,8 @@ def get_graph(args, data_tensors):
         graph["train_loss"] = get_loss_sum(args, graph["train_logits"], data_tensors["train_labels"])
         graph["train_num_correct"], graph["train_wrong_inds"] = get_ncorrect(graph["train_logits"], data_tensors["train_labels"])
         graph["train_confusion"] = get_confusion_matrix(graph["train_logits"], data_tensors["train_labels"], args.num_classes)
-        graph["train_learning_rate_op"] = tf.placeholder(tf.float32, [], name='learning_rate')
-        # graph["train_op"] = tf.train.AdamOptimizer(learning_rate=graph["learning_rate_op"]).minimize(graph["train_loss"])
+        graph["train_learning_rate_op"] = tf.compat.v1.placeholder(tf.float32, [], name='learning_rate')
+        # graph["train_op"] = tf.compat.v1.train.AdamOptimizer(learning_rate=graph["learning_rate_op"]).minimize(graph["train_loss"])
         graph["train_op"] = get_train_op(args, graph["train_loss"], graph["train_learning_rate_op"])
         
 

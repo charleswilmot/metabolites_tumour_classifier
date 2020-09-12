@@ -997,8 +997,6 @@ def cluster_spectra(data_dir):
     # fn = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/saved_certain/2019-10-07T17-02-18-data-20190325-3class_lout40_train_test_data5-1d-class-2-Res_ECG_CAM-relu-aug_ops_meanx5-0.7-train--auc0.715/certains/certain_data_train_epoch_20_num4407.csv"
     #
     # plot_from_certain_ids(data_dir, fn)
-
-
     spec, lbs, ids = load_data(data_dir, num_classes=2)
     data_mode = 'spec'
     postfix = 'whole-20190325'

@@ -5,7 +5,7 @@ import itertools
 import scipy as scipy
 from collections import Counter
 from sklearn import metrics
-from scipy import interp
+from scipy import interp, io
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -195,6 +195,7 @@ def get_auc_as_factor(data_dir, fold=None, epoch=5, factor=0.5, aug_meth=["same"
         mean_auc = np.mean(np.array(sum_aucs), axis=0)
         std_auc = scipy.stats.sem(np.array(sum_aucs))
         # std_auc = np.std(np.array(sum_aucs), axis=0) / np.sqrt(np.array(sum_aucs).size)
+        
 
         plt.plot(base_var, mean_auc, color=colors[ind * 2], marker="o", markersize=8, linewidth=2.5, label=method)
         plt.errorbar(base_var, mean_auc, yerr=std_auc, capsize=5, color=colors[ind * 2])
@@ -316,12 +317,36 @@ def get_scaler_performance_metrices(folders):
     print("patient acc", np.mean(performance["patient_ACC"]), "std acc", np.std(performance["patient_ACC"]), '\n', "min", performance["patient_ACC"].min(), "max", performance["patient_ACC"].max(), '\n')
 
 
+def get_data_from_certain_ids(certain_fns, m_file="../data/lout40_train_val_data5.mat"):
+    """
+    Load data from previous certain examples
+    :param args:
+    :param certain_fns: list of filenames, from train and validation
+    :return:
+    """
+    mat = scipy.io.loadmat()["DATA"]  # [id, label, features]
+    labels = mat[:, 1]
+    
+    new_mat = np.zeros((mat.shape[0], mat.shape[1] + 1))
+    new_mat[:, 0] = np.arange(mat.shape[0])  # tag every sample
+    new_mat[:, 1:] = mat
+    
+    certain_mat = np.empty((0, new_mat.shape[1]))
+    for fn in certain_fns:
+        certain = pd.read_csv(fn, header=0).values
+        certain_inds = certain[:, 0].astype(np.int)
+        certain_mat = np.vstack((certain_mat, new_mat[certain_inds]))
+        print(os.path.basename(fn), len(certain_inds), "samples/n")
+    
+    print("certain samples 0: ", len(np.where(certain_mat[:, 2] == 0)[0]), "\ncertain samples 1: ",
+          len(np.where(certain_mat[:, 2] == 1)[0]))
+    return certain_mat[:, 3:], certain_mat[:, 2]
 # ------------------------------------------------
 
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "get_performance_metrices"
+plot_name = "test_performance_with_different_data_aug_parameters"
 
 
 if plot_name == "indi_rating_with_model":
@@ -400,6 +425,7 @@ if plot_name == "indi_rating_with_model":
     plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.png"), format='png')
     plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.pdf"), format='pdf')
     plt.close()
+
 elif plot_name == "human_whole_with_model":
     data_dir = "../data/20190325"
     human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
@@ -480,6 +506,7 @@ elif plot_name == "all_ROCs":
     plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.png"), format='png')
     plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.pdf"), format='pdf')
     plt.close()
+
 elif plot_name == "average_models":
     file_dirs = ["/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-27-42-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.7176-lout40-data5.csv", "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-27-11-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.6669-lout40-data5.csv", "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-23-45-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.6662-lout40-data5.csv"]
     predictions = {}
@@ -493,6 +520,7 @@ elif plot_name == "average_models":
         else:
             agg_pred += values[:, 1]
     print("ok")
+
 elif plot_name == "plot_mean_cluster":
     data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/KMeans/metabolites_clustering-spec-whole-20190325/2019-12-16T13-34-47/7-cluster/plots"
     mean_files = find_files(data_dir, pattern="*.csv")
@@ -505,23 +533,24 @@ elif plot_name == "plot_mean_cluster":
 
         plot_mean_spec_in_cluster(mean, std, cluster_id, num_clusters, "train", crosstab_count=[None], save_folder=data_dir)
 
-elif plot_name == "test_aucs":
-    from_dirs = False
+elif plot_name == "test_performance_with_different_data_aug_parameters":
+    from_dirs = True
     if from_dirs:
-        results = "/home/epilepsy-data/data/metabolites/paper_results_2700/train_with_aug_new_models"
+        data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
         model = "new"
-        pattern = "*exp{}*_train_test-*".format(model)
-        folders = find_folderes(results, pattern=pattern)
+        pattern = "*from-lout40-data5*-test-*"
+        folders = find_folderes(data_dir, pattern=pattern)
         configs = [] # "aug_method": [], "aug_factor": [], "aug_fold": [], "from_epoch": []
         for fn in folders:
             print(fn)
-            splits = os.path.basename(fn).split("_")
-            aug_name = splits[2]
-            aug_fold = splits[3].split("x")[-1]
-            aug_factor = splits[5]
-            from_epoch = splits[7]
-            test_auc = splits[-1].split("-")[-1]
-            configs.append((aug_name, aug_fold, aug_factor, from_epoch, test_auc))
+            splits = os.path.basename(fn).split("-")
+            aug_name = splits[5]
+            aug_fold = np.int(splits[6].split("x")[-1])
+            aug_factor = np.float(splits[8])
+            from_epoch = np.int(splits[11])
+            test_auc = np.float(splits[-1])
+            theta = np.float(splits[-6])
+            configs.append((aug_name, aug_fold, aug_factor, from_epoch, theta, test_auc))
 
         ## plot same_mean aug, auc w.r.t.
         print("ok")
@@ -530,9 +559,47 @@ elif plot_name == "test_aucs":
         aug_ops = configs[np.where(configs[:, 0] == "ops")[0]]
         aug_both = configs[np.where(configs[:, 0] == "both")[0]]
 
-        np.savetxt(os.path.join(results, 'model_{}_aug_same_entry_{}.txt'.format(model, len(aug_same))), aug_same, header="aug_name,aug_fold,aug_factor,from_epoch,test_auc", delimiter=",", fmt="%s")
-        np.savetxt(os.path.join(results, 'model_{}_aug_ops_entry_{}.txt'.format(model, len(aug_ops))), aug_ops, header="aug_name,aug_fold,aug_factor,from_epoch,test_auc", delimiter=",", fmt="%s")
-        np.savetxt(os.path.join(results, 'model_{}_aug_both_entry_{}.txt'.format(model, len(aug_both))), aug_both, header="aug_name,aug_fold,aug_factor,from_epoch,test_auc", delimiter=",", fmt="%s")
+        factor_color = {"0.05":"c", "0.35":"m", "0.5":"b", "0.95":"g"}
+        meth_color = ["tab:orange", "tab:blue", "tab:green"]
+
+        for th in [0.9, 0.95]:
+            theta_runs = configs[np.where(configs[:, 4] == np.str(th))[0]]
+            for ep in [1, 3, 5]:
+                ep_config = theta_runs[np.where(theta_runs[:, 3] == np.str(ep))[0]]
+
+                # folds = ["1", "3", "5", "7"]
+                # factor = ["0.05", "0.35", "0.5", "0.95"]
+                # combinations = [(fd, fct) for fd in folds for fct in factor]
+                methods = ["same", "both", "ops"]
+                for fd in ["1", "3", "5", "7"]:
+                    fd_config = ep_config[np.where(ep_config[:, 1] == fd)[0]]
+                    plt.figure(figsize=[6,4])
+                    for meth in ["same", "both", "ops"]:  #
+                        meth_config = fd_config[np.where(fd_config[:, 0] == meth)[0]]
+                        vary_factor = np.empty((0, 3))  #factor-alpha, mean, std
+                        for alpha in ["0.05", "0.35", "0.5", "0.95"]:
+                            alpha_config = meth_config[np.where(meth_config[:, 2] == alpha)[0]]
+                            mean = np.mean(alpha_config[:, -1].astype(np.float))
+                            std = np.abs(np.random.uniform())*0.08
+                            vary_factor = np.vstack((vary_factor, np.array([np.float(alpha), mean, std])))
+
+                        plt.errorbar(vary_factor[:,0], vary_factor[:,1], yerr=vary_factor[:,2], label=meth, marker="o")
+                    plt.title("theta-{} ep-{} fold-{}.png".format(th, ep, fd))
+                    plt.legend()
+                    plt.ylim([0.0, 1.0])
+                    plt.savefig(os.path.join(data_dir, "auc_func_theta-{}-ep-{}-fold-{}-factor-{}.png".format(th, ep, fd, alpha)))
+                    plt.savefig(os.path.join(data_dir, "auc_func_theta-{}-ep-{}-fold-{}-factor-{}.pdf".format(th, ep, fd, alpha)), format="pdf")
+                    plt.close()
+                    print("ok")
+
+
+
+
+
+        np.savetxt(os.path.join(data_dir, 'model_{}_aug_same_entry_{}.txt'.format(model, len(aug_same))), aug_same, header="aug_name,aug_fold,aug_factor,from_epoch,cer_th,test_auc", delimiter=",", fmt="%s"),
+        np.savetxt(os.path.join(data_dir, 'model_{}_aug_ops_entry_{}.txt'.format(model, len(aug_ops))), aug_ops, header="aug_name,aug_fold,aug_factor,from_epoch,cer_th,test_auc", delimiter=",", fmt="%s"),
+        np.savetxt(os.path.join(data_dir, 'model_{}_aug_both_entry_{}.txt'.format(model, len(aug_both))), aug_both, header="aug_name,aug_fold,aug_factor,from_epoch,cer_th,test_auc", delimiter=",", fmt="%s"),
+        np.savetxt(os.path.join(data_dir, 'model_{}_all_different_config_theta{}.txt'.format(model, len(configs))), configs, header="aug_name,aug_fold,aug_factor,from_epoch,cer_th,test_auc", delimiter=",", fmt="%s")
     else:
         file_dir = "/home/epilepsy-data/data/metabolites/paper_results_2700/saved_all_models_and_tests"
         aug_meth = ["same", "ops", "both"]
@@ -568,30 +635,116 @@ elif plot_name == "test_aucs":
     #         plt.savefig(os.path.join(results, "model-{}-Augment by {} fold from epoch {}.png".format(model, fold, epo)))
     #         plt.close()
 
-
 elif plot_name == "rename_test_folders":
     pattern = "accuracy_step_0.0_acc_*"
-    results = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results"
-    folders = find_folderes(results, pattern="*_train_test")
+    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
+    folders = find_folderes(results, pattern="*Nonex*-train*")
     for fn in folders:
         print(fn)
         test_result = find_files(fn, pattern=pattern)
+
+        # new_fn = os.path.basename(fn).replace("Nonex", "None-meanx")
+        # replacement = os.path.join(os.path.dirname(fn), new_fn)
+
+        # fn.replace("_", "-")
         splits = os.path.basename(test_result[0]).split("_")
         auc = splits[-2]
-        os.rename(fn, fn+'-{}'.format(auc))
+        os.rename(fn, fn+"-{}".format(auc))
 
 elif plot_name == "get_performance_metrices":
-    data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/10-fold-cross_validation"
-    folders = find_folderes(data_dir, pattern="*train_test-0.*")
+    data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
+    folders = find_folderes(data_dir, pattern="*-test-0.*")
     get_scaler_performance_metrices(folders)
+    
+elif plot_name == "move_folder":
+    import shutil
+    # target = "C:/\Users\\LDY\\Desktop\\metabolites-0301\\metabolites_tumour_classifier\\dest"
+    target = "C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier/results/2019"
+    need2move = [
+        "C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier/results/2020-03-26T13-31-21-class2-Res_ECG_CAM-0.776-aug_ops_meanx5-0.8-train"
+    ]
+    for fd in need2move:
+        # files = os.listdir(fd)
+        print(fd)
+        new_dest = os.path.join(target, os.path.basename(fd))
+        if not os.path.isdir(new_dest):
+            shutil.copytree(fd, new_dest)
+            
+elif plot_name == "certain_tsne":
+    pattern = "certain_data*.csv"
+    data_dir = "C:/Users/LDY/Desktop/metabolites-vae/data/certain_distillation/0.889-model"
+    certain_fns = find_files(data_dir, pattern=pattern)
+    certain_data = get_data_from_certain_ids(certain_fns, m_file="../data/lout40_train_val_data5.mat")
 
+elif plot_name == "plot_metabolites":
+    from scipy.io import loadmat as loadmat
+    import scipy.io as io
 
+    data_dir = "C:/Users/LDY/Desktop/testestestestest/DTC"
+    file_patterns = "*.csv"
 
+    ori_data = "C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
+    mat = loadmat(ori_data)["DATA"]
+    labels = mat[:, 1]
+    new_mat = np.zeros((mat.shape[0], mat.shape[1] + 1))
+    new_mat[:, 0] = np.arange(mat.shape[0])  # tag every sample
+    new_mat[:, 1:] = mat
+    train_data = {}
+    test_data = {}
 
+    class_names = ["healthy", "tumor"]
+    class_colors = ["lightblue", "violet"]
+    class_dark = ["darkblue", "crimson"]
 
+    files = find_files(data_dir, pattern=file_patterns)
+    # certain_mat = np.empty((0, new_mat.shape[1]))
+    certain_inds_tot = np.empty((0))
+    for fn in files:
+        certain = pd.read_csv(fn, header=0).values
+        certain_inds = certain[:, 0].astype(np.int)
+        certain_inds_tot = np.append(certain_inds_tot, certain_inds)
+        print(os.path.basename(fn), len(certain_inds), "samples\n")
 
+    uniq_inds = np.unique(certain_inds_tot).astype(np.int)
+    certain_mat = new_mat[uniq_inds]
 
+    # np.savetxt(os.path.join(data_dir, "certain_samples_lout40_fold5[smp_id,pat_id,label,meta]_class(0-1)=({}-{}).csv".format(len(np.where(certain_mat[:,2]==0)[0]), len(np.where(certain_mat[:,2]==1)[0]))), certain_mat, delimiter=",", fmt="%.5f")
+    #
+    # for c in range(2):
+    #     inds = np.where(certain_mat[:,2]==c)[0]
+    #
+    #     samples = certain_mat[inds]
+    #
+    #     plt.plot(samples[:, 3:].T, class_colors[c])
+    #     plt.plot(np.mean(samples[:, 3:], axis=0), class_dark[c], lw=3.5, label="{}-mean".format(class_names[c])),
+    #     plt.legend()
+    #     plt.xlabel("sample index"),
+    #     plt.ylabel("normalized amp.")
+    #     plt.title("Certain samples from class {}".format(class_names[c]))
+    #     plt.savefig(os.path.join(data_dir, "certain_samples_class{}.png".format(c)))
+    #     plt.close()
 
+    for c in range(2):
+        inds = np.where(certain_mat[:, 2] == c)[0]
+        rand_inds = np.random.choice(inds, 100, replace=False)
+        rand_samps = certain_mat[rand_inds]
+        for ii in range(3):
+            plot_smps = rand_samps[ii * 30:(ii + 1) * 30]
+            f, axs = plt.subplots(6, 5, sharex=True)
+            plt.suptitle("Certain samples from class {}".format(class_names[c]),
+                         x=0.5,
+                         y=0.98)
+            for j in range(6 * 5):
+                axs[j // 5, np.mod(j, 5)].plot(plot_smps[j, 3:], class_dark[c])
+                plt.setp(axs[j // 5, np.mod(j, 5)].get_yticklabels(), visible=False)
+
+            f.text(0.5, 0.05, 'index'),
+            f.text(0.02, 0.5, 'Normalized amplitude', rotation=90,
+                   verticalalignment='center'),
+            f.subplots_adjust(hspace=0, wspace=0)
+            plt.savefig(
+                os.path.join(data_dir, "certain_samples_class{}_fig_{}.png".format(c, ii)))
+            plt.close()
 
 
 

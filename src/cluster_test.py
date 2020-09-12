@@ -8,22 +8,17 @@ default_folds = 5
 default_aug_scale = 0.3
 default_from_epoch = 3
 default_input_data = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
-EXPERIMENT_DIR_ROOT = "../results/"
+EXPERIMENT_DIR_ROOT = "/home/epilepsy-data/data/metabolites/results"
 
 
-def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None, description=None, from_epoch=None, restore_from=None, input_data=None):
-    date = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
-    aug_method = default_aug_method if aug_method is None else aug_method
-    aug_scale = default_aug_scale if aug_scale is None else aug_scale
-    aug_folds = default_folds if aug_folds is None else aug_folds
-    from_epoch = default_from_epoch if from_epoch is None else from_epoch
-    input_data = default_input_data if input_data is None else input_data
+def generate_experiment_path_str(description=None, restore_from=None, input_data=None):
     if restore_from:
         restore_from = restore_from
     else:
         raise ValueError('A model dir should be passed into!')
     description = description if description else "test"
-    experiment_dir = os.path.dirname(restore_from) + "_{}".format(description)
+    cv_set_id = os.path.basename(input_data).split("_")[-1].split(".")[0]
+    experiment_dir = os.path.dirname(restore_from) + "-on-{}-{}".format(cv_set_id, description)
     return experiment_dir
 
 
@@ -69,13 +64,10 @@ class ClusterQueue:
         # generate a path for the results + mkdir
         # TODO
         self.output_path = generate_experiment_path_str(
-            aug_method=kwargs["aug_method"] if "aug_method" in kwargs else None,
-            aug_scale=kwargs["aug_scale"] if "aug_scale" in kwargs else None,
-            aug_folds=kwargs["aug_folds"] if "aug_folds" in kwargs else None,
-            from_epoch=kwargs["from_epoch"] if "from_epoch" in kwargs else None,
-            input_data =kwargs["input_data"] if "input_data" in kwargs else None,
             description=kwargs["description"] if "description" in kwargs else None,
-            restore_from=kwargs["restore_from"] if "restore_from" in kwargs else None)
+            restore_from=kwargs["restore_from"] if "restore_from" in kwargs else None,
+            input_data=kwargs["input_data"] if "input_data" in kwargs else default_input_data,
+        )
         make_output_dir(self.output_path, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
 
         # output path for the experiment log
@@ -117,58 +109,49 @@ class ClusterQueue:
 
 
 model_dirs = [
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-45_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_5_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-46_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_0_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-47_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_1_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-48_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_2_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-49_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_3_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-50_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_4_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-52_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_6_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-53_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_7_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-54_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_8_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-55_exp0.766_both_meanx4_factor_0.3_from-epoch_8944_from-lout40_9_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-56_exp0.766_both_meanx4_factor_0.3_from-epoch_123_from-lout40_5_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-57_exp0.766_both_meanx4_factor_0.3_from-epoch_123_from-lout40_0_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-36-58_exp0.766_both_meanx4_factor_0.3_from-epoch_123_from-lout40_1_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-37-00_exp0.766_both_meanx4_factor_0.3_from-epoch_123_from-lout40_2_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-37-01_exp0.766_both_meanx4_factor_0.3_from-epoch_123_from-lout40_3_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-37-02_exp0.766_both_meanx4_factor_0.3_from-epoch_123_from-lout40_4_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-37-03_exp0.766_both_meanx4_factor_0.3_from-epoch_123_from-lout40_6_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-37-04_exp0.766_both_meanx4_factor_0.3_from-epoch_123_from-lout40_7_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-37-05_exp0.766_both_meanx4_factor_0.3_from-epoch_123_from-lout40_8_train/network",
-"/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-12-19-20-37-07_exp0.766_both_meanx4_factor_0.3_from-epoch_123_from-lout40_9_train/network"
-# "/network",
-# "/network",
-# "/network",
-# "/network",
-# "/network",
-# "/network",
-# "/network",
-# "/network",
-# "/network",
-# "/network",
-]
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-37_Nonex0_factor_0_from-ep_0_from-lout40_data7-theta_0.999-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-36_Nonex0_factor_0_from-ep_0_from-lout40_data3-theta_0.999-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-35_Nonex0_factor_0_from-ep_0_from-lout40_data5-theta_0.999-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-33_Nonex0_factor_0_from-ep_0_from-lout40_data7-theta_0.99-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-32_Nonex0_factor_0_from-ep_0_from-lout40_data3-theta_0.99-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-31_Nonex0_factor_0_from-ep_0_from-lout40_data5-theta_0.99-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-30_Nonex0_factor_0_from-ep_0_from-lout40_data7-theta_0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-29_Nonex0_factor_0_from-ep_0_from-lout40_data3-theta_0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-28_Nonex0_factor_0_from-ep_0_from-lout40_data5-theta_0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-27_Nonex0_factor_0_from-ep_0_from-lout40_data7-theta_0.9-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-26_Nonex0_factor_0_from-ep_0_from-lout40_data3-theta_0.9-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-25_Nonex0_factor_0_from-ep_0_from-lout40_data5-theta_0.9-train/network"
+    ]
 source = [
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data0.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data1.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data2.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data3.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data4.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data6.mat",
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data7.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data8.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data9.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data0.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data1.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data2.mat",
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data3.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data4.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data6.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat",
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data7.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data8.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data9.mat" ]
-
-for model, test_data in zip(model_dirs, source):
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data3.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data7.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data3.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data7.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data3.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat"
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data0.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data1.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data2.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data4.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data6.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data8.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data9.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data0.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data1.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data2.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data3.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data4.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data6.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data7.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data8.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data9.mat" ]
+]
+for model, test_data in zip(model_dirs, source):  #*len(model_dirs)
     cq = ClusterQueue(restore_from=model, input_data=test_data)
