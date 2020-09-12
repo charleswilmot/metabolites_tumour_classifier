@@ -25,8 +25,8 @@
             "model_name": "Res_ECG_CAM",
             "optimizer_type": "adam",
             "loss_type": "softmax_ce",
-            "learning_rate": 0.0005,
-            "postfix": "new",
+            "learning_rate": 0.001,
+            "postfix": "0.95",
             "if_from_certain": true,
             "if_save_certain": false
         },

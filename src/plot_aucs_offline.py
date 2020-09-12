@@ -346,7 +346,7 @@ def get_data_from_certain_ids(certain_fns, m_file="../data/lout40_train_val_data
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "rename_test_folders"
+plot_name = "test_performance_with_different_data_aug_parameters"
 
 
 if plot_name == "indi_rating_with_model":
@@ -425,6 +425,7 @@ if plot_name == "indi_rating_with_model":
     plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.png"), format='png')
     plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.pdf"), format='pdf')
     plt.close()
+
 elif plot_name == "human_whole_with_model":
     data_dir = "../data/20190325"
     human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
@@ -505,6 +506,7 @@ elif plot_name == "all_ROCs":
     plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.png"), format='png')
     plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.pdf"), format='pdf')
     plt.close()
+
 elif plot_name == "average_models":
     file_dirs = ["/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-27-42-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.7176-lout40-data5.csv", "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-27-11-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.6669-lout40-data5.csv", "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-23-45-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.6662-lout40-data5.csv"]
     predictions = {}
@@ -518,6 +520,7 @@ elif plot_name == "average_models":
         else:
             agg_pred += values[:, 1]
     print("ok")
+
 elif plot_name == "plot_mean_cluster":
     data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/KMeans/metabolites_clustering-spec-whole-20190325/2019-12-16T13-34-47/7-cluster/plots"
     mean_files = find_files(data_dir, pattern="*.csv")
@@ -530,13 +533,13 @@ elif plot_name == "plot_mean_cluster":
 
         plot_mean_spec_in_cluster(mean, std, cluster_id, num_clusters, "train", crosstab_count=[None], save_folder=data_dir)
 
-elif plot_name == "test_aucs":
-    from_dirs = False
+elif plot_name == "test_performance_with_different_data_aug_parameters":
+    from_dirs = True
     if from_dirs:
-        results = "/home/epilepsy-data/data/metabolites/paper_results_2700/train_with_aug_new_models"
+        data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
         model = "new"
-        pattern = "*exp{}*_train_test-*".format(model)
-        folders = find_folderes(results, pattern=pattern)
+        pattern = "*from-lout40-data5*-test-*"
+        folders = find_folderes(data_dir, pattern=pattern)
         configs = [] # "aug_method": [], "aug_factor": [], "aug_fold": [], "from_epoch": []
         for fn in folders:
             print(fn)
@@ -631,7 +634,6 @@ elif plot_name == "test_aucs":
     #         plt.legend(),
     #         plt.savefig(os.path.join(results, "model-{}-Augment by {} fold from epoch {}.png".format(model, fold, epo)))
     #         plt.close()
-
 
 elif plot_name == "rename_test_folders":
     pattern = "accuracy_step_0.0_acc_*"

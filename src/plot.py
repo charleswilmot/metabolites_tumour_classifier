@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import logging as log
 import numpy as np
 from collections import Counter
-# import tsne
+from sklearn.manifold import TSNE
 import ipdb
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
@@ -72,7 +72,7 @@ def accuracy_figure(args, data, training=False, epoch=0):
     auc = metrics.roc_auc_score(data["test_labels"], data["test_logits"])
     max_acc = accuracy_plot(ax, data, training=training)
 
-    f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}.png'.format(epoch, max_acc, auc, args.data_source))
+    f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}-{}.png'.format(epoch, max_acc, auc, args.data_source, args.test_or_train))
     plt.close()
     logger.info("Accuracy plot saved")
 
@@ -91,8 +91,8 @@ def plot_auc_curve(args, data, epoch=0):
     plt.legend(loc=4)
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
-    f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.png'.format(epoch, auc, args.data_source))
-    np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.csv'.format(epoch, auc, args.data_source),
+    f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.png'.format(epoch, auc, args.data_source, args.test_or_train))
+    np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.csv'.format(epoch, auc, args.data_source, args.test_or_train),
                np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_logits"][:, 1].reshape(-1,1))), fmt="%.8f", delimiter=',', header="labels,pred[:,1]")
     plt.close()
     return auc
@@ -115,8 +115,6 @@ def accuracy_loss_figure(args, data, training=False, epoch=0):
 
 def all_figures(sess, args, data, training=False, epoch=0):
     # print("labels: ", np.argmax(data["test_labels"], axis=1))
-    print("accuracy: ", data["test_accuracy"],
-          "auc: ", metrics.roc_auc_score(np.argmax(data["test_labels"], axis=1), data["test_logits"][:, 1]))
     accuracy_figure(args, data, training=training, epoch=epoch)
     # accuracy_loss_figure(args, data, training=training, epoch=epoch)
     # plot_confusion_matrix(args, data, ifnormalize=True, training=training)
@@ -200,7 +198,8 @@ def plot_wrong_examples(args, data, training=False):
     plt.close()
     logger.info("Mistakes plot saved")
 
-def plot_tsne(args, data):
+
+def plot_tsne_activity(args, data):
     """
     Plot the wrongly classified examples
     :param args: contains hyperparams
@@ -397,7 +396,6 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, sa
     labels_plot = labels_int[inds]
 
     pred_plot = np.argmax(predictions, axis=1)[inds]
-    auc = metrics.roc_auc_score(labels_int, predictions[:, 1])
     if not row:
         row = np.int(np.sqrt(len(inds)))
     else:
@@ -654,3 +652,22 @@ def plot_mean_of_each_class(train_spec, train_lbs, test_spec, test_args):
                            "augmenting_with_{}*{}_using_{}-samples.png".format(args.aug_method, args.aug_scale,
                                                                                num2average)), format="png")
     plt.close()
+
+
+def plot_train_samples(samples, true_labels, args, postfix="samples"):
+    """plot the trainin samples"""
+    row, col = 6, 4
+    f, axs = plt.subplots(row, col, sharex=True)
+    for class_id in range(args.num_classes):
+        indices = np.random.choice(np.where(true_labels == class_id)[0], min(row*col, np.where(true_labels == class_id)[0].size))
+        if len(indices) > 0:
+            samp_plot = samples[indices]
+            f.suptitle("Training samples in class {}".format(class_id), fontsize=base)
+            for ii in range(indices.size):
+                axs[ii // col, np.mod(ii, col)].plot(samp_plot[ii])
+            plt.tight_layout()
+            # plt.setp(ax1.get_xticklabels(), visible=False)
+            plt.subplots_adjust(hspace=0.00, wspace=0.15)
+            plt.savefig(args.output_path + '/augmented_samples-class-{}-{}.png'.format(class_id, args.aug_method), format = 'png')
+
+            plt.close()
