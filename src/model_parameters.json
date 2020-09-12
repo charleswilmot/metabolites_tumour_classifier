@@ -38,10 +38,11 @@
                     "num_res_blocks": 7,
                     "pool_size": 2,
                     "stride": 2,
-                    "filter_size": 32,
+                    "filter_size": 144,
+                    "fc": [500],
                     "bn": true,
-                    "drop_cnn": 0.5,
-                    "drop_fnn": 0.5
+                    "drop_cnn": 0.35,
+                    "drop_fnn": 0.35
                 },
                 "Inception": {
                     "model_name": "Inception",

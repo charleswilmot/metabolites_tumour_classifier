@@ -13,14 +13,11 @@ EXPERIMENT_DIR_ROOT = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_a
 def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None,
                                  description=None, from_epoch=None, input_data=None, theta_thr=0.999):
     date = time.strftime("%Y-%m-%dT%H-%M-%S", time.localtime())
-    # aug_method = default_aug_method if aug_method is None else aug_method
-    # aug_folds = default_folds if aug_folds is None else aug_folds
-    # input_data = default_source if input_data is None else input_data
-    # theta_thr = default_theta if theta_thr is None else theta_thr
-    if input_data is not None:
-        cv_set_id = os.path.basename(input_data).split("_")[-1].split(".")[0]
-    else:
-        cv_set_id = "TT"
+    aug_method = default_aug_method if aug_method is None else aug_method
+    aug_folds = default_folds if aug_folds is None else aug_folds
+    input_data = default_source if input_data is None else input_data
+    theta_thr = default_theta if theta_thr is None else theta_thr
+    cv_set_id = os.path.basename(input_data).split("_")[-1].split(".")[0]
     description = description if description else "train"
     output_path = os.path.join(EXPERIMENT_DIR_ROOT, "{}_{}x{}_factor_{}_from-ep_{}_from-lout40_{}-theta_{}-{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, cv_set_id, theta_thr, description))
     # experiment_dir = EXPERIMENT_DIR_ROOT + "{}_exp0.776_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
@@ -29,6 +26,7 @@ def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None
 
 def make_output_dir(output_path, sub_folders=["CAMs"]):
     if os.path.isdir(output_path):
+        logger.critical("Output path already exists. Please use an other path.")
         raise FileExistsError("Output path already exists.")
     else:
         os.makedirs(output_path)
@@ -79,7 +77,6 @@ class ClusterQueue:
 
         # output path for the experiment log
         self.cmd_slurm = "sbatch --output {}/%N_%j.log".format(self.output_path)
-        # self.cmd_slurm = "sbatch --array"
 
         # special treatment for the "description" param (for convevience)
         if "description" in kwargs:
@@ -130,7 +127,7 @@ data_source_dirs = [
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data0.mat"
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat"
@@ -138,25 +135,13 @@ data_source_dirs = [
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat"
 ]
 
-# params during Distillation such as threshold-theta, no Data Augmentation yet
-# for thr in [0.9, 0.95, 0.99, 0.999]:
-#     for data_dir in data_source_dirs:
-#         cq = ClusterQueue(input_data=data_dir,
-#                           aug_method="None",
-#                           aug_scale=0,
-#                           from_epoch=0,
-#                           aug_folds=0,
-#                           theta_thr=thr)
-
-# params during main classifier training with Data Augmentation yet
-for ep in [1, 3, 5, 7]: #1, 3, , 8, 10
-    for scale in [0.05, 0.35, 0.5, 0.95]:  #, 0.2, 0.65, 0.8
-        for aug_meth in ["same_mean", "both_mean", "ops_mean"]:  #
-            for fd in [1, 3, 5, 7]: #, 3, 9
-                for data_dir in data_source_dirs:
-                    cq = ClusterQueue(input_data=data_dir,
-                                      aug_method=aug_meth,
-                                      aug_scale=scale,
-                                      from_epoch=ep,
-                                      aug_folds=fd,
-                                      theta_thr=0.999)
+for ep in [1, 3, 5, 7, 9]:
+    for thr in [0.9, 0.95, 0.99, 0.999]:
+        for aug_meth in ["same_mean", "op_mean", "both_mean"]:
+            for data_dir in data_source_dirs:
+                cq = ClusterQueue(input_data=data_dir,
+                                  aug_method=aug_meth,
+                                  aug_scale=0.5,
+                                  from_epoch=5,
+                                  aug_folds=10,
+                                  theta_thr=thr)

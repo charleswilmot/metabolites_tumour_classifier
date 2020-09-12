@@ -56,7 +56,7 @@ def sum_confusion(ret):
 
 
 def compute(sess, fetches, compute_batches=100, lr=0.0005,
-            if_get_wrong=False, if_get_certain=False, theta=0.99):
+            if_get_wrong=False, if_get_certain=False):
     """
     Compute the interested tensors and ops
     :param sess:
@@ -104,11 +104,11 @@ def compute(sess, fetches, compute_batches=100, lr=0.0005,
                 results[key] = results[key] + run_all[key]
             elif key in exp_keys:
                 results[key] = run_all[key]  #if np.isnan(run_all[key]).any()
-        
+
         if if_get_wrong:
             results = get_wrong_examples(results)
         if if_get_certain:
-            results = get_most_cer_uncertain_samples(results, cer_thr=theta, if_check_cam=if_check_cam)
+            results = get_most_cer_uncertain_samples(results, cer_thsh=0.999, if_check_cam=if_check_cam)
     return results
 
 
@@ -505,8 +505,6 @@ def training(sess, args, graph, saver):
 def train_phase(sess, graph, args, lr=0.001,
                 if_get_wrong=False, if_get_certain=False,
                 train_or_test="train"): # change
-    # sess, graph, args.test_every, lr=lr, if_get_wrong=False,
-    #                                 if_get_certain=True
     """
     Train phase
     :param sess:

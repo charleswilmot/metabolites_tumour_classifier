@@ -259,7 +259,9 @@ train_parser.add_argument(
 train_parser.add_argument(
     '--output_path', type=log_debug_arg(str, "output path"),
     default=None,
+    help="results save dir"
 )
+
 
 test_parser = subparsers.add_parser("test")
 test_parser.add_argument(
@@ -268,6 +270,7 @@ test_parser.add_argument(
     help="Path to a previously trained model.",
     default=None
 )
+
 test_parser.add_argument(
     '-x', '--data-not-labeled', action='store_true',
     help="Set this flag if the data you want to classify is not labeled."
@@ -330,16 +333,12 @@ if args.restore_from is None and args.output_path is None:  #cluster.py
     #                             time_str + "data-{}-class{}-{}-{}-aug_{}x{}-{}-{}".format(params.data_source, params.num_classes, params.model_name, params.postfix, args.aug_method, args.aug_folds, args.aug_scale, args.test_or_train))
     params.output_path = os.path.join(params.output_root,
                  "{}{}x{}_factor_{}_from-epoch_{}_from-lout40_{}_{}".format(time_str, args.aug_method, args.aug_folds, args.aug_scale, args.from_epoch, params.data_source, args.test_or_train))
-    params.postfix = "-test"
 elif args.restore_from is None and args.output_path is not None:
     params.output_path = args.output_path
-elif args.restore_from is not None:
-    params.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(params.data_source, "test")
+elif  args.restore_from is not None:
+    params.output_path = os.path.dirname(args.restore_from ) + "-test"
 
 params.model_save_dir = os.path.join(params.output_path, "network")
-# dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
-
-
 
 params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from
@@ -349,6 +348,7 @@ params.resume_training = (args.restore_from != None)
 if params.test_or_train == "test":
     params.if_from_certain = False
     params.if_save_certain = False
+    params.input_data = args.input_data
 elif params.test_or_train == "train":
     params.aug_scale = args.aug_scale
     params.aug_method = args.aug_method
@@ -357,6 +357,10 @@ elif params.test_or_train == "train":
     params.theta_thr = args.theta_thr
     # params.input_data = args.input_data
     params.if_save_certain = not params.if_from_certain
+# Make the output directory
+if not args.output_path:
+    dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+
 
 # Verbosity level:
 level = 50 - (args.verbose * 10) + 1

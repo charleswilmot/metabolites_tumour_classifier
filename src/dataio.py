@@ -240,9 +240,7 @@ def get_data(args):
             train_data["ids"] = X_train[:, 1]
             train_data["sample_ids"] = X_train[:, 0]
 
-        train_data["sample_ids"], train_data["ids"], train_data["labels"], train_data["spectra"] = \
-            oversample_train(train_data["sample_ids"], train_data["ids"],
-                             train_data["labels"], train_data["spectra"])
+        X_train, Y_train = oversample_train(X_train, Y_train)
         print("After oversampling--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]), "\n num of train class 1: ", len(np.where(train_data["labels"] == 1)[0]))
         train_data["num_samples"] = len(Y_train)
         train_data["spectra"] = zscore(train_data["spectra"], axis=1).astype(np.float32)
@@ -275,8 +273,7 @@ def get_data_from_certain_ids(args, certain_fns=["f1", "f2"]):
     train_data = {}
     test_data = {}
 
-    # certain_mat = np.empty((0, new_mat.shape[1]))
-    certain_inds_tot= np.empty((0))
+    certain_mat = np.empty((0, new_mat.shape[1]))
     for fn in certain_fns:
         certain = pd.read_csv(fn, header=0).values
         certain_inds = certain[:, 0].astype(np.int)

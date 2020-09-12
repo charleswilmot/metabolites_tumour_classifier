@@ -27,8 +27,11 @@ def get_available_gpus():
     logging.info([x.name for x in local_device_protos if x.device_type == 'GPU'])
 
 
+
 logger = log.getLogger("classifier")
 args = argument.params
+logger.info("------------args.aug_method", args.aug_method)
+logger.info("------------args.theta_thr", args.theta_thr)
 dataio.save_command_line(args)
 get_available_gpus()
 
@@ -44,8 +47,8 @@ tf.compat.v1.set_random_seed(args.seed)
 ## get leave-out train and test sets: dataio.split_data_for_lout_val(args)\ dataio.split_data_for_val(args)
 
 # Get augmentation of the data
-if args.if_from_certain and args.test_or_train == 'train':
-    certain_dir ="/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-28-None-meanx0-factor-0-from-ep-0-from-lout40-data5-theta-0.95-train/certains"
+if args.if_from_certain:
+    certain_dir ="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-30T15-18-21-data-lout40-data5-1d-class2-Res_ECG_CAM-step1-collect-aug_ops_meanx0-0-train-0.889/certains"
     logger.info("______________________________________________")
     print(certain_dir)
     logger.info("______________________________________________")
