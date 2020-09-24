@@ -18,7 +18,7 @@ def generate_experiment_path_str(description=None, restore_from=None, input_data
         raise ValueError('A model dir should be passed into!')
     description = description if description else "test"
     cv_set_id = os.path.basename(input_data).split("_")[-1].split(".")[0]
-    experiment_dir = os.path.dirname(restore_from) + "_on_{}_{}".format(cv_set_id, description)
+    experiment_dir = os.path.dirname(restore_from) + "-on-{}-{}".format(cv_set_id, description)
     return experiment_dir
 
 
@@ -109,76 +109,24 @@ class ClusterQueue:
 
 
 model_dirs = [
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-26-50_noisex2_factor_0.02_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-26-51_noisex5_factor_0.02_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-26-52_noisex7_factor_0.02_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-26-53_noisex10_factor_0.02_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-26-54_noisex2_factor_0.06_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-26-56_noisex5_factor_0.06_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-26-57_noisex7_factor_0.06_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-26-58_noisex10_factor_0.06_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-26-59_noisex2_factor_0.08_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-00_noisex5_factor_0.08_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-01_noisex7_factor_0.08_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-03_noisex10_factor_0.08_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-04_noisex2_factor_0.1_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-05_noisex5_factor_0.1_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-06_noisex7_factor_0.1_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-07_noisex10_factor_0.1_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-08_noisex2_factor_0.12_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-10_noisex5_factor_0.12_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-11_noisex7_factor_0.12_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-12_noisex10_factor_0.12_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-13_noisex2_factor_0.14_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-14_noisex5_factor_0.14_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-15_noisex7_factor_0.14_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-17_noisex10_factor_0.14_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-18_noisex2_factor_0.16_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-19_noisex5_factor_0.16_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-20_noisex7_factor_0.16_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-21_noisex10_factor_0.16_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-22_noisex2_factor_0.18_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-24_noisex5_factor_0.18_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-25_noisex7_factor_0.18_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-26_noisex10_factor_0.18_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-27_noisex2_factor_0.2_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-28_noisex5_factor_0.2_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-29_noisex7_factor_0.2_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-31_noisex10_factor_0.2_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-32_noisex2_factor_0.3_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-33_noisex5_factor_0.3_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-34_noisex7_factor_0.3_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-35_noisex10_factor_0.3_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-36_noisex2_factor_0.4_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-38_noisex5_factor_0.4_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-39_noisex7_factor_0.4_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-40_noisex10_factor_0.4_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-41_noisex2_factor_0.5_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-42_noisex5_factor_0.5_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-43_noisex7_factor_0.5_from-epoch_99_from-lout40_data5_train/network",
-"/home/epilepsy-data/data/metabolites/results/2020-04-23T20-27-45_noisex10_factor_0.5_from-epoch_99_from-lout40_data5_train/network",
-]
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-13T19-00-20-ops_meanx1-factor-0.95-from-ep-5-from-lout40-data5-theta-0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-13T19-00-19-ops_meanx1-factor-0.5-from-ep-5-from-lout40-data5-theta-0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-13T19-00-18-ops_meanx1-factor-0.35-from-ep-5-from-lout40-data5-theta-0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-13T19-00-17-ops_meanx1-factor-0.05-from-ep-5-from-lout40-data5-theta-0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-13T19-00-16-both_meanx1-factor-0.95-from-ep-5-from-lout40-data5-theta-0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-13T19-00-15-both_meanx1-factor-0.5-from-ep-5-from-lout40-data5-theta-0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-13T19-00-13-both_meanx1-factor-0.35-from-ep-5-from-lout40-data5-theta-0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-13T19-00-12-both_meanx1-factor-0.05-from-ep-5-from-lout40-data5-theta-0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-13T19-00-11-same_meanx1-factor-0.95-from-ep-5-from-lout40-data5-theta-0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-13T19-00-10-same_meanx1-factor-0.5-from-ep-5-from-lout40-data5-theta-0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-13T19-00-09-same_meanx1-factor-0.35-from-ep-5-from-lout40-data5-theta-0.95-train/network",
+"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-13T19-00-08-same_meanx1-factor-0.05-from-ep-5-from-lout40-data5-theta-0.95-train/network"
+    ]
 source = [
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat"]
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data0.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data1.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data2.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data3.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data4.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data6.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat"
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data7.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data8.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data9.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data0.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data1.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data2.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data3.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data4.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data6.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data7.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data8.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data9.mat" ]
+]
 
-for model, test_data in zip(model_dirs, source*len(model_dirs)):
+source = source*len(model_dirs) if len(source) == 1 else source
+for model, test_data in zip(model_dirs, source*len(model_dirs)):  #
     cq = ClusterQueue(restore_from=model, input_data=test_data)

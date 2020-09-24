@@ -72,7 +72,7 @@ def accuracy_figure(args, data, training=False, epoch=0):
     auc = metrics.roc_auc_score(data["test_labels"], data["test_logits"])
     max_acc = accuracy_plot(ax, data, training=training)
 
-    f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}.png'.format(epoch, max_acc, auc, args.data_source))
+    f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}-{}.png'.format(epoch, max_acc, auc, args.data_source, args.test_or_train))
     plt.close()
     logger.info("Accuracy plot saved")
 
@@ -91,8 +91,8 @@ def plot_auc_curve(args, data, epoch=0):
     plt.legend(loc=4)
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
-    f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.png'.format(epoch, auc, args.data_source))
-    np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}.csv'.format(epoch, auc, args.data_source),
+    f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.png'.format(epoch, auc, args.data_source, args.test_or_train))
+    np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.csv'.format(epoch, auc, args.data_source, args.test_or_train),
                np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_logits"][:, 1].reshape(-1,1))), fmt="%.8f", delimiter=',', header="labels,pred[:,1]")
     plt.close()
     return auc
@@ -402,7 +402,7 @@ def plot_sep_class_maps(labels_int, classmap_high, samples_test, predictions, sa
         row = row
     col = min(row, 5)
     counts = (np.arange(row*col).reshape(-1, col)[np.arange(0, row, 2)]).reshape(-1)# put attention beneath the signal
-    fig, axs = plt.subplots(row, col, 'col')
+    fig, axs = plt.subplots(row, col, sharex=True)
     plt.suptitle("Individual samples from class {} with attention".format(class_id))
     for j, vis, ori, label, pred in zip(counts, class_maps_plot, samples_plot, labels_plot, pred_plot):
         att_c = 'deepskyblue' if label == pred else 'r'
@@ -441,7 +441,7 @@ def plot_class_maps_in1(labels_int, classmap_high, samples_test, pred_labels, sa
     row = np.int(np.sqrt(len(inds)))
     col = min(row, 5)
     counts = np.arange(row * col)
-    fig, ax = plt.subplots(1,1,'col')
+    fig, ax = plt.subplots(1,1,sharex=True)
     first_correct = np.where(labels_plot == pred_plot)[0][0]
     first_wrong = np.where(labels_plot != pred_plot)[0][0]
 
@@ -489,7 +489,7 @@ def plot_random_class_maps(labels_int, classmap_answer, classmap_high, samples_t
     auc = metrics.roc_auc_score(labels_int, predictions[:, 1])
     row = plots_per_fig//2
     col = 2
-    fig, axs = plt.subplots(row, col, 'col')
+    fig, axs = plt.subplots(row, col, sharex=True)
     for j in range(num_images // plots_per_fig):
         for count, vis, ori in zip(counts, classmap_high[j*plots_per_fig : (j+1)*plots_per_fig], samples_plot[j*plots_per_fig : (j+1)*plots_per_fig]):
             label_c = 'k' if labels_plot[j*plots_per_fig+count] == pred_plot[j*plots_per_fig+count] else 'r'
@@ -607,7 +607,7 @@ def plot_aug_examples(new_mean, num2average, spec, true_labels, args):
     true_labels = true_labels.astype(np.int)
     plt.figure()
     rand_inds = np.random.choice(spec.shape[0], row * col)
-    f, axs = plt.subplots(row, col, 'col')
+    f, axs = plt.subplots(row, col, sharex=True)
     colors = ["royalblue", "darkviolet"]
     class_names = ["healthy", "tumor"]
     num_to_plot = 5
@@ -633,7 +633,7 @@ def plot_mean_of_each_class(train_spec, train_lbs, test_spec, test_args):
     plt.figure()
     num_to_plot = 50
     rand_inds = np.random.choice(test_spec.shape[0], num_to_plot)
-    f, axs = plt.subplots(row, col, 'col')
+    f, axs = plt.subplots(row, col, sharex=True)
     colors = ["royalblue", "darkviolet"]
     class_names = ["healthy", "tumor"]
     mean_train = np.mean(train_spec, axis=0)

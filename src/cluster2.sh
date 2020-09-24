@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 
 #SBATCH --partition sleuths
-#SBATCH --job-name meta-array
+#SBATCH --job-name metab
 #SBATCH --mem 9G
-#SBATCH --reservation triesch-shared
+##SBATCH --reservation triesch-shared
 #SBATCH --mincpus 2
 #SBATCH --gres gpu:1
 ##SBATCH --array 1-30

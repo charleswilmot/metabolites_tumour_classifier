@@ -330,13 +330,14 @@ if args.restore_from is None and args.output_path is None:  #cluster.py
     #                             time_str + "data-{}-class{}-{}-{}-aug_{}x{}-{}-{}".format(params.data_source, params.num_classes, params.model_name, params.postfix, args.aug_method, args.aug_folds, args.aug_scale, args.test_or_train))
     params.output_path = os.path.join(params.output_root,
                  "{}{}x{}_factor_{}_from-epoch_{}_from-lout40_{}_{}".format(time_str, args.aug_method, args.aug_folds, args.aug_scale, args.from_epoch, params.data_source, args.test_or_train))
+    params.postfix = "-test"
 elif args.restore_from is None and args.output_path is not None:
     params.output_path = args.output_path
-elif  args.restore_from is not None:
-    params.output_path = os.path.dirname(args.restore_from ) + "-test"
+elif args.restore_from is not None:
+    params.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(params.data_source, "test")
 
 params.model_save_dir = os.path.join(params.output_path, "network")
-dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+# dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
 
 
 
