@@ -11,9 +11,11 @@ import pickle
 import dataio
 import ipdb
 from sklearn import metrics
+
 logger = log.getLogger("classifier")
 # initializer = tf.glorot_uniform_initializer()
 initializer = tf.keras.initializers.he_normal(seed=845)
+
 
 def reduce_mean_loss_accuracy(ret):
     """
@@ -56,7 +58,7 @@ def sum_confusion(ret):
 
 
 def compute(sess, fetches, compute_batches=100, lr=0.0005,
-            if_get_wrong=False, if_get_certain=False):
+            if_get_wrong=False, if_get_certain=False, theta=0.99):
     """
     Compute the interested tensors and ops
     :param sess:
@@ -88,7 +90,6 @@ def compute(sess, fetches, compute_batches=100, lr=0.0005,
     if if_get_wrong:
         exp_keys += ["wrong_labels", "wrong_sample_ids", "wrong_features"]
 
-
     for key in exp_keys:
         results[key] = []
 
@@ -103,17 +104,17 @@ def compute(sess, fetches, compute_batches=100, lr=0.0005,
             if key in sum_keys:
                 results[key] = results[key] + run_all[key]
             elif key in exp_keys:
-                results[key] = run_all[key]  #if np.isnan(run_all[key]).any()
+                results[key] = run_all[key]  # if np.isnan(run_all[key]).any()
 
         if if_get_wrong:
             results = get_wrong_examples(results)
         if if_get_certain:
-            results = get_most_cer_uncertain_samples(results, cer_thsh=0.999, if_check_cam=if_check_cam)
+            results = get_most_cer_uncertain_samples(results, cer_thr=theta, if_check_cam=if_check_cam)
     return results
 
 
 def compute_test_only(sess, fetches, compute_batches=100, lr=0.0005,
-            if_get_wrong=False, if_get_certain=False):
+                      if_get_wrong=False, if_get_certain=False):
     """
     Compute test only results
     :param sess:
@@ -143,7 +144,6 @@ def compute_test_only(sess, fetches, compute_batches=100, lr=0.0005,
                          "certain_sample_ids", "certain_logits"]
     if if_get_wrong:
         exp_keys += ["wrong_labels", "wrong_sample_ids", "wrong_features"]
-
 
     for key in exp_keys:
         collections[key] = []
@@ -204,7 +204,8 @@ def get_most_cer_uncertain_samples(results, cer_thr=0.999, if_check_cam=True):
             results["certain_conv"] = np.vstack((results["certain_conv"], results["conv"][certain_inds]))
 
         results["certain_labels"] = np.append(results["certain_labels"], labels_int[certain_inds]).astype(np.int)
-        results["certain_sample_ids"] = np.append(results["certain_sample_ids"], sample_ids[certain_inds]).astype(np.int)
+        results["certain_sample_ids"] = np.append(results["certain_sample_ids"], sample_ids[certain_inds]).astype(
+            np.int)
         results["certain_logits"] = np.vstack((results["certain_logits"], results["logits"][certain_inds]))
 
     return results
@@ -239,7 +240,6 @@ def get_wrong_examples(results):
         results["wrong_labels"] = np.append(results["wrong_labels"], labels_int[wrong_inds]).astype(np.int)
         results["wrong_features"] = np.vstack((results["wrong_features"], results["features"][wrong_inds]))
     return results
-
 
 
 def initialize(sess, graph, test_only=False):
@@ -376,10 +376,12 @@ def get_returns(results, names, train_or_test='test'):
         elif k == 'loss':
             ret["{}_loss".format(train_or_test)] = results["loss"] / results["batch_size"]
         elif k == "batch_size":
-            ret["num_trained"] = results["batch_size"]   # it is only in training
+            ret["num_trained"] = results["batch_size"]  # it is only in training
         else:
-            ret["{}_".format(train_or_test)+k] = results[k]
+            ret["{}_".format(train_or_test) + k] = results[k]
     return ret
+
+
 ########################################################################
 def training(sess, args, graph, saver):
     """
@@ -423,9 +425,13 @@ def training(sess, args, graph, saver):
                                 lr=lr, if_get_wrong=False,
                                 if_get_certain=True, train_or_test="train")
         if len(ret_train["train_certain_sample_ids"]) > 0 and epoch < 10 and args.if_save_certain:
-            certain_data = np.concatenate((ret_train["train_certain_sample_ids"].reshape(-1, 1), ret_train["train_certain_labels"].reshape(-1, 1), ret_train["train_certain_logits"]), axis=1)
-            np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}_num_{}_{}_theta_{}.csv".format("train", epoch, ret_train["train_certain_sample_ids"].size, args.data_source, args.theta_thr)),
-                       certain_data, header="sample_ids,labels"+",logits" * args.num_classes, delimiter=",")
+            certain_data = np.concatenate((ret_train["train_certain_sample_ids"].reshape(-1, 1),
+                                           ret_train["train_certain_labels"].reshape(-1, 1),
+                                           ret_train["train_certain_logits"]), axis=1)
+            np.savetxt(os.path.join(args.output_path, "certains",
+                                    "certain_data_{}_epoch_{}_num_{}_{}_theta_{}.csv".format("train", epoch, ret_train[
+                                        "train_certain_sample_ids"].size, args.data_source, args.theta_thr)),
+                       certain_data, header="sample_ids,labels" + ",logits" * args.num_classes, delimiter=",")
 
         if ret_train is not None:
             output_data["train_loss"].append(ret_train["train_loss"])
@@ -433,7 +439,6 @@ def training(sess, args, graph, saver):
         else:
             end = True
         num_trained += ret_train["num_trained"]
-
 
         # test phase
         if_check_cam = True if "CAM" in args.model_name else False
@@ -447,7 +452,9 @@ def training(sess, args, graph, saver):
                                            ret_test["test_certain_labels"].reshape(-1, 1),
                                            ret_test["test_certain_logits"]), axis=1)
 
-            np.savetxt(os.path.join(args.output_path, "certains", "certain_data_{}_epoch_{}_num_{}_{}.csv".format("test", epoch, ret_test["test_certain_sample_ids"].size, args.data_source)),
+            np.savetxt(os.path.join(args.output_path, "certains",
+                                    "certain_data_{}_epoch_{}_num_{}_{}.csv".format("test", epoch, ret_test[
+                                        "test_certain_sample_ids"].size, args.data_source)),
                        certain_data, header="sample_ids,labels" + ",logits" * args.num_classes, delimiter=",")
 
         epoch = num_trained * 1.0 / graph["train_num_samples"]
@@ -467,7 +474,10 @@ def training(sess, args, graph, saver):
 
         if epoch > 50 and epoch % 50 == 0:
             print(
-                "Epoch {:0.1f} Best test accuracy {}, test AUC {}\n Test Confusion:\n{}".format(epoch, output_data["test_accuracy"][-1], metrics.roc_auc_score(ret_test["test_labels"],ret_test[ "test_logits"]), ret_test["test_confusion"]))
+                "Epoch {:0.1f} Best test accuracy {}, test AUC {}\n Test Confusion:\n{}".format(epoch, output_data[
+                    "test_accuracy"][-1], metrics.roc_auc_score(ret_test["test_labels"], ret_test["test_logits"]),
+                                                                                                ret_test[
+                                                                                                    "test_confusion"]))
             save_plots(sess, args, output_data, training=True, epoch=epoch)
 
         # save model
@@ -477,7 +487,7 @@ def training(sess, args, graph, saver):
                 "test AUC {}\n Test Confusion:\n{}\n"
                 "saved_dir: {}".format(epoch,
                                        output_data["test_accuracy"][-1],
-                                       metrics.roc_auc_score(ret_test["test_labels"],ret_test[ "test_logits"]),
+                                       metrics.roc_auc_score(ret_test["test_labels"], ret_test["test_logits"]),
                                        ret_test["test_confusion"],
                                        args.output_path))
             best_accuracy = output_data["test_accuracy"][-1]
@@ -504,7 +514,9 @@ def training(sess, args, graph, saver):
 
 def train_phase(sess, graph, args, lr=0.001,
                 if_get_wrong=False, if_get_certain=False,
-                train_or_test="train"): # change
+                train_or_test="train"):  # change
+    # sess, graph, args.test_every, lr=lr, if_get_wrong=False,
+    #                                 if_get_certain=True
     """
     Train phase
     :param sess:
@@ -532,7 +544,7 @@ def train_phase(sess, graph, args, lr=0.001,
 
 
 def validation_phase(sess, graph, compute_batches=100,
-            if_check_cam=False, train_or_test='test'):
+                     if_check_cam=False, train_or_test='test'):
     """
     Testing phase
     :param sess:
@@ -581,7 +593,7 @@ def validation_phase(sess, graph, compute_batches=100,
 
 
 def test_phase(sess, graph, compute_batches=100,
-            if_check_cam=False, train_or_test='test'):
+               if_check_cam=False, train_or_test='test'):
     """
     Testing phase
     :param sess:
@@ -600,9 +612,9 @@ def test_phase(sess, graph, compute_batches=100,
         fetches = get_fetches(graph, names, train_or_test=train_or_test)
 
         results, collections = compute_test_only(sess, fetches,
-                          compute_batches=compute_batches,
-                          if_get_wrong=True,
-                          if_get_certain=True)
+                                                 compute_batches=compute_batches,
+                                                 if_get_wrong=True,
+                                                 if_get_certain=True)
 
         loss, accuracy = reduce_mean_loss_accuracy(results)
         confusion = sum_confusion(results)
@@ -614,16 +626,17 @@ def test_phase(sess, graph, compute_batches=100,
         conv = concat_data(results, key="conv")
         sample_ids = concat_data(results, key="sample_ids")
 
-        ret = {"test_gap_w": results[0]["gap_w"], "test_certain_conv": collections["certain_conv"], "test_conv": collections["conv"]}
+        ret = {"test_gap_w": results[0]["gap_w"], "test_certain_conv": collections["certain_conv"],
+               "test_conv": collections["conv"]}
     else:
         names = ['loss', 'num_correct', 'confusion',
                  'batch_size', 'labels', 'ids',
                  'logits', 'features', "sample_ids"]
         fetches = get_fetches(graph, names, train_or_test=train_or_test)
         results, collections = compute_test_only(sess, fetches,
-                          compute_batches=compute_batches,
-                          if_get_wrong=True,
-                          if_get_certain=True)
+                                                 compute_batches=compute_batches,
+                                                 if_get_wrong=True,
+                                                 if_get_certain=True)
 
         loss, accuracy = reduce_mean_loss_accuracy(results)
         confusion = sum_confusion(results)
@@ -633,18 +646,17 @@ def test_phase(sess, graph, compute_batches=100,
         sample_ids = concat_data(results, key="sample_ids")
         logits = concat_data(results, key="logits")
 
-
     ret.update({"test_loss": loss, "test_accuracy": accuracy, "test_confusion": confusion,
-           "test_labels": labels, "test_ids": ids, "test_features": features,
-           "test_sample_ids": sample_ids,
-           "test_logits": logits,
-           "test_wrong_features": collections["wrong_features"],
-           "test_wrong_labels": collections["wrong_labels"],
-           "test_wrong_sample_ids": collections["wrong_sample_ids"],
-           "test_certain_labels": collections["certain_labels"],
-           "test_certain_logits": collections["certain_logits"],
-           "test_certain_sample_ids": collections["certain_sample_ids"],
-           })
+                "test_labels": labels, "test_ids": ids, "test_features": features,
+                "test_sample_ids": sample_ids,
+                "test_logits": logits,
+                "test_wrong_features": collections["wrong_features"],
+                "test_wrong_labels": collections["wrong_labels"],
+                "test_wrong_sample_ids": collections["wrong_sample_ids"],
+                "test_certain_labels": collections["certain_labels"],
+                "test_certain_logits": collections["certain_logits"],
+                "test_certain_sample_ids": collections["certain_sample_ids"],
+                })
 
     return ret
 
@@ -674,8 +686,6 @@ def condition(end, output_data, epoch, number_of_epochs):
         return not c
 
 
-
-
 ## Dispatches the call between test and train
 # @param sess a tensorflow Session object
 # @param args the arguments passed to the software
@@ -703,18 +713,21 @@ def main_train(sess, args, graph):
         initialize(sess, graph, test_only=True)
         if_check_cam = True if "CAM" in args.model_name else False
         output_data = test_phase(sess, graph, compute_batches=graph["test_batches"],
-                              if_check_cam=if_check_cam, train_or_test='test')
+                                 if_check_cam=if_check_cam, train_or_test='test')
 
         if len(output_data["test_certain_labels"]) > 0:
-            certain_data = np.concatenate((output_data["test_certain_sample_ids"].reshape(-1, 1), output_data["test_certain_labels"].reshape(-1, 1), output_data["test_certain_logits"]), axis=1)
-            np.savetxt(os.path.join(args.output_path,  "certain_data_{}_epoch_{}.csv".format("test", "TEST")), certain_data, header="sample_ids,labels" + ",logits" * args.num_classes, delimiter=",")
+            certain_data = np.concatenate((output_data["test_certain_sample_ids"].reshape(-1, 1),
+                                           output_data["test_certain_labels"].reshape(-1, 1),
+                                           output_data["test_certain_logits"]), axis=1)
+            np.savetxt(os.path.join(args.output_path, "certain_data_{}_epoch_{}.csv".format("test", "TEST")),
+                       certain_data, header="sample_ids,labels" + ",logits" * args.num_classes, delimiter=",")
 
         with open(args.output_path + '/Data{}_class{}_model{}_test_return_data_acc_{:.3f}.txt'.format(
-                    args.data_source, args.num_classes, args.model_name,
-                    output_data["test_accuracy"]), 'wb') as ff:
+                args.data_source, args.num_classes, args.model_name,
+                output_data["test_accuracy"]), 'wb') as ff:
             pickle.dump({"output_data": output_data}, ff)
         dataio.save_plots(sess, args, output_data, training=False)
         logger.debug("Starting training")
 
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
-        
+

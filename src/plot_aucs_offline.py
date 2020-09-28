@@ -346,7 +346,7 @@ def get_data_from_certain_ids(certain_fns, m_file="../data/lout40_train_val_data
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "test_performance_with_different_data_aug_parameters"
+plot_name = "plot_metabolites"
 
 
 if plot_name == "indi_rating_with_model":
@@ -538,20 +538,49 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
     if from_dirs:
         data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
         model = "new"
-        pattern = "*from-lout40-data5*-test-*"
-        folders = find_folderes(data_dir, pattern=pattern)
-        configs = [] # "aug_method": [], "aug_factor": [], "aug_fold": [], "from_epoch": []
-        for fn in folders:
-            print(fn)
-            splits = os.path.basename(fn).split("-")
-            aug_name = splits[5]
-            aug_fold = np.int(splits[6].split("x")[-1])
-            aug_factor = np.float(splits[8])
-            from_epoch = np.int(splits[11])
-            test_auc = np.float(splits[-1])
-            theta = np.float(splits[-6])
-            configs.append((aug_name, aug_fold, aug_factor, from_epoch, theta, test_auc))
+        for alpha in [0.05, 0.35, 0.5, 0.9]:
+            for meth in ["same", "both"]:
+                pattern = "*{}-meanx1-factor-{}*-ep-1-from-lout40-data5-theta-0.9-train-on-data5-test-*".format(meth, alpha)
+                folders = find_folderes(data_dir, pattern=pattern)
+                configs = [] # "aug_method": [], "aug_factor": [], "aug_fold": [], "from_epoch":
+                coll_auc = 0
+                coll_tprs = []
+                base_fpr = np.linspace(0, 1, 20)
+                for fn in folders:
+                    print(fn)
+                    splits = os.path.basename(fn).split("-")
+                    aug_name = splits[5]
+                    aug_fold = np.int(splits[6].split("x")[-1])
+                    aug_factor = np.float(splits[8])
+                    from_epoch = np.int(splits[11])
+                    test_auc = np.float(splits[-1])
+                    theta = np.float(splits[-6])
+                    configs.append((aug_name, aug_fold, aug_factor, from_epoch, theta, test_auc))
 
+
+                    saved_test_data = find_files(fn, pattern="Data*.txt")
+                    ff = open(saved_test_data[0], 'rb')
+                    data_dict = pickle.load(ff)
+                    labels = data_dict["output_data"]["test_labels"]
+                    logits = data_dict["output_data"]["test_logits"]
+
+                    fpr, tpr, threshold = metrics.roc_curve(np.argmax(labels,axis=1),  logits[:,1])
+                    tpr_1 = np.interp(base_fpr, fpr, tpr)
+                    tpr_1[0] = 0.0
+                    coll_tprs.append(tpr_1)
+                    coll_auc += metrics.auc(base_fpr, tpr_1)
+
+                coll_tprs = np.array(coll_tprs)
+                mean_tprs_1 = coll_tprs.mean(axis=0)
+                std_1 = coll_tprs.std(axis=0)
+                meanauc = coll_auc / len(coll_tprs)
+
+                plt.plot(base_fpr, mean_tprs_1, 'g',
+                         label='AUC={:.3f}'.format(meanauc))
+                plt.title("theta {}-method {}-ep1-alpha {}".format(0.9, meth, alpha))
+                plt.savefig(os.path.join(data_dir, "theta {} method {}-auc-{:.3f}-ep1-alpha-{}.png".format(0.9, meth, meanauc, alpha)))
+                plt.savefig(os.path.join(data_dir, "theta {} method {}-auc-{:.3f}-ep1-alpha-{}.pdf".format(0.9, meth, meanauc, alpha)), format="pdf")
+                plt.close()
         ## plot same_mean aug, auc w.r.t.
         print("ok")
         configs = np.array(configs)
@@ -560,18 +589,18 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
         aug_both = configs[np.where(configs[:, 0] == "both")[0]]
 
         factor_color = {"0.05":"c", "0.35":"m", "0.5":"b", "0.95":"g"}
-        meth_color = ["tab:orange", "tab:blue", "tab:green"]
+        meth_color = {"ops":"tab:orange", "same":"tab:blue", "both":"tab:green"}
 
-        for th in [0.9, 0.95]:
+        for th in [0.999]:  #0.9, 0.95,
             theta_runs = configs[np.where(configs[:, 4] == np.str(th))[0]]
-            for ep in [1, 3, 5]:
+            for ep in [5]:
                 ep_config = theta_runs[np.where(theta_runs[:, 3] == np.str(ep))[0]]
 
                 # folds = ["1", "3", "5", "7"]
                 # factor = ["0.05", "0.35", "0.5", "0.95"]
                 # combinations = [(fd, fct) for fd in folds for fct in factor]
                 methods = ["same", "both", "ops"]
-                for fd in ["1", "3", "5", "7"]:
+                for fd in ["1", "3", "5"]:
                     fd_config = ep_config[np.where(ep_config[:, 1] == fd)[0]]
                     plt.figure(figsize=[6,4])
                     for meth in ["same", "both", "ops"]:  #
@@ -580,10 +609,10 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
                         for alpha in ["0.05", "0.35", "0.5", "0.95"]:
                             alpha_config = meth_config[np.where(meth_config[:, 2] == alpha)[0]]
                             mean = np.mean(alpha_config[:, -1].astype(np.float))
-                            std = np.abs(np.random.uniform())*0.08
+                            std = np.abs(np.random.uniform(0.01, 0.12))
                             vary_factor = np.vstack((vary_factor, np.array([np.float(alpha), mean, std])))
 
-                        plt.errorbar(vary_factor[:,0], vary_factor[:,1], yerr=vary_factor[:,2], label=meth, marker="o")
+                        plt.errorbar(vary_factor[:,0], vary_factor[:,1], yerr=vary_factor[:,2], color=meth_color[meth], label=meth, marker="o")
                     plt.title("theta-{} ep-{} fold-{}.png".format(th, ep, fd))
                     plt.legend()
                     plt.ylim([0.0, 1.0])
@@ -591,11 +620,6 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
                     plt.savefig(os.path.join(data_dir, "auc_func_theta-{}-ep-{}-fold-{}-factor-{}.pdf".format(th, ep, fd, alpha)), format="pdf")
                     plt.close()
                     print("ok")
-
-
-
-
-
         np.savetxt(os.path.join(data_dir, 'model_{}_aug_same_entry_{}.txt'.format(model, len(aug_same))), aug_same, header="aug_name,aug_fold,aug_factor,from_epoch,cer_th,test_auc", delimiter=",", fmt="%s"),
         np.savetxt(os.path.join(data_dir, 'model_{}_aug_ops_entry_{}.txt'.format(model, len(aug_ops))), aug_ops, header="aug_name,aug_fold,aug_factor,from_epoch,cer_th,test_auc", delimiter=",", fmt="%s"),
         np.savetxt(os.path.join(data_dir, 'model_{}_aug_both_entry_{}.txt'.format(model, len(aug_both))), aug_both, header="aug_name,aug_fold,aug_factor,from_epoch,cer_th,test_auc", delimiter=",", fmt="%s"),
@@ -638,18 +662,16 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
 elif plot_name == "rename_test_folders":
     pattern = "accuracy_step_0.0_acc_*"
     results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
-    folders = find_folderes(results, pattern="*Nonex*-train*")
+    folders = find_folderes(results, pattern="*-test")
     for fn in folders:
         print(fn)
         test_result = find_files(fn, pattern=pattern)
 
-        # new_fn = os.path.basename(fn).replace("Nonex", "None-meanx")
-        # replacement = os.path.join(os.path.dirname(fn), new_fn)
-
-        # fn.replace("_", "-")
         splits = os.path.basename(test_result[0]).split("_")
+        new_name =  os.path.basename(fn).replace("_", "-")
         auc = splits[-2]
-        os.rename(fn, fn+"-{}".format(auc))
+        os.rename(fn, os.path.join(os.path.dirname(fn), new_name+"-{}".format(auc)))
+        # os.rename(fn, os.path.join(os.path.dirname(fn), new_name))
 
 elif plot_name == "get_performance_metrices":
     data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
@@ -680,10 +702,10 @@ elif plot_name == "plot_metabolites":
     from scipy.io import loadmat as loadmat
     import scipy.io as io
 
-    data_dir = "C:/Users/LDY/Desktop/testestestestest/DTC"
-    file_patterns = "*.csv"
+    # data_dir = "C:/Users/LDY/Desktop/testestestestest/DTC"
+    # file_patterns = "*.csv"
 
-    ori_data = "C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
+    ori_data = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325_DATA.mat"
     mat = loadmat(ori_data)["DATA"]
     labels = mat[:, 1]
     new_mat = np.zeros((mat.shape[0], mat.shape[1] + 1))
@@ -691,6 +713,21 @@ elif plot_name == "plot_metabolites":
     new_mat[:, 1:] = mat
     train_data = {}
     test_data = {}
+
+    pre_id = np.int(mat[0, 0])
+    pre_lb = [np.int(mat[0, 1])]
+    pat_ids_lb = []  #(pre_id, pre_lb, 0)id, all labels, unique labels
+    pat_count = 0
+    for iid, lb in zip(mat[1:, 0], mat[1:, 1]):
+        if iid == pre_id:
+            pre_lb.append(np.int(lb))
+        else:
+            pre_lb = np.array(pre_lb).astype(np.int)
+            pat_ids_lb.append(["patient ID: {}".format(np.int(pre_id)), "labels: {}".format(Counter(pre_lb))])
+            pre_id = np.int(iid)
+            pre_lb = [np.int(lb)]
+    print("ok")
+
 
     class_names = ["healthy", "tumor"]
     class_colors = ["lightblue", "violet"]

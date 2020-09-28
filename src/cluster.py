@@ -22,7 +22,7 @@ def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None
     else:
         cv_set_id = "TT"
     description = description if description else "train"
-    output_path = os.path.join(EXPERIMENT_DIR_ROOT, "{}_{}x{}_factor_{}_from-ep_{}_from-lout40_{}-theta_{}-{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, cv_set_id, theta_thr, description))
+    output_path = os.path.join(EXPERIMENT_DIR_ROOT, "{}-{}x{}-factor-{}-from-ep-{}-from-lout40-{}-theta-{}-{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, cv_set_id, theta_thr, description))
     # experiment_dir = EXPERIMENT_DIR_ROOT + "{}_exp0.776_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
     return output_path
 
@@ -148,15 +148,18 @@ data_source_dirs = [
 #                           aug_folds=0,
 #                           theta_thr=thr)
 
+
+#
+
 # params during main classifier training with Data Augmentation yet
-for ep in [1, 3, 5, 7]: #1, 3, , 8, 10
-    for scale in [0.05, 0.35, 0.5, 0.95]:  #, 0.2, 0.65, 0.8
-        for aug_meth in ["same_mean", "both_mean", "ops_mean"]:  #
-            for fd in [1, 3, 5, 7]: #, 3, 9
+for ep in [5]: #1, 3, , 8, 10
+    for aug_meth in ["same_mean", "both_mean", "ops_mean"]:  #
+        for fd in [1]: #, 3, 9
+            for scale in [0.05, 0.35, 0.5, 0.95]:  #, 0.65, 0.2, 0.8, 0.2, 0.65, 0.8
                 for data_dir in data_source_dirs:
                     cq = ClusterQueue(input_data=data_dir,
                                       aug_method=aug_meth,
                                       aug_scale=scale,
                                       from_epoch=ep,
                                       aug_folds=fd,
-                                      theta_thr=0.90)
+                                      theta_thr=0.95)
