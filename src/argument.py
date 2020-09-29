@@ -231,34 +231,38 @@ train_parser.add_argument(
 )
 train_parser.add_argument(
     '--aug_scale', type=log_debug_arg(float, "augmenatation scale w: w*another + (1-w)*self"),
-     default=None,
+     default=0,
     help="a float number of aug scale."
 )
 
 train_parser.add_argument(
     '--from_epoch', type=log_debug_arg(int, "Use certain examples from epoch "),
-    default=None,
+    default=0,
     help="Certain examples from which epoch to use for training"
 )
 train_parser.add_argument(
     '--aug_folds', type=log_debug_arg(int, "How many folds to augment"),
-    default=None,
+    default=0,
     help="How many folds to augment the data"
 )
 train_parser.add_argument(
     '--theta_thr', type=float, dest="theta_thr",
-    default=0.999,
+    default=0.90,
     help="the threshold to determine certain"
 )
 # when use cluster
 train_parser.add_argument(
     '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
-    default=None,
+    default="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325_DATA.mat",
     help="which cross-validation set is used"
 )
 train_parser.add_argument(
     '--output_path', type=log_debug_arg(str, "output path"),
     default=None,
+)
+train_parser.add_argument(
+    '--seed', type=log_debug_arg(int, "random seed"),
+    default=10,
 )
 
 test_parser = subparsers.add_parser("test")
@@ -324,11 +328,12 @@ else:
 if args.input_data is None:  # don't run on the cluster
     params.data_source = os.path.basename(params.input_data).split("_")[-1].split(".")[0]
 else: # run on the cluster
+    params.input_data = args.input_data
     params.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
 if args.restore_from is None and args.output_path is None:  #cluster.py
     # params.output_path = os.path.join(params.output_root,
     #                             time_str + "data-{}-class{}-{}-{}-aug_{}x{}-{}-{}".format(params.data_source, params.num_classes, params.model_name, params.postfix, args.aug_method, args.aug_folds, args.aug_scale, args.test_or_train))
-    params.output_path = os.path.join(params.output_root,
+    params.output_path = os.path.join(params.output_root, "2020-08-30-restuls_after_review",
                  "{}{}x{}_factor_{}_from-epoch_{}_from-lout40_{}_{}".format(time_str, args.aug_method, args.aug_folds, args.aug_scale, args.from_epoch, params.data_source, args.test_or_train))
     params.postfix = "-test"
 elif args.restore_from is None and args.output_path is not None:
@@ -336,15 +341,14 @@ elif args.restore_from is None and args.output_path is not None:
 elif args.restore_from is not None:
     params.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(params.data_source, "test")
 
-params.model_save_dir = os.path.join(params.output_path, "network")
-# dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
-
-
-
 params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from
 params.test_or_train = args.test_or_train
 params.resume_training = (args.restore_from != None)
+params.seed = args.seed
+
+params.model_save_dir = os.path.join(params.output_path, "network")
+dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
 
 if params.test_or_train == "test":
     params.if_from_certain = False
@@ -355,7 +359,7 @@ elif params.test_or_train == "train":
     params.aug_folds = args.aug_folds
     params.from_epoch = args.from_epoch
     params.theta_thr = args.theta_thr
-    # params.input_data = args.input_data
+    #
     params.if_save_certain = not params.if_from_certain
 
 # Verbosity level:

@@ -11,7 +11,8 @@ EXPERIMENT_DIR_ROOT = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_a
 
 
 def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None,
-                                 description=None, from_epoch=None, input_data=None, theta_thr=0.999):
+                                 description=None, from_epoch=None, input_data=None,
+                                 theta_thr=0.99, rand_seed=129):
     date = time.strftime("%Y-%m-%dT%H-%M-%S", time.localtime())
     # aug_method = default_aug_method if aug_method is None else aug_method
     # aug_folds = default_folds if aug_folds is None else aug_folds
@@ -22,7 +23,7 @@ def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None
     else:
         cv_set_id = "TT"
     description = description if description else "train"
-    output_path = os.path.join(EXPERIMENT_DIR_ROOT, "{}-{}x{}-factor-{}-from-ep-{}-from-lout40-{}-theta-{}-{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, cv_set_id, theta_thr, description))
+    output_path = os.path.join(EXPERIMENT_DIR_ROOT, "{}-{}x{}-factor-{}-from-ep-{}-from-lout40-{}-theta-{}-s{}-{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, cv_set_id, theta_thr, rand_seed, description))
     # experiment_dir = EXPERIMENT_DIR_ROOT + "{}_exp0.776_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
     return output_path
 
@@ -74,6 +75,7 @@ class ClusterQueue:
             from_epoch=kwargs["from_epoch"] if "from_epoch" in kwargs else None,
             input_data=kwargs["input_data"] if "input_data" in kwargs else None,
             theta_thr=kwargs["theta_thr"] if "theta_thr" in kwargs else None,
+            rand_seed=kwargs["seed"] if "seed" in kwargs else 129,
             description=kwargs["description"] if "description" in kwargs else None)
         make_output_dir(self.output_path, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
 
@@ -84,7 +86,7 @@ class ClusterQueue:
         # special treatment for the "description" param (for convevience)
         if "description" in kwargs:
             self.cmd_slurm += " --job-name {}".format(kwargs["description"])
-        self.cmd_slurm += " cluster2.sh"
+        self.cmd_slurm += " cluster.sh"
 
         # Creating the flags to be passed to classifier.py
         self.cmd_python = ""
@@ -126,7 +128,7 @@ class ClusterQueue:
 #                                   aug_folds=fold,
 #                                   from_epoch=ep_num)
 data_source_dirs = [
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325_DATA.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data0.mat"
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
@@ -152,14 +154,15 @@ data_source_dirs = [
 #
 
 # params during main classifier training with Data Augmentation yet
-for ep in [5]: #1, 3, , 8, 10
-    for aug_meth in ["same_mean", "both_mean", "ops_mean"]:  #
-        for fd in [1]: #, 3, 9
-            for scale in [0.05, 0.35, 0.5, 0.95]:  #, 0.65, 0.2, 0.8, 0.2, 0.65, 0.8
-                for data_dir in data_source_dirs:
-                    cq = ClusterQueue(input_data=data_dir,
-                                      aug_method=aug_meth,
-                                      aug_scale=scale,
-                                      from_epoch=ep,
-                                      aug_folds=fd,
-                                      theta_thr=0.95)
+# for ep in [5]: #1, 3, , 8, 10
+#     for aug_meth in ["same_mean", "both_mean", "ops_mean"]:  #
+#         for fd in [1]: #, 3, 9
+#             for scale in [0.05, 0.35, 0.5, 0.95]:  #, 0.65, 0.2, 0.8, 0.2, 0.65, 0.8
+random_seeds = np.random.randint(0, 9999, 2)
+for s in random_seeds:
+    cq = ClusterQueue(input_data=data_source_dirs[0],
+                      aug_method="none",
+                      aug_scale=0,
+                      from_epoch=0,
+                      aug_folds=0,
+                      seed=s)

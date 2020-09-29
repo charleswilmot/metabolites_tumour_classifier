@@ -220,7 +220,8 @@ def get_data(args):
     if args.test_ratio == 100:
         X_train, X_test, Y_train, Y_test = [], sub_mat, [], sub_mat[:, 2]
     else:
-        X_train, X_test, Y_train, Y_test = train_test_split(sub_mat, sub_mat[:, 2], test_size=args.test_ratio / 100.)
+        # X_train, X_test, Y_train, Y_test = train_test_split(sub_mat, sub_mat[:, 2], test_size=args.test_ratio / 100.)
+        X_train, X_test, Y_train, Y_test = sub_mat, sub_mat[0], sub_mat[:, 2], sub_mat[0, 2]
 
     test_data["spectra"] = zscore(X_test[:, 3:], axis=1).astype(np.float32)
     test_data["labels"] = Y_test.astype(np.int32)

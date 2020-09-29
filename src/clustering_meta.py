@@ -21,7 +21,6 @@ import datetime
 from scipy.stats import zscore
 import ipdb
 from collections import Counter
-from sklearn import svm
 from sklearn import metrics
 
 import matplotlib.pylab as pylab
@@ -940,9 +939,9 @@ def load_data(data_dir, num_classes=2):
         need_inds = need_inds.astype(np.int32)
         spectra = spectra[need_inds]
         labels = labels[need_inds]
-        ids = ids[need_inds]
+        pat_ids = ids[need_inds]
 
-    return spectra, labels, ids
+    return spectra, labels, pat_ids, sample_ids
 
 
 def plot_from_certain_ids(data_dir, fn):
@@ -1012,30 +1011,65 @@ def cluster_spectra(data_dir):
     print("clustering is Done!")
 
 
-def SVM_classifier(train_data_dir, test_data_dir):
-    spec, lbs, ids = load_data(train_data_dir, num_classes=2)
+def SVM_classifier(train_data_dir, test_data_dir, data_source="lout40_5"):
+    from sklearn import svm
+    from sklearn.calibration import CalibratedClassifierCV
+
+    spec, lbs, pat_ids, sp_ids = load_data(train_data_dir, num_classes=2)
     data_mode = 'spec'
-    postfix = 'whole-20190325'
-    root_folder = '../SVM/metabolites_SVM-{}-{}/{}' \
-        .format(data_mode, postfix, '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now()))
+    results_dir = '/home/epilepsy-data/data/metabolites/SVM-results/{}-{}' \
+        .format('{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now()), data_source)
     # Get data
-    print("Got all data", spec.shape, 'label shape:', lbs.shape, '\n save_foler: ', root_folder)
-    check_make_dir(root_folder, [])
+    print("Got all data", spec.shape, 'label shape:', lbs.shape, '\n save_foler: ', results_dir)
+    check_make_dir(results_dir, [])
 
-    clf = svm.SVC()
+    epoch = 5
+    svmm = svm.LinearSVC(max_iter=epoch)
+    clf = CalibratedClassifierCV(svmm)
     clf.fit(spec, lbs)
+    pred_prob_train = clf.predict_proba(spec)
 
-    test_spec, test_lbs, test_ids = load_data(test_data_dir, num_classes=2)
+    test_spec, test_lbs, test_pat_ids, test_sp_ids = load_data(test_data_dir, num_classes=2)
     pred = clf.predict(test_spec)
+    pred_prob_test = clf.predict_proba(test_spec)
+
+    percentiles = {}
+    inds_perc_train = {}
+    inds_perc_test = {}
+    percentiles["90"] = np.percentile(pred_prob_train, 90)
+    percentiles["95"] = np.percentile(pred_prob_train, 95)
+    percentiles["98"] = np.percentile(pred_prob_train, 98)
+    inds_perc_train["90"] = np.where(np.sum([p >percentiles["90"] for p in pred_prob_train], axis=1) == 1)[0]
+    inds_perc_train["95"] = np.where(np.sum([p >percentiles["95"] for p in pred_prob_train], axis=1) == 1)[0]
+    inds_perc_train["98"] = np.where(np.sum([p >percentiles["98"] for p in pred_prob_train], axis=1) == 1)[0]
+    inds_perc_test["90"] = np.where(np.sum([p > percentiles["90"]for p in pred_prob_test], axis=1) == 1)[0]
+    inds_perc_test["95"] = np.where(np.sum([p > percentiles["95"]for p in pred_prob_test], axis=1) == 1)[0]
+    inds_perc_test["98"] = np.where(np.sum([p > percentiles["98"]for p in pred_prob_test], axis=1) == 1)[0]
+
+    for k in ["90", "95", "98"]:
+        concat_data_train = np.concatenate((np.array(sp_ids)[inds_perc_train[k]].reshape(-1, 1),
+                                            np.array(pat_ids)[inds_perc_train[k]].reshape(-1, 1),
+                                       np.array(lbs)[inds_perc_train[k]].reshape(-1, 1),
+                                       pred_prob_train[inds_perc_train[k]]), axis=1)
+        np.savetxt(os.path.join(results_dir,
+                                "train_top_{}th_ep{}_num_{}_{}_theta_{:.4f}.csv".format(k, epoch, inds_perc_train[k].size, data_source, percentiles[k])),
+                   concat_data_train, header="sample_ids,pat_ids,labels" + ",logits" * 2, delimiter=",")
+        concat_data_test = np.concatenate((np.array(test_sp_ids)[inds_perc_test[k]].reshape(-1, 1),
+                                           np.array(test_pat_ids)[inds_perc_test[k]].reshape(-1, 1),
+                                       np.array(test_lbs)[inds_perc_test[k]].reshape(-1, 1),
+                                           pred_prob_test[inds_perc_test[k]]), axis=1)
+        np.savetxt(os.path.join(results_dir,
+                                "test_top_{}th_ep{}_num_{}_{}_theta_{:.4f}.csv".format(k, epoch, inds_perc_test[k].size, data_source, percentiles[k])),
+                   concat_data_test, header="sample_ids,pat_ids,labels" + ",logits" * 2, delimiter=",")
 
     auc = metrics.roc_auc_score(test_lbs, pred)
-    np.savetxt(os.path.join(root_folder, "svm_pred_labels_auc_{:.3f}.txt".format(auc)), np.array(pred), fmt="%d", delimiter=",")
+    np.savetxt(os.path.join(results_dir, "svm_pred_labels_auc_{:.3f}.txt".format(auc)), np.array(pred), fmt="%d", delimiter=",")
 
 
 #######################################################################################
 if __name__ == "__main__":
 
-    process = "train"
+    process = "svm"
 
 
 
@@ -1052,5 +1086,5 @@ if __name__ == "__main__":
         train_data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
         test_data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-        SVM_classifier(train_data_dir, test_data_dir)
+        SVM_classifier(train_data_dir, test_data_dir, data_source="lout40_5")
 

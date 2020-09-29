@@ -36,7 +36,6 @@ if not args.seed:
     temp_seed = np.random.randint(0, 9999)
     args.seed = temp_seed
 
-    
 np.random.seed(seed=args.seed)
 tf.compat.v1.set_random_seed(args.seed)
 

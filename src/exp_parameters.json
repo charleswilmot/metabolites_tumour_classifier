@@ -6,7 +6,7 @@
             "model_config": "./model_parameters.json",
             "num_classes": 2,
             "batch_size": 32,
-            "test_bs": 211,
+            "test_bs": 128,
             "seed": null,
 
             "out_format": "m",
@@ -28,22 +28,21 @@
             "learning_rate": 0.001,
             "postfix": "0.95",
             "if_from_certain": false,
-            "if_save_certain": false
+            "if_save_certain": true
         },
 
         "train": {
-            "number_of_epochs": 201,
+            "number_of_epochs": 1,
             "test_freq": 1,
             "test_every": null,
-            "input_data": "../data/20190325/20190325-3class_lout40_train_test_data5.mat",
-            "test_ratio": 10,
+
+            "test_ratio": 0.02,
             "restore_from": null,
             "num_train": null
 
         },
 
         "test":{
-            "input_data": "../data/20190325/20190325-3class_lout40_val_data5.mat",
             "test_ratio": 100
 
         }

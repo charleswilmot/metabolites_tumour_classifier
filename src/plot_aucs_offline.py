@@ -346,7 +346,7 @@ def get_data_from_certain_ids(certain_fns, m_file="../data/lout40_train_val_data
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "plot_metabolites"
+plot_name = "100_single_ep_patient_wise_rate"
 
 
 if plot_name == "indi_rating_with_model":
@@ -702,10 +702,11 @@ elif plot_name == "plot_metabolites":
     from scipy.io import loadmat as loadmat
     import scipy.io as io
 
-    # data_dir = "C:/Users/LDY/Desktop/testestestestest/DTC"
-    # file_patterns = "*.csv"
+    data_dir = "C:/Users/LDY/Desktop/testestestestest/DTC"
+    file_patterns = "*.csv"
 
     ori_data = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325_DATA.mat"
+
     mat = loadmat(ori_data)["DATA"]
     labels = mat[:, 1]
     new_mat = np.zeros((mat.shape[0], mat.shape[1] + 1))
@@ -713,6 +714,10 @@ elif plot_name == "plot_metabolites":
     new_mat[:, 1:] = mat
     train_data = {}
     test_data = {}
+    pat_ids = mat[:, 0].astype(np.int)
+
+    need_inds = np.where(pat_ids == 6)[0]
+    need_spec = mat[need_inds, 2:]
 
     pre_id = np.int(mat[0, 0])
     pre_lb = [np.int(mat[0, 1])]
@@ -727,7 +732,6 @@ elif plot_name == "plot_metabolites":
             pre_id = np.int(iid)
             pre_lb = [np.int(lb)]
     print("ok")
-
 
     class_names = ["healthy", "tumor"]
     class_colors = ["lightblue", "violet"]
@@ -782,6 +786,151 @@ elif plot_name == "plot_metabolites":
             plt.savefig(
                 os.path.join(data_dir, "certain_samples_class{}_fig_{}.png".format(c, ii)))
             plt.close()
+
+elif plot_name == "100_single_ep_corr_classification_rate":
+    """
+    Get the correct classification rate with 100 runs of single-epoch-training
+    """
+    data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate"
+    files = find_files(data_dir, pattern="one_ep_data_train*.csv")
+
+    # get correct count in 100 rauns
+    ids_w_count = []
+    dict_count = {key: 0 for key in np.arange(9243)}  #total number 9243
+    for fn in files:
+        values = pd.read_csv(fn, header=0).values
+        ids = values[:, 0].astype(np.int)
+        lbs = values[:, 1]
+        prob = values[:, 2:]
+
+        pred_lbs = np.argmax(prob, axis=1)
+        right_inds = np.where(pred_lbs == lbs)[0]
+        ids_w_count += list(ids[right_inds])
+
+        count_all = Counter(ids_w_count)
+        dict_count.update(count_all)
+
+    print("ok")
+    counter_array = np.array([[key, val] for (key, val) in dict_count.items()])
+    sort_inds = np.argsort(counter_array[:, 1])
+    sample_ids_key = counter_array[sort_inds, 0]
+    rates = counter_array[sort_inds, 1]/counter_array[:, 1].max()
+
+    fig, ax1 = plt.subplots()
+    color = 'tab:red'
+    ax1.set_xlabel("sample index (sorted)")
+    ax1.set_ylabel("correct classification rate", color=color)
+    ax1.plot(rates, label="original", color=color)
+    ax1.tick_params(axis='y', labelcolor=color)
+    plt.legend()
+    plt.savefig(data_dir+"/original_correct-classfication-rate-in-100-runs.png")
+    # plt.close()
+
+    certain_w_count = []
+    certain_w_corr_count = []
+    dict_count_certain = {key: 0 for key in np.arange(9243)}
+    dict_corr_count_certain = {key: 0 for key in np.arange(9243)}
+    cert_files = find_files(data_dir, pattern="certain_data_train_*.csv")
+    for fn in cert_files:
+        values = pd.read_csv(fn, header=0).values
+        ids = values[:, 0].astype(np.int)
+        lbs = values[:, 1]
+        prob = values[:, 2:]
+
+        pred_lbs = np.argmax(prob, axis=1)
+        right_inds = np.where(pred_lbs == lbs)[0]
+        certain_w_count += list(ids)
+        certain_w_corr_count += list(ids[right_inds])
+
+        count_certain_all = Counter(certain_w_count)
+        dict_count_certain.update(count_certain_all)
+        dict_corr_count_certain.update(Counter(certain_w_corr_count))
+
+    print("ok")
+    counter_array_certain = np.array([[key, val] for (key, val) in dict_count_certain.items()])
+    counter_array_certain_corr = np.array([[key, val] for (key, val) in dict_corr_count_certain.items()])
+    # sort_inds_certain = np.argsort(counter_array_certain[:, 1])
+    rates_certain = counter_array_certain[sort_inds, 1] / counter_array_certain[:, 1].max()
+    rates_certain_corr = counter_array_certain_corr[sort_inds, 1] / counter_array_certain_corr[:, 1].max()
+    sort_samp_ids_certain = counter_array_certain[sort_inds, 0]
+    # full_rats_certain = np.append(np.zeros(7442 - len(counter_array_certain)), rates)
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+    color = 'tab:blue'
+    ax2.set_ylabel('correct classification rate', color=color)  # we already handled the x-label with ax1
+    ax2.plot(rates_certain, label="distilled", color=color)
+    ax2.tick_params(axis='y', labelcolor=color)
+    ax2.legend(loc="upper right")
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    # plt.xlabel("sample index (sorted)")
+    # plt.ylabel("correct classification rate")
+
+    concat_data = np.concatenate((np.array(sort_inds).reshape(-1,1), rates.reshape(-1,1), rates_certain.reshape(-1,1), rates_certain_corr.reshape(-1,1)), axis=1)
+    np.savetxt(data_dir+"/100_runs_sort_inds_rate_certain.csv", concat_data, fmt="%.5f", delimiter=",", header="ori_sort_rate_id,ori_sort_rate,certain_sele_rate,certain_corr_rate")
+    plt.savefig(data_dir+"/also_certain_correct_rate_with_certain-classfication-rate-in-100-runs.png"),
+    plt.savefig(data_dir+"/also_certain_correct_rate_with_certain-classfication-rate-in-100-runs.pdf", format="pdf")
+    print("ok")
+
+elif plot_name == "100_single_ep_patient_wise_rate":
+    # load original data to get patient-wise statistics
+    from scipy.io import loadmat as loadmat
+    import scipy.io as io
+    ori_data = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325_DATA.mat"
+    ## Get the selection rate patien-wise, corr_rate also patient-wise
+    sort_inds_files = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/100_runs_sort_inds_rate_certain.csv"
+    sort_data = pd.read_csv(sort_inds_files, header=0).values
+    sort_inds = sort_data[:, 0].astype(np.int)
+    sort_ori_corr_rate = sort_data[:, 1]
+    sort_select_rate = sort_data[:, 2]
+    sort_select_corr_rate = sort_data[:, 3]
+
+    mat = loadmat(ori_data)["DATA"]
+    sort_pat_ids = mat[:, 0][sort_inds]
+    labels = mat[:, 1]
+    new_mat = np.zeros((mat.shape[0], mat.shape[1] + 1))
+    new_mat[:, 0] = np.arange(mat.shape[0])  # tag every sample
+    new_mat[:, 1:] = mat
+    train_data = {}
+    test_data = {}
+    pat_ids = mat[:, 0].astype(np.int)
+
+    uniq_pat_ids = np.unique(sort_pat_ids)
+    pat_summary = []
+    for pid in uniq_pat_ids:
+        pat_inds = np.where(sort_pat_ids == pid)[0]
+        corr_rate = np.mean(sort_ori_corr_rate[pat_inds])
+        select_rate = np.mean(sort_select_rate[pat_inds])
+        select_corr_rate = np.mean(sort_select_corr_rate[pat_inds])
+        pat_summary.append([pid, corr_rate, select_rate, select_corr_rate, len(pat_inds)])
+    print("ok")
+    pat_sort_sum = sorted(pat_summary, key=lambda x: x[1])
+    np.savetxt(os.path.dirname(
+        sort_inds_files) + "/100-runs-pat-ids-sorted-[pid,corr_rate,select_rate, select_corr_rate,num_samples].csv",
+               np.array(pat_sort_sum), fmt="%.5f", delimiter=",")
+
+    plt.plot(np.array(pat_sort_sum)[:, 1], label="ori. corr rate"),
+    plt.plot(np.array(pat_sort_sum)[:, 2], label="dist. select rate"),
+    plt.plot(np.array(pat_sort_sum)[:, 3], label="dist. corr rate"),
+    plt.legend()
+    plt.xlabel("patient index (sorted)")
+    plt.ylabel("normalized rate (100 runs)")
+    plt.title(
+        "Patient-wise sorted by correct rate")
+    plt.savefig(os.path.dirname(sort_inds_files) + "/100-runs-patient-wise-statistics-sort-by-ori-corr-rate.png")
+    plt.savefig(os.path.dirname(sort_inds_files) + "/100-runs-patient-wise-statistics-sort-by-ori-corr-rate.pdf",
+                format="pdf")
+    plt.close()
+
+    plt.plot(np.array(pat_sort_sum)[:, 4], color="c",
+             label="# of samples")
+    plt.xlabel("patient index (sorted)")
+    plt.ylabel("# of samples")
+    plt.savefig(os.path.dirname(sort_inds_files) + "/100-runs-patient-wise-statistics-sort-by-num-amples.png")
+    plt.savefig(os.path.dirname(sort_inds_files) + "/100-runs-patient-wise-statistics-sort-by-num-amples.pdf",
+                format="pdf")
+    plt.close()
+
+
+
 
 
 
