@@ -113,7 +113,7 @@ def compute(sess, fetches, compute_batches=100, lr=0.0005,
         if if_get_wrong:
             results = get_wrong_examples(results)
         if if_get_certain:
-            results = get_most_cer_uncertain_samples(results, cer_thr=0.9, if_check_cam=if_check_cam)
+            results = get_most_cer_uncertain_samples(results, cer_thr=theta, if_check_cam=if_check_cam)
         if one_epoch_learning:
             results = get_one_epoch_learning_stats(results)
     return results
@@ -459,23 +459,23 @@ def training(sess, args, graph, saver):
         ret_train = train_phase(sess, graph, args,
                                 lr=lr, if_get_wrong=False,
                                 if_get_certain=True, train_or_test="train")
-        # if len(ret_train["train_certain_sample_ids"]) > 0 and epoch < 10 and args.if_save_certain:
-        certain_data = np.concatenate((np.array(ret_train["train_certain_sample_ids"]).reshape(-1, 1),
-                                       np.array(ret_train["train_certain_ids"]).reshape(-1, 1),
-                                       np.array(ret_train["train_certain_labels"]).reshape(-1, 1),
-                                       ret_train["train_certain_logits"]), axis=1)
-        np.savetxt(os.path.join(args.output_path, "certains",
-                                "certain_data_{}_epoch_{}_num_{}_{}_theta_{}.csv".format("train", epoch, ret_train[
-                                    "train_certain_sample_ids"].size, args.data_source, args.theta_thr)),
-                   certain_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
-        one_ep_data = np.concatenate((np.array(ret_train["train_one_ep_sample_ids"]).reshape(-1, 1),
-                                      np.array(ret_train["train_one_ep_ids"]).reshape(-1, 1),
-                                    np.array(ret_train["train_one_ep_labels"]).reshape(-1, 1),
-                                    ret_train["train_one_ep_logits"]), axis=1)
-        np.savetxt(os.path.join(args.output_path, "certains",
-                                "one_ep_data_{}_epoch_{}_num_{}_{}_theta_{}.csv".format("train", epoch, ret_train[
-                                    "train_one_ep_sample_ids"].size, args.data_source, args.theta_thr)),
-                   one_ep_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
+        if len(ret_train["train_certain_sample_ids"]) > 0 and epoch < 10 and args.if_save_certain:
+            certain_data = np.concatenate((np.array(ret_train["train_certain_sample_ids"]).reshape(-1, 1),
+                                           np.array(ret_train["train_certain_ids"]).reshape(-1, 1),
+                                           np.array(ret_train["train_certain_labels"]).reshape(-1, 1),
+                                           ret_train["train_certain_logits"]), axis=1)
+            np.savetxt(os.path.join(args.output_path, "certains",
+                                    "certain_data_{}_epoch_{}_num_{}_{}_theta_{}.csv".format("train", epoch, ret_train[
+                                        "train_certain_sample_ids"].size, args.data_source, args.theta_thr)),
+                       certain_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
+            # one_ep_data = np.concatenate((np.array(ret_train["train_one_ep_sample_ids"]).reshape(-1, 1),
+            #                               np.array(ret_train["train_one_ep_ids"]).reshape(-1, 1),
+            #                             np.array(ret_train["train_one_ep_labels"]).reshape(-1, 1),
+            #                             ret_train["train_one_ep_logits"]), axis=1)
+            # np.savetxt(os.path.join(args.output_path, "certains",
+            #                         "one_ep_data_{}_epoch_{}_num_{}_{}_theta_{}.csv".format("train", epoch, ret_train[
+            #                             "train_one_ep_sample_ids"].size, args.data_source, args.theta_thr)),
+            #            one_ep_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
 
 
 
@@ -493,7 +493,7 @@ def training(sess, args, graph, saver):
                                     compute_batches=graph["test_num_batches"],
                                     train_or_test="test")
 
-        if args.if_save_certain and len(ret_test["test_certain_labels"]) > 0 and epoch < 20:
+        if args.if_save_certain and len(ret_test["test_certain_labels"]) > 0 and epoch < 11:
             certain_data = np.concatenate((ret_test["test_certain_sample_ids"].reshape(-1, 1),
                                            ret_test["test_certain_labels"].reshape(-1, 1),
                                            ret_test["test_certain_logits"]), axis=1)
@@ -526,35 +526,35 @@ def training(sess, args, graph, saver):
                                                                                                     "test_confusion"]))
             save_plots(sess, args, output_data, training=True, epoch=epoch)
 
-        # save model
-        # if output_data["test_accuracy"][-1] > best_accuracy:
-        #     print(
-        #         "Epoch {:0.1f} Best test accuracy {}, "
-        #         "test AUC {}\n Test Confusion:\n{}\n"
-        #         "saved_dir: {}".format(epoch,
-        #                                output_data["test_accuracy"][-1],
-        #                                metrics.roc_auc_score(ret_test["test_labels"], ret_test["test_logits"]),
-        #                                ret_test["test_confusion"],
-        #                                args.output_path))
-        #     best_accuracy = output_data["test_accuracy"][-1]
-        #     auc = metrics.roc_auc_score(output_data["test_labels"], output_data["test_logits"])
-        #     save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]),
-        #                   name=np.str("{:.4f}".format(best_accuracy)))
-        #     save_plots(sess, args, output_data, training=True, epoch=epoch)
-        #
-        #     if "CAM" in args.model_name:
-        #         class_maps, rand_inds = plot.get_class_map(ret_test["test_labels"],
-        #                                                    ret_test["test_conv"],
-        #                                                    ret_test["test_gap_w"],
-        #                                                    args.data_len, 1, number2use=200)
-        #         plot.plot_class_activation_map(sess, class_maps,
-        #                                        ret_test["test_features"][rand_inds],
-        #                                        ret_test["test_labels"][rand_inds],
-        #                                        ret_test["test_logits"][rand_inds],
-        #                                        epoch, args)
+        ## save model
+        if output_data["test_accuracy"][-1] > best_accuracy:
+            print(
+                "Epoch {:0.1f} Best test accuracy {}, "
+                "test AUC {}\n Test Confusion:\n{}\n"
+                "saved_dir: {}".format(epoch,
+                                       output_data["test_accuracy"][-1],
+                                       metrics.roc_auc_score(ret_test["test_labels"], ret_test["test_logits"]),
+                                       ret_test["test_confusion"],
+                                       args.output_path))
+            best_accuracy = output_data["test_accuracy"][-1]
+            auc = metrics.roc_auc_score(output_data["test_labels"], output_data["test_logits"])
+            save_my_model(best_saver, sess, args.model_save_dir, len(output_data["test_accuracy"]),
+                          name=np.str("{:.4f}".format(best_accuracy)))
+            save_plots(sess, args, output_data, training=True, epoch=epoch)
+
+            if "CAM" in args.model_name:
+                class_maps, rand_inds = plot.get_class_map(ret_test["test_labels"],
+                                                           ret_test["test_conv"],
+                                                           ret_test["test_gap_w"],
+                                                           args.data_len, 1, number2use=200)
+                plot.plot_class_activation_map(sess, class_maps,
+                                               ret_test["test_features"][rand_inds],
+                                               ret_test["test_labels"][rand_inds],
+                                               ret_test["test_logits"][rand_inds],
+                                               epoch, args)
 
     logger.info("Training procedure done")
-    # save_plots(sess, args, output_data, training=True, epoch=epoch)
+    save_plots(sess, args, output_data, training=True, epoch=epoch)
     return output_data
 
 
@@ -755,7 +755,7 @@ def main_train(sess, args, graph):
         initialize(sess, graph, test_only=False)
         output_data = training(sess, args, graph, saver)
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
-        # dataio.save_plots(sess, args, output_data, training=True)
+        dataio.save_plots(sess, args, output_data, training=True)
     else:
         logger.info("Starting testing")
         initialize(sess, graph, test_only=True)

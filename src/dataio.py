@@ -220,8 +220,8 @@ def get_data(args):
     if args.test_ratio == 100:
         X_train, X_test, Y_train, Y_test = [], sub_mat, [], sub_mat[:, 2]
     else:
-        # X_train, X_test, Y_train, Y_test = train_test_split(sub_mat, sub_mat[:, 2], test_size=args.test_ratio / 100.)
-        X_train, X_test, Y_train, Y_test = sub_mat, sub_mat[0], sub_mat[:, 2], sub_mat[0, 2]
+        X_train, X_test, Y_train, Y_test = train_test_split(sub_mat, sub_mat[:, 2], test_size=args.test_ratio / 100.)
+        # X_train, X_test, Y_train, Y_test = sub_mat, sub_mat[0], sub_mat[:, 2], sub_mat[0, 2]  #only for 100-single-epoch run
 
     test_data["spectra"] = zscore(X_test[:, 3:], axis=1).astype(np.float32)
     test_data["labels"] = Y_test.astype(np.int32)
@@ -522,16 +522,17 @@ def get_data_tensors(args, certain_fns=None):
     data["test_batches"] = test_data["num_samples"] // args.test_bs
     print("test samples: ", test_data["num_samples"], "num_batches: ", data["test_batches"])
     if args.test_or_train == 'train':
-        train_spectra, train_labels, train_sample_ids = tf.constant(train_data["spectra"]), tf.constant(
-            train_data["labels"]), tf.constant(train_data["sample_ids"])
+        train_spectra, train_labels, train_ids, train_sample_ids = tf.constant(train_data["spectra"]), tf.constant(
+            train_data["labels"]), tf.constant(train_data["ids"]), tf.constant(train_data["sample_ids"])
         train_ds = tf.compat.v1.data.Dataset.from_tensor_slices(
-            (train_spectra, train_labels, train_sample_ids)).shuffle(buffer_size=8000).repeat().batch(
+            (train_spectra, train_labels, train_ids, train_sample_ids)).shuffle(buffer_size=8000).repeat().batch(
             args.batch_size)
         iter_train = train_ds.make_initializable_iterator()
         batch_train = iter_train.get_next()
         data["train_features"] = batch_train[0]
         data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
-        data["train_sample_ids"] = batch_train[2]  # in training, we don't consider patient-ids
+        data["train_ids"] = batch_train[2]  # in training, we don't consider patient-ids
+        data["train_sample_ids"] = batch_train[3]  # in training, we don't consider patient-ids
         data["train_initializer"] = iter_train.initializer
         data["train_num_samples"] = train_data["num_samples"]
         data["train_batches"] = train_data["num_samples"] // args.batch_size

@@ -23,7 +23,7 @@ def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None
     else:
         cv_set_id = "TT"
     description = description if description else "train"
-    output_path = os.path.join(EXPERIMENT_DIR_ROOT, "{}-{}x{}-factor-{}-from-ep-{}-from-lout40-{}-theta-{}-s{}-{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, cv_set_id, theta_thr, rand_seed, description))
+    output_path = os.path.join(EXPERIMENT_DIR_ROOT, "{}-{}x{}-factor-{}-from-ep-{}-RNN-from-lout40-{}-theta-{}-s{}-{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, cv_set_id, theta_thr, rand_seed, description))
     # experiment_dir = EXPERIMENT_DIR_ROOT + "{}_exp0.776_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
     return output_path
 
@@ -128,27 +128,27 @@ class ClusterQueue:
 #                                   aug_folds=fold,
 #                                   from_epoch=ep_num)
 data_source_dirs = [
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325_DATA.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data0.mat"
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat"
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data8.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat"
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325_DATA.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data0.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data8.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat"
 ]
 
 # params during Distillation such as threshold-theta, no Data Augmentation yet
-# for thr in [0.9, 0.95, 0.99, 0.999]:
-#     for data_dir in data_source_dirs:
-#         cq = ClusterQueue(input_data=data_dir,
-#                           aug_method="None",
-#                           aug_scale=0,
-#                           from_epoch=0,
-#                           aug_folds=0,
-#                           theta_thr=thr)
+for thr in [0.9]:
+    for data_dir in data_source_dirs:
+        cq = ClusterQueue(input_data=data_dir,
+                          aug_method="None",
+                          aug_scale=0,
+                          from_epoch=0,
+                          aug_folds=0,
+                          theta_thr=thr)
 
 
 #
@@ -158,11 +158,20 @@ data_source_dirs = [
 #     for aug_meth in ["same_mean", "both_mean", "ops_mean"]:  #
 #         for fd in [1]: #, 3, 9
 #             for scale in [0.05, 0.35, 0.5, 0.95]:  #, 0.65, 0.2, 0.8, 0.2, 0.65, 0.8
-random_seeds = np.random.randint(0, 9999, 2)
-for s in random_seeds:
-    cq = ClusterQueue(input_data=data_source_dirs[0],
-                      aug_method="none",
-                      aug_scale=0,
-                      from_epoch=0,
-                      aug_folds=0,
-                      seed=s)
+#                 cq = ClusterQueue(input_data=data_source_dirs[0],
+#                                   aug_method="none",
+#                                   aug_scale=0,
+#                                   from_epoch=0,
+#                                   aug_folds=0,
+#                                   seed=188)
+
+
+# 100 single-epoch runs
+# random_seeds = np.random.randint(0, 9999, 2)
+# for s in random_seeds:
+#     cq = ClusterQueue(input_data=data_source_dirs[0],
+#                       aug_method="none",
+#                       aug_scale=0,
+#                       from_epoch=0,
+#                       aug_folds=0,
+#                       seed=s)

@@ -76,10 +76,10 @@
                     "model_name": "RNN",
                     "bn": true,
                     "rnn_dims": [64],
-                    "fc_dim": [128],
-                    "drop_rnn": 0.7,
+                    "fc_dim": [32],
+                    "drop_rnn": 0.5,
                     "drop_rnn_ln": 0.5,
-                    "drop_fc": 0.8
+                    "drop_fc": 0.5
                     }
 
 

@@ -22,21 +22,21 @@
             "restore_from": null,
             "data_source": null,
 
-            "model_name": "Res_ECG_CAM",
+            "model_name": "RNN",
             "optimizer_type": "adam",
             "loss_type": "softmax_ce",
             "learning_rate": 0.001,
-            "postfix": "0.95",
+            "postfix": "none",
             "if_from_certain": false,
             "if_save_certain": true
         },
 
         "train": {
-            "number_of_epochs": 1,
+            "number_of_epochs": 201,
             "test_freq": 1,
             "test_every": null,
 
-            "test_ratio": 0.02,
+            "test_ratio": 0.2,
             "restore_from": null,
             "num_train": null
 
