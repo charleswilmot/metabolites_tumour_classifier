@@ -116,17 +116,8 @@ class ClusterQueue:
         os.system("watch tail -n 40 \"{}\"".format(self.output_path + "/log/*.log"))
 
 
-# run all the experiments with different configurations
-# for ep_num in range(1, 11):
-#     for augmentation_method in ["same_mean", "ops_mean", "both_mean"]:
-#         for factor in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
-#             for fold in range(1, 11):
-#                 cq = ClusterQueue(aug_method=augmentation_method,
-#                                   aug_scale=factor,
-#                                   aug_folds=fold,
-#                                   from_epoch=ep_num)
 data_source_dirs = [
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325_DATA.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data0.mat"
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
@@ -139,27 +130,28 @@ data_source_dirs = [
 ]
 
 # params during Distillation such as threshold-theta, no Data Augmentation yet
-# for thr in [0.9, 0.95, 0.99, 0.999]:
-#     for data_dir in data_source_dirs:
-#         cq = ClusterQueue(input_data=data_dir,
-#                           aug_method="None",
-#                           aug_scale=0,
-#                           from_epoch=0,
-#                           aug_folds=0,
-#                           theta_thr=thr)
+
+for trial in range(100):
+    cq = ClusterQueue(input_data=data_source_dirs[0],
+                              aug_method="None",
+                              aug_scale=0,
+                              from_epoch=0,
+                              aug_folds=0,
+                      seed=np.random.randint(0, 9999)
+                      )
 
 
 #
 
 # params during main classifier training with Data Augmentation yet
-for ep in [5]: #1, 3, , 8, 10
-    for aug_meth in ["same_mean", "both_mean", "ops_mean"]:  #
-        for fd in [1]: #, 3, 9
-            for scale in [0.05, 0.35, 0.5, 0.95]:  #, 0.65, 0.2, 0.8, 0.2, 0.65, 0.8
-                for data_dir in data_source_dirs:
-                    cq = ClusterQueue(input_data=data_dir,
-                                      aug_method=aug_meth,
-                                      aug_scale=scale,
-                                      from_epoch=ep,
-                                      aug_folds=fd,
-                                      theta_thr=0.95)
+# for ep in [5]: #1, 3, , 8, 10
+#     for aug_meth in ["same_mean", "both_mean", "ops_mean"]:  #
+#         for fd in [1]: #, 3, 9
+#             for scale in [0.05, 0.35, 0.5, 0.95]:  #, 0.65, 0.2, 0.8, 0.2, 0.65, 0.8
+#                 for data_dir in data_source_dirs:
+#                     cq = ClusterQueue(input_data=data_dir,
+#                                       aug_method=aug_meth,
+#                                       aug_scale=scale,
+#                                       from_epoch=ep,
+#                                       aug_folds=fd,
+#                                       theta_thr=0.95)

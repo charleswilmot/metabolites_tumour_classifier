@@ -7,7 +7,7 @@
             "num_classes": 2,
             "batch_size": 32,
             "test_bs": 211,
-            "seed": null,
+            "randseed": null,
 
             "out_format": "m",
             "data_len": 288,

@@ -250,6 +250,11 @@ train_parser.add_argument(
     default=0.999,
     help="the threshold to determine certain"
 )
+train_parser.add_argument(
+    '--randseed', type=float, dest="randseed",
+    default=0.999,
+    help="the threshold to determine certain"
+)
 # when use cluster
 train_parser.add_argument(
     '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
@@ -345,6 +350,7 @@ params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from
 params.test_or_train = args.test_or_train
 params.resume_training = (args.restore_from != None)
+params.randseed = args.randseed
 
 if params.test_or_train == "test":
     params.if_from_certain = False
