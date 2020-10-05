@@ -32,11 +32,11 @@
         },
 
         "train": {
-            "number_of_epochs": 201,
+            "number_of_epochs": 100,
             "test_freq": 1,
             "test_every": null,
 
-            "test_ratio": 0.2,
+            "test_ratio": 0.001,
             "restore_from": null,
             "num_train": null
 

@@ -465,8 +465,8 @@ def training(sess, args, graph, saver):
                                            np.array(ret_train["train_certain_labels"]).reshape(-1, 1),
                                            ret_train["train_certain_logits"]), axis=1)
             np.savetxt(os.path.join(args.output_path, "certains",
-                                    "certain_data_{}_epoch_{}_num_{}_{}_theta_{}.csv".format("train", epoch, ret_train[
-                                        "train_certain_sample_ids"].size, args.data_source, args.theta_thr)),
+                                    "certain_data_{}_epoch_{}_num_{}_{}_theta_{}_s{}.csv".format("train", epoch, ret_train[
+                                        "train_certain_sample_ids"].size, args.data_source, args.theta_thr, args.randseed)),
                        certain_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
             # one_ep_data = np.concatenate((np.array(ret_train["train_one_ep_sample_ids"]).reshape(-1, 1),
             #                               np.array(ret_train["train_one_ep_ids"]).reshape(-1, 1),
@@ -558,6 +558,87 @@ def training(sess, args, graph, saver):
     return output_data
 
 
+def single_epo_runs(sess, args, graph):
+    """
+    Complete training procedure
+    :param sess: a tensorflow Session object
+    :param args: the arguments passed to the software
+    :param graph: graph the graph (cf See also)
+    :param saver:
+    :return:
+    """
+    logger.info("Starting training procedure")
+
+    output_data = {}
+    output_data["train_loss"] = []
+    output_data["train_accuracy"] = []
+    output_data["train_confusion"] = 0
+    output_data["test_loss"] = []
+    output_data["test_accuracy"] = []
+    output_data["test_confusion"] = 0
+    output_data["test_logits"] = []
+    output_data["current_step"] = 0
+    num_trained = 0
+    lr = args.learning_rate
+
+    # while condition(end, output_data, epoch, args.number_of_epochs):
+    for epoch in range(args.number_of_epochs):
+        # single-epoch-learning to get correct clf rate of the whole dataset.
+        # train phase, reinitialize the model in each epoch
+        args.randseed = np.random.randint(0, 9999)
+        tf.compat.v1.set_random_seed(np.int(args.randseed))
+        initialize(sess, graph, test_only=False)
+        sess.run([tf.compat.v1.global_variables_initializer(), tf.compat.v1.local_variables_initializer()])
+        
+        if len(output_data[
+                   "test_accuracy"]) > 4:  # if the test_acc keeps dropping for 3 steps, reduce the learning rate
+            lr = reduce_lr_on_plateu(
+                lr,
+                np.array(output_data["test_accuracy"][-3 - 1:]),
+                factor=0.5, patience=3,
+                epsilon=1e-04, min_lr=10e-8)
+
+        ret_train = train_phase(sess, graph, args,
+                                lr=lr, if_get_wrong=False,
+                                if_get_certain=True, train_or_test="train")
+        
+        # save the certain as well as the logits for all samples
+        if args.if_save_certain:
+            certain_data = np.concatenate((np.array(ret_train["train_certain_sample_ids"]).reshape(-1, 1),
+                                           np.array(ret_train["train_certain_ids"]).reshape(-1, 1),
+                                           np.array(ret_train["train_certain_labels"]).reshape(-1, 1),
+                                           ret_train["train_certain_logits"]), axis=1)
+            np.savetxt(os.path.join(args.output_path, "certains",
+                                    "certain_data_{}_epoch_{}_num_{}_{}_theta_{}_s{}.csv".format("train", epoch, ret_train[
+                                        "train_certain_sample_ids"].size, args.data_source, args.theta_thr, args.randseed)),
+                       certain_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
+        one_ep_data = np.concatenate((np.array(ret_train["train_one_ep_sample_ids"]).reshape(-1, 1),
+                                      np.array(ret_train["train_one_ep_ids"]).reshape(-1, 1),
+                                    np.array(ret_train["train_one_ep_labels"]).reshape(-1, 1),
+                                    ret_train["train_one_ep_logits"]), axis=1)
+        np.savetxt(os.path.join(args.output_path, "certains",
+                                "one_ep_data_{}_epoch_{}_num_{}_{}_theta_{}_s{}.csv".format("train", epoch, ret_train[
+                                    "train_one_ep_sample_ids"].size, args.data_source, args.theta_thr, args.randseed)),
+                   one_ep_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
+
+        if ret_train is not None:
+            output_data["train_loss"].append(ret_train["train_loss"])
+            output_data["train_accuracy"].append(ret_train["train_accuracy"])
+        else:
+            end = True
+        num_trained += ret_train["num_trained"]
+
+        epoch = num_trained * 1.0 / graph["train_num_samples"]
+        # output_data["test_conv"] = ret["test_conv"]
+        output_data["current_step"] += 1
+        # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch
+
+    logger.info("100 single-epoch Training procedure done")
+    save_plots(sess, args, output_data, training=True, epoch=epoch)
+    return output_data
+
+
+
 def train_phase(sess, graph, args, lr=0.001,
                 if_get_wrong=False, if_get_certain=False,
                 train_or_test="train"):  # change
@@ -582,11 +663,15 @@ def train_phase(sess, graph, args, lr=0.001,
 
     ret = compute(sess, fetches, compute_batches=args.test_every, lr=lr,
                   if_get_wrong=if_get_wrong, if_get_certain=if_get_certain,
-                  one_epoch_learning=True, theta=args.theta_thr)
-
-    return_names = ["accuracy", "loss", "confusion", "batch_size",
-                    "certain_labels", "certain_logits", "certain_sample_ids", "certain_ids",
-                    "one_ep_labels", "one_ep_logits", "one_ep_sample_ids", "one_ep_ids"]
+                  one_epoch_learning=args.if_single_runs, theta=args.theta_thr)
+    
+    if args.if_single_runs:  #collect the ids and sample ids
+        return_names = ["accuracy", "loss", "confusion", "batch_size",
+                            "certain_labels", "certain_logits", "certain_sample_ids", "certain_ids",
+                            "one_ep_labels", "one_ep_logits", "one_ep_sample_ids", "one_ep_ids"]
+    else:
+        return_names = ["accuracy", "loss", "confusion", "batch_size",
+                    "certain_labels", "certain_logits", "certain_sample_ids", "certain_ids"]
 
     return get_returns(ret, return_names, train_or_test=train_or_test)
 
@@ -750,13 +835,13 @@ def main_train(sess, args, graph):
         logger.info("Initializing network with random weights")
         sess.run([tf.compat.v1.global_variables_initializer(), tf.compat.v1.local_variables_initializer()])
 
-    if args.test_or_train == 'train':
+    if args.test_or_train == 'train' and not args.if_single_runs:
         logger.info("Starting training")
         initialize(sess, graph, test_only=False)
         output_data = training(sess, args, graph, saver)
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
         dataio.save_plots(sess, args, output_data, training=True)
-    else:
+    elif args.test_or_train == 'test':
         logger.info("Starting testing")
         initialize(sess, graph, test_only=True)
         if_check_cam = True if "CAM" in args.model_name else False
@@ -778,4 +863,11 @@ def main_train(sess, args, graph):
         logger.debug("Starting training")
 
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
+    # to get the correct clf rate of the whole data
+    elif args.test_or_train == 'train' and args.if_single_runs:
+        logger.info("Starting single epoch training")
+        initialize(sess, graph, test_only=False)
+        output_data = single_epo_runs(sess, args, graph)
+        args.save(os.path.join(args.output_path, "network", "parameters.json"))
+        dataio.save_plots(sess, args, output_data, training=True)
 

@@ -32,12 +32,12 @@ args = argument.params
 dataio.save_command_line(args)
 get_available_gpus()
 
-if not args.seed:
+if not args.randseed:
     temp_seed = np.random.randint(0, 9999)
-    args.seed = temp_seed
+    args.randseed = temp_seed
 
-np.random.seed(seed=args.seed)
-tf.compat.v1.set_random_seed(args.seed)
+np.random.seed(seed=np.int(args.randseed))
+tf.compat.v1.set_random_seed(np.int(args.randseed))
 
 # if args.seed != 2594:   # every time change the random seed should save the data again
 ## get leave-out train and test sets: dataio.split_data_for_lout_val(args)\ dataio.split_data_for_val(args)

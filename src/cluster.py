@@ -13,7 +13,7 @@ EXPERIMENT_DIR_ROOT = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_a
 
 def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None,
                                  description=None, from_epoch=None, input_data=None,
-                                 theta_thr=0.99, rand_seed=129):
+                                 theta_thr=0.99, rand_seed=129, if_single_runs=False):
     date = time.strftime("%Y-%m-%dT%H-%M-%S", time.localtime())
     # aug_method = default_aug_method if aug_method is None else aug_method
     # aug_folds = default_folds if aug_folds is None else aug_folds
@@ -24,6 +24,8 @@ def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None
     else:
         cv_set_id = "TT"
     description = description if description else "train"
+    description = "100rns-"+description if if_single_runs else description
+    
     output_path = os.path.join(EXPERIMENT_DIR_ROOT, "{}-{}-{}x{}-factor-{}-from-ep-{}-from-lout40-{}-theta-{}-s{}-{}".format(date, default_model_name, aug_method, aug_folds, aug_scale, from_epoch, cv_set_id, theta_thr, rand_seed, description))
     # experiment_dir = EXPERIMENT_DIR_ROOT + "{}_exp0.776_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
     return output_path
@@ -76,7 +78,8 @@ class ClusterQueue:
             from_epoch=kwargs["from_epoch"] if "from_epoch" in kwargs else None,
             input_data=kwargs["input_data"] if "input_data" in kwargs else None,
             theta_thr=kwargs["theta_thr"] if "theta_thr" in kwargs else None,
-            rand_seed=kwargs["seed"] if "seed" in kwargs else 129,
+            rand_seed=kwargs["randseed"] if "randseed" in kwargs else 129,
+            if_single_runs=kwargs["if_single_runs"] if "if_single_runs" in kwargs else False,
             description=kwargs["description"] if "description" in kwargs else None)
         make_output_dir(self.output_path, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
 
@@ -143,37 +146,22 @@ data_source_dirs = [
 ]
 
 # params during Distillation such as threshold-theta, no Data Augmentation yet
-for thr in [0.9]:
-    for data_dir in data_source_dirs:
-        cq = ClusterQueue(input_data=data_dir,
-                          aug_method="None",
-                          aug_scale=0,
-                          from_epoch=0,
-                          aug_folds=0,
-                          theta_thr=thr)
+# for thr in [0.9]:
+#     for data_dir in data_source_dirs:
+#         cq = ClusterQueue(input_data=data_dir,
+#                           aug_method="None",
+#                           aug_scale=0,
+#                           from_epoch=0,
+#                           aug_folds=0,
+#                           theta_thr=thr)
 
 
-#
-
-# params during main classifier training with Data Augmentation yet
-# for ep in [5]: #1, 3, , 8, 10
-#     for aug_meth in ["same_mean", "both_mean", "ops_mean"]:  #
-#         for fd in [1]: #, 3, 9
-#             for scale in [0.05, 0.35, 0.5, 0.95]:  #, 0.65, 0.2, 0.8, 0.2, 0.65, 0.8
-#                 cq = ClusterQueue(input_data=data_source_dirs[0],
-#                                   aug_method="none",
-#                                   aug_scale=0,
-#                                   from_epoch=0,
-#                                   aug_folds=0,
-#                                   seed=188)
-
-
-# 100 single-epoch runs
-# random_seeds = np.random.randint(0, 9999, 2)
-# for s in random_seeds:
-#     cq = ClusterQueue(input_data=data_source_dirs[0],
-#                       aug_method="none",
-#                       aug_scale=0,
-#                       from_epoch=0,
-#                       aug_folds=0,
-#                       seed=s)
+# #100 single-epoch runs
+for dd in data_source_dirs:
+    cq = ClusterQueue(input_data=dd,
+                      aug_method="none",
+                      aug_scale=0,
+                      from_epoch=0,
+                      aug_folds=0,
+                      randseed=129,
+                      if_single_runs=True)
