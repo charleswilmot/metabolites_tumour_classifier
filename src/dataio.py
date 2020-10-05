@@ -217,10 +217,10 @@ def get_data(args):
     np.random.shuffle(sub_mat)
     print("data labels: ", sub_mat[:, 2])
 
-    if args.test_ratio == 100:
+    if args.test_ratio == 1:
         X_train, X_test, Y_train, Y_test = [], sub_mat, [], sub_mat[:, 2]
     else:
-        X_train, X_test, Y_train, Y_test = train_test_split(sub_mat, sub_mat[:, 2], test_size=args.test_ratio / 100.)
+        X_train, X_test, Y_train, Y_test = train_test_split(sub_mat, sub_mat[:, 2], test_size=args.test_ratio)
         # X_train, X_test, Y_train, Y_test = sub_mat, sub_mat[0], sub_mat[:, 2], sub_mat[0, 2]  #only for 100-single-epoch run
 
     test_data["spectra"] = zscore(X_test[:, 3:], axis=1).astype(np.float32)
@@ -285,7 +285,6 @@ def get_data_from_certain_ids(args, certain_fns=["f1", "f2"]):
     :return:
     """
     mat = scipy.io.loadmat(args.input_data)["DATA"]
-    labels = mat[:, 1]
 
     new_mat = np.zeros((mat.shape[0], mat.shape[1] + 1))
     new_mat[:, 0] = np.arange(mat.shape[0])  # tag every sample
@@ -316,7 +315,7 @@ def get_data_from_certain_ids(args, certain_fns=["f1", "f2"]):
         print("data labels: ", mat_shuffle[:, 2])
 
     X_train, X_test, Y_train, Y_test = train_test_split(mat_shuffle, mat_shuffle[:, 2],
-                                                        test_size=args.test_ratio / 100.)
+                                                        test_size=args.test_ratio)
 
     test_data["spectra"] = zscore(X_test[:, 3:], axis=1).astype(np.float32)
     test_data["labels"] = Y_test.astype(np.int32)
@@ -416,6 +415,8 @@ def augment_data(aug_target, augs, args):
         augmented_whole = augment_with_batch_mean(args, aug_target, augs)
     elif "noise" == args.aug_method:
         augmented_whole = augment_with_random_noise(args, aug_target)
+    else:  # augment with random samples from the whole set
+        augmented_whole = augment_with_random_samples(args, aug_target)
     #
     # print("Augmentation number of class 0", np.where(X_train_aug[:, 2] == 0)[0].size, "number of class 1", np.where(X_train_aug[:, 2] == 1)[0].size)
     train_data_aug["spectra"] = augmented_whole[:, 3:].astype(np.float32)
@@ -467,6 +468,30 @@ def augment_with_batch_mean(args, aug_target, augs):
 def augment_with_random_noise(args, target):
     """
     Add random noise on the original spectra
+    :param target: 2d array, target samples to be augmented
+    :return: train_data_aug: dict
+    """
+
+    noise = args.aug_scale * \
+            np.random.uniform(low=0.0, high=1.0, size=[args.aug_folds, target[:, 2].size, target[:, 3:].shape[-1]])
+    combine = np.empty((0, args.data_len))
+    for fold in range(args.aug_folds):
+        aug_zspec = target[:, 3:] + noise[fold]
+        combine = np.vstack((combine, aug_zspec))
+
+    sample_ids = np.tile(target[:, 0].reshape(-1, 1), [args.aug_folds, 1])
+    patient_ids = np.tile(target[:, 1].reshape(-1, 1), [args.aug_folds, 1])
+    labels = np.tile(target[:, 2].reshape(-1, 1), [args.aug_folds, 1])
+    train_aug = np.concatenate((sample_ids, patient_ids, labels, combine), axis=1)
+
+    Plot.plot_train_samples(train_aug[:, 3:], train_aug[:, 2], args, postfix="samples")
+
+    return train_aug
+
+
+def augment_with_random_samples(args, target):
+    """
+    augment with random selected samples without distillation
     :param target: 2d array, target samples to be augmented
     :return: train_data_aug: dict
     """

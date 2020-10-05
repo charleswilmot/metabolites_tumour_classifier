@@ -138,7 +138,7 @@ def get_data():
     :param args: Param object with path to the data
     :return:
     """
-    data_dir = "../data/20190325/20190325-3class_lout40_train_test_data7.mat"
+    data_dir = "../data/20190325/20190325-3class_lout40_train_test_data5.mat"
     mat = scipy.io.loadmat(data_dir)["DATA"]
     spectra = mat[:, 2:]
     labels = mat[:, 1]
@@ -156,7 +156,7 @@ def get_data():
         labels = labels[need_inds]
         ids = ids[need_inds]
 
-    test_ratio = 25
+    test_ratio = 20
     temp_rand = np.arange(len(labels))
     np.random.shuffle(temp_rand)
     spectra_rand = spectra[temp_rand]
