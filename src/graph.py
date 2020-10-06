@@ -62,6 +62,12 @@ class MLP:
                                             activation=None)
             net = tf.compat.v1.layers.batch_normalization(net, training=training) if self.batch_norm else net
             logits = tf.nn.softmax(net)
+        
+        ##### track all variables
+        all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
+        out["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
+        print("MLP total_trainables", out["total_trainables"])
+        
         out["logits"] = logits
         out["activity"] = activity
         return out
@@ -125,6 +131,12 @@ class CNN:
         self._net_constructed_once = True
         net = self.construct_cnn_layers(out, training)
         net = self.construct_fnn_layers(out, training)
+        
+        ##### track all variables
+        all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
+        out["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
+        print("CNN total_trainables", out["total_trainables"])
+        
         out["logits"] = net
         return out
 
@@ -251,6 +263,11 @@ class CNN_CAM:
                                               initializer=tf.random_normal_initializer(0., 0.01))
             logits = tf.nn.softmax(tf.matmul(net_gap, gap_w))
 
+        ##### track all variables
+        all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
+        out["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
+        print("CNN_CAM total_trainables", out["total_trainables"])
+        
         out["logits"] = logits
         out["gap_w"] = gap_w
         return out
@@ -396,7 +413,12 @@ class Res_ECG_CAM:
             gap_w = tf.compat.v1.get_variable('W_gap', shape=[net_gap.get_shape().as_list()[-1], self.num_classes],
                                               initializer=tf.random_normal_initializer(0., 0.01))
             logits = tf.nn.softmax(tf.matmul(net_gap, gap_w))
-
+            
+        ##### track all variables
+        all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
+        ret["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
+        print("Res_ECG_CAM total_trainables", ret["total_trainables"])
+        
         ret["logits"] = logits
         ret["gap_w"] = gap_w
         return ret
@@ -547,8 +569,10 @@ class Res_ECG_CAM:
 
 class Inception:
     """
-    COnstructor
+    https://github.com/Natsu6767/Inception-Module-Tensorflow
+    https://github.com/Natsu6767/Inception-Module-Tensorflow/blob/master/Inception%20Train%20%26%20Test.ipynb
     Make an inception model
+    total_trainables 234338
     """
 
     def __init__(self, args):
@@ -744,12 +768,20 @@ class Inception:
             logits = tf.compat.v1.layers.dense(flatten, self.num_classes,
                                                kernel_initializer=initializer,
                                                activation=self.activations[-1])
-
+        
+        ##### track all variables
+        all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
+        ret["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
+        print("Inception total_trainables", ret["total_trainables"])
+        
         ret["logits"] = logits
         return ret
 
 
 class RNN(object):
+    """
+    total_trainables 234338
+    """
     def __init__(self, args):
         self.rnn_dims = args.rnn_dims
         self.drop_rnn = args.drop_rnn  # to drop for the linear transformation of the recurrent state.
@@ -794,6 +826,11 @@ class RNN(object):
                                                kernel_initializer=initializer,
                                                activation=tf.nn.softmax)
 
+        ##### track all variables
+        all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
+        ret["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
+        print("RNN total_trainables", ret["total_trainables"])
+        
         ret["logits"] = logits
         return ret
 

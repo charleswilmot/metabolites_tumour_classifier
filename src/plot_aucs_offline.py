@@ -811,21 +811,24 @@ elif plot_name == "100_single_ep_corr_classification_rate":
     """
     import ipdb
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-10-05T13-54-32-MLP-nonex0-factor-0-from-ep-0-from-lout40-data9-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-10-05T13-54-31-MLP-nonex0-factor-0-from-ep-0-from-lout40-data7-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-10-05T13-54-30-MLP-nonex0-factor-0-from-ep-0-from-lout40-data5-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-10-05T13-54-29-MLP-nonex0-factor-0-from-ep-0-from-lout40-data3-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-10-05T13-54-28-MLP-nonex0-factor-0-from-ep-0-from-lout40-data1-theta-None-s129-100rns-train/certains"
+        # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-31-MLP-nonex0-factor-0-from-ep-0-from-lout40-data7-theta-None-s129-100rns-train/certains",
+        # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-30-MLP-nonex0-factor-0-from-ep-0-from-lout40-data5-theta-None-s129-100rns-train/certains",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-29-MLP-nonex0-factor-0-from-ep-0-from-lout40-data3-theta-None-s129-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-28-MLP-nonex0-factor-0-from-ep-0-from-lout40-data1-theta-None-s129-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-32-MLP-nonex0-factor-0-from-ep-0-from-lout40-data9-theta-None-s129-100rns-train",
+        # "C:/Users/LDY/Desktop/New_folder/certains"
     ]
+    num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
+                         "data3": 8454, "data4": 8440, "data5": 8231,
+                         "data6": 8371, "data7": 8357, "data8": 8384, "data9": 7701}
     
     for data_dir in data_dirs:
         files = find_files(data_dir, pattern="one_ep_data_train*.csv")
     
         # get correct count in 100 rauns
-        theta = 0.99
         data_source = os.path.basename(files[0]).split("_")[8]
-        for theta in [0.90, 0.925, 0.95, 0.975, 0.99]:
-            print(theta)
+        for theta in [90, 92.5, 95, 97.5, 99]:
+            print(data_source, "theta:", theta)
             for ind, fn in enumerate(files):
                 values = pd.read_csv(fn, header=0).values
                 smp_ids = values[:, 0].astype(np.int)
@@ -833,50 +836,55 @@ elif plot_name == "100_single_ep_corr_classification_rate":
                 lbs = values[:, 2]
                 prob = values[:, 3:]
                 if ind == 0:  #the first file to get the total number (3-class) of samples
+                    total_num = num_smp_dataset[data_source]  #3-class samples id
                     ids_w_count = []
-                    total_num = smp_ids.max()  #3-class samples id
-                    dict_count = {key: 0 for key in np.arange(total_num)}  #total number 9243
                     certain_w_count = []
                     certain_w_corr_count = []
+                    dict_count = {key: 0 for key in np.arange(total_num)}  #total number 9243
                     dict_count_certain = {key: 0 for key in np.arange(total_num)}
                     dict_corr_count_certain = {key: 0 for key in np.arange(total_num)}
-        
+                    
                 pred_lbs = np.argmax(prob, axis=1)
                 right_inds = np.where(pred_lbs == lbs)[0]
                 correct = np.unique(smp_ids[right_inds])
                 ids_w_count += list(correct)
                 
                 # Get certain with differnt threshold
-                ct_smp_ids = np.where([prob[i]> theta for i in range(len(prob))])[0]
+                if theta > 1:  #percentile
+                    larger_prob = [pp.max() for pp in prob]
+                    threshold = np.percentile(larger_prob, theta)
+                    slc_ratio = 1 - theta / 100.
+                else:  # absolute prob. threshold
+                    threshold = theta
+                    slc_ratio = 1 - theta
+                ct_smp_ids = np.where([prob[i] > threshold for i in range(len(prob))])[0]
                 ct_corr_inds = ct_smp_ids[np.where(lbs[ct_smp_ids] == pred_lbs[ct_smp_ids])[0]]
                 certain_w_count += list(np.unique(smp_ids[ct_smp_ids]))
                 certain_w_corr_count += list(np.unique(smp_ids[ct_corr_inds]))
                 num_certain = len(ct_smp_ids)
     
-                dict_count_certain.update(Counter(certain_w_count))
-                dict_corr_count_certain.update(Counter(certain_w_corr_count))
-                dict_count_certain.update(Counter(certain_w_count))
-                dict_corr_count_certain.update(Counter(certain_w_corr_count))
-    
             count_all = Counter(ids_w_count)
             dict_count.update(count_all)
-        
-            print("ok")
     
+            dict_count_certain.update(Counter(certain_w_count))
+            dict_corr_count_certain.update(Counter(certain_w_corr_count))
+            
+            # if theta == 0.975:
+            #     ipdb.set_trace()
             counter_array = np.array([[key, val] for (key, val) in dict_count.items()])
             sort_inds = np.argsort(counter_array[:, 1])
             sample_ids_key = counter_array[sort_inds, 0]
             # rates = counter_array[sort_inds, 1]/counter_array[:, 1].max()
             rates = counter_array[sort_inds, 1]/len(files)
-            
+
             ct_counter_array = np.array([[key, val] for (key, val) in dict_count_certain.items()])
             ct_counter_array_corr = np.array([[key, val] for (key, val) in dict_corr_count_certain.items()])
-            # sort_inds_certain = np.argsort(counter_array_certain[:, 1])
-            # rates_certain = counter_array_certain[sort_inds, 1] / counter_array_certain[:, 1].max()
+            
+            
             ct_sele_rates = ct_counter_array[sort_inds, 1] / len(files)
             ct_corr_rates = ct_counter_array_corr[sort_inds, 1] / len(files)
             # rates_certain_corr = counter_array_certain_corr[sort_inds, 1] / counter_array_certain_corr[:, 1].max()
-            sort_samp_ids_certain = ct_counter_array[sort_inds, 0]
+            # sort_samp_ids_certain = ct_counter_array[sort_inds, 0]
     
             fig, ax1 = plt.subplots()
             ax1.set_xlabel("sample index (sorted)")
@@ -892,15 +900,18 @@ elif plot_name == "100_single_ep_corr_classification_rate":
             plt.savefig(data_dir+"/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}-({}_theta-{}).pdf".format(os.path.basename(files[0]).split("_")[7], total_num, data_source, num_certain, theta), format="pdf")
             print("ok")
             plt.close()
-    
-    
-            concat_data = np.concatenate((np.array(sort_inds).reshape(-1,1), rates.reshape(-1,1), ct_sele_rates.reshape(-1, 1), ct_corr_rates.reshape(-1, 1)), axis=1)
-            np.savetxt(data_dir+"/100_runs_sort_inds_rate_certain_({}-{})-{}-({}_theta-{}).csv".format(os.path.basename(files[0]).split("_")[7], total_num, data_source, num_certain, theta), concat_data, fmt="%.5f", delimiter=",", header="ori_sort_rate_id,ori_sort_rate,certain_sele_rate,certain_corr_rate")
+            
+            num2select = np.int(np.int(os.path.basename(files[0]).split("_")[7]) * slc_ratio)
+            ct_concat_data = np.concatenate((np.array(sort_inds).reshape(-1,1)[-num2select:], rates.reshape(-1,1)[-num2select:], ct_sele_rates.reshape(-1, 1)[-num2select:], ct_corr_rates.reshape(-1, 1)[-num2select:]), axis=1)
+            np.savetxt(data_dir+"/certain_{}_({}-{})-({}_theta-{}).csv".format(data_source, os.path.basename(files[0]).split("_")[7], total_num, num2select, theta), ct_concat_data, fmt="%.5f", delimiter=",", header="ori_sort_rate_id,ori_sort_rate,certain_sele_rate,certain_corr_rate")
+    concat_data = np.concatenate((np.array(sort_inds).reshape(-1,1), rates.reshape(-1,1), ct_sele_rates.reshape(-1, 1), ct_corr_rates.reshape(-1, 1)), axis=1)
+    np.savetxt(data_dir+"/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(files[0]).split("_")[7], total_num), concat_data, fmt="%.5f", delimiter=",", header="ori_sort_rate_id,ori_sort_rate,certain_sele_rate,certain_corr_rate")
 
 elif plot_name == "100_single_ep_patient_wise_rate":
     # load original data to get patient-wise statistics
     from scipy.io import loadmat as loadmat
     import scipy.io as io
+
     ori_data = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325_DATA.mat"
     ## Get the selection rate patien-wise, corr_rate also patient-wise
     sort_inds_files = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/100_runs_sort_inds_rate_certain.csv"

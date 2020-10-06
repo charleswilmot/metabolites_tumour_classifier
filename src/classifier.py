@@ -39,8 +39,8 @@ if not args.randseed:
 np.random.seed(seed=np.int(args.randseed))
 tf.compat.v1.set_random_seed(np.int(args.randseed))
 
-# if args.seed != 2594:   # every time change the random seed should save the data again
-## get leave-out train and test sets: dataio.split_data_for_lout_val(args)\ dataio.split_data_for_val(args)
+# C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\results
+# /home/epilepsy-data/data/metabolites/results/
 
 # Get augmentation of the data
 if args.if_from_certain and args.test_or_train == 'train':
@@ -48,7 +48,7 @@ if args.if_from_certain and args.test_or_train == 'train':
     logger.info("______________________________________________")
     print(certain_dir)
     logger.info("______________________________________________")
-    certain_files = dataio.find_files(certain_dir, pattern="*_epoch_{}_*.csv".format(args.from_epoch))
+    certain_files = dataio.find_files(certain_dir, pattern="full_summary*.csv".format(args.from_epoch))
     print("certain_files", certain_files)
     data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files)
 else:

@@ -6,7 +6,7 @@ default_aug_method = "same_mean"
 default_factor = 0.5
 default_folds = 10
 default_theta = 0.999
-default_model_name = "MLP"
+default_model_name = "RNN"
 default_source = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
 EXPERIMENT_DIR_ROOT = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
 

@@ -22,7 +22,7 @@
             "restore_from": null,
             "data_source": null,
 
-            "model_name": "MLP",
+            "model_name": "RNN",
             "optimizer_type": "adam",
             "loss_type": "softmax_ce",
             "learning_rate": 0.001,
@@ -36,7 +36,7 @@
             "test_freq": 1,
             "test_every": null,
 
-            "test_ratio": 0.001,
+            "test_ratio": 0.2,
             "restore_from": null,
             "num_train": null
 
