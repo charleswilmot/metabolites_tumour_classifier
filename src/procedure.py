@@ -634,6 +634,8 @@ def single_epo_runs(sess, args, graph):
         # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch
 
     logger.info("100 single-epoch Training procedure done")
+    output_data["test_labels"] = np.array([1, 0], [0, 1])
+    output_data["test_logits"] = np.array([0.9, 0.1], [0.2, 0.8])
     save_plots(sess, args, output_data, training=True, epoch=epoch)
     return output_data
 

@@ -10,19 +10,16 @@
             "seed": null,
 
             "out_format": "m",
-            "data_len": 288,
-            "data_width": 1,
-            "num_lout": 40,
-            "data_shape": "1d",
-            "aug_meth": "same_mean",
             "mix_ori": true,
 
-            "output_root": "/home/epilepsy-data/data/metabolites/results/",
+            "output_root": "/home/epilepsy-data/data/metabolites/results/2020-08-30-restuls_after_review",
+            "data_mode": "mnist",
+            "input_data": "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
             "model_save_dir": null,
             "restore_from": null,
             "data_source": null,
 
-            "model_name": "RNN",
+            "model_name": "MLP",
             "optimizer_type": "adam",
             "loss_type": "softmax_ce",
             "learning_rate": 0.001,
@@ -35,8 +32,7 @@
             "number_of_epochs": 100,
             "test_freq": 1,
             "test_every": null,
-
-            "test_ratio": 0.2,
+            "test_ratio": 0.00001,
             "restore_from": null,
             "num_train": null
 

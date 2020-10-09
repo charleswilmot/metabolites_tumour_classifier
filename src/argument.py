@@ -258,7 +258,7 @@ train_parser.add_argument(
 # when use cluster
 train_parser.add_argument(
     '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
-    default="C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
+    default=None,
     help="which cross-validation set is used"
 )
 train_parser.add_argument(
@@ -268,6 +268,14 @@ train_parser.add_argument(
 train_parser.add_argument(
     '--if_single_runs', type=log_debug_arg(bool, "whether the mode of single runs to get correct clf rate"),
     default=True,
+)
+train_parser.add_argument(
+    '--noise_ratio', type=log_debug_arg(float, "the percentage of mis-labeled samples"),
+    default=0.2,
+)
+train_parser.add_argument(
+    '--from_clusterpy', type=log_debug_arg(bool, "the percentage of mis-labeled samples"),
+    default=False,
 )
 
 test_parser = subparsers.add_parser("test")
@@ -317,39 +325,41 @@ json_path = args.model_config
 assert os.path.isfile(json_path), "No json file found at {}".format(json_path)
 
 params.update(json_path, mode=params.model_name) # update params with the model configuration
+params.from_clusterpy = args.from_clusterpy
 
-# specify some params
-time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
 
-if params.data_shape == "2d":
-    params.height = params.data_len // 6
-    params.width = 6
-else:
+if params.data_mode == "mnist":
+    params.width = 28
+    params.height = 28
+    params.data_source = "mnist"
+    params.noise_ratio = args.noise_ratio
+elif params.data_mode == "metabolite":
     params.width = 1
-    params.height = params.data_len
-    
+    params.height = 288
+    # TODO, cluster and param.json all give this parameter
 
-# TODO, cluster and param.json all give this parameter
-if args.input_data is None:  # don't run on the cluster
-    params.data_source = os.path.basename(params.input_data).split("_")[-1].split(".")[0]
-else: # run on the cluster
+if not args.from_clusterpy:
+    # specify some params
+    time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
     params.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
-if args.restore_from is None and args.output_path is None:  #cluster.py
-    # params.output_path = os.path.join(params.output_root,
-    #                             time_str + "data-{}-class{}-{}-{}-aug_{}x{}-{}-{}".format(params.data_source, params.num_classes, params.model_name, params.postfix, args.aug_method, args.aug_folds, args.aug_scale, args.test_or_train))
-    # params.output_path = os.path.join(params.output_root,
-    #              "{}{}x{}_factor_{}_from-epoch_{}_from-lout40_{}_{}".format(time_str, args.aug_method, args.aug_folds, args.aug_scale, args.from_epoch, params.data_source, args.test_or_train))
-    postfix = "100rns-" + args.test_or_train if args.if_single_runs else args.test_or_train
-    params.output_path = os.path.join(params.output_root,
-                                      "{}-{}-{}x{}-factor-{}-from-ep-{}-from-lout40-{}-theta-{}-s{}-{}".format(time_str, params.model_name, args.aug_method, args.aug_folds, args.aug_scale, args.from_epoch, params.data_source, args.theta_thr, args.randseed, postfix))
-    # params.postfix = "-test"
-elif args.restore_from is None and args.output_path is not None:
+    if args.restore_from is None:  # and args.output_path is None:  #cluster.py
+        postfix = "100rns-" + args.test_or_train if args.if_single_runs else args.test_or_train
+        params.output_path = os.path.join(params.output_root,
+                                          "{}-{}-{}x{}-factor-{}-from-ep-{}-from-lout40-{}-theta-{}-s{}-{}".format(
+                                              time_str, params.model_name, args.aug_method, args.aug_folds,
+                                              args.aug_scale, args.from_epoch, params.data_source, args.theta_thr,
+                                              args.randseed, postfix))
+        # params.postfix = "-test"
+    # elif args.restore_from is None and args.output_path is not None:
+    #     params.output_path = args.output_path
+    elif args.restore_from is not None:  # restore a model
+        params.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(params.data_source, "test")
+        params.postfix = "-test"
+    dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+else:
+    params.data_source = os.path.basename(params.input_data).split("_")[-1].split(".")[0]
     params.output_path = args.output_path
-elif args.restore_from is not None:   #restore a model
-    params.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(params.data_source, "test")
-    params.postfix = "-test"
 
-params.input_data = args.input_data
 params.resplit_data = args.resplit_data
 params.restore_from = args.restore_from
 params.test_or_train = args.test_or_train
@@ -358,7 +368,8 @@ params.randseed = args.randseed
 params.if_single_runs = args.if_single_runs
 
 params.model_save_dir = os.path.join(params.output_path, "network")
-# dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+logger.info("output dir: ", params.output_path)
+
 
 if params.test_or_train == "test":
     params.if_from_certain = False
@@ -369,8 +380,6 @@ elif params.test_or_train == "train":
     params.aug_folds = args.aug_folds
     params.from_epoch = args.from_epoch
     params.theta_thr = args.theta_thr
-    # params.input_data = args.input_data
-    params.if_save_certain = not params.if_from_certain
 
 # Verbosity level:
 level = 50 - (args.verbose * 10) + 1

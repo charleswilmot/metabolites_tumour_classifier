@@ -1,13 +1,8 @@
 ## @package classifier
 #  This is the main file of the software.
-#
-#  For more details, try:\n
-#  python3 classifier.py -h\n
-#  python3 classifier.py train -h\n
-#  python3 classifier.py test -h\n
-#  example: python3 classifier.py -b 20 -s 17845 train ../data/ ../results/ -e 100
-import matplotlib
-matplotlib.use('Agg')
+
+# import matplotlib
+# matplotlib.use('Agg')
 import sys
 sys.path.append("..")
 import graph
@@ -52,7 +47,10 @@ if args.if_from_certain and args.test_or_train == 'train':
     print("certain_files", certain_files)
     data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files)
 else:
-    data_tensors, args = dataio.get_data_tensors(args)
+    if args.data_mode == "mnist":
+        data_tensors, args = dataio.get_noisy_mnist_data(args)
+    else:
+        data_tensors, args = dataio.get_data_tensors(args)
 
 logger.info("------------Successfully get data tensors")
 

@@ -6,9 +6,9 @@ default_aug_method = "same_mean"
 default_factor = 0.5
 default_folds = 10
 default_theta = 0.999
-default_model_name = "RNN"
+default_model_name = "MLP"
 default_source = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
-EXPERIMENT_DIR_ROOT = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
+EXPERIMENT_DIR_ROOT = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate"
 
 
 def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None,
@@ -157,11 +157,12 @@ data_source_dirs = [
 
 
 # #100 single-epoch runs
-for dd in data_source_dirs:
-    cq = ClusterQueue(input_data=dd,
-                      aug_method="none",
-                      aug_scale=0,
-                      from_epoch=0,
-                      aug_folds=0,
-                      randseed=129,
-                      if_single_runs=True)
+# for dd in data_source_dirs:
+cq = ClusterQueue(
+                  aug_method="none",
+                  aug_scale=0,
+                  from_epoch=0,
+                  aug_folds=0,
+                  randseed=129,
+                  if_single_runs=True,
+    from_clusterpy=True)

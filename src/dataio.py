@@ -567,21 +567,152 @@ def get_data_tensors(args, certain_fns=None):
     return data, args
 
 
+def get_noisy_mnist_data(args):
+    """
+    Get batches of data in tf.dataset
+
+    :param args:
+    :param certain_fns:
+    :param mix_ori: whether use the original noisy samples as
+    :return:
+    """
+    data = {}
+    train_data, test_data = load_mnist_with_noise(args)
+
+    test_spectra, test_labels, test_ids, test_sample_ids = tf.constant(test_data["spectra"]), tf.constant(
+        test_data["labels"]), tf.constant(test_data["ids"]), tf.constant(test_data["sample_ids"])
+    test_ds = tf.compat.v1.data.Dataset.from_tensor_slices(
+        (test_spectra, test_labels, test_ids, test_sample_ids)).batch(args.test_bs)
+    if test_data["num_samples"] < args.test_bs:
+        args.test_bs = test_data["num_samples"]
+
+    iter_test = tf.compat.v1.data.make_initializable_iterator(test_ds)
+    data["test_initializer"] = iter_test.initializer
+    batch_test = iter_test.get_next()
+    data["test_features"] = batch_test[0]
+    data["test_labels"] = tf.one_hot(batch_test[1], args.num_classes)
+    data["test_ids"] = batch_test[2]
+    data["test_sample_ids"] = batch_test[3]
+    data["test_num_samples"] = test_data["num_samples"]
+    data["test_batches"] = test_data["num_samples"] // args.test_bs
+    print("test samples: ", test_data["num_samples"], "num_batches: ", data["test_batches"])
+    if args.test_or_train == 'train':
+        train_spectra, train_labels, train_ids, train_sample_ids = tf.constant(train_data["spectra"]), tf.constant(
+            train_data["labels"]), tf.constant(train_data["ids"]), tf.constant(train_data["sample_ids"])
+        train_ds = tf.compat.v1.data.Dataset.from_tensor_slices(
+            (train_spectra, train_labels, train_ids, train_sample_ids)).shuffle(buffer_size=8000).repeat().batch(
+            args.batch_size)
+        iter_train = train_ds.make_initializable_iterator()
+        batch_train = iter_train.get_next()
+        data["train_features"] = batch_train[0]
+        data["train_labels"] = tf.one_hot(batch_train[1], args.num_classes)
+        data["train_ids"] = batch_train[2]  # in training, we don't consider patient-ids
+        data["train_sample_ids"] = batch_train[3]  # in training, we don't consider patient-ids
+        data["train_initializer"] = iter_train.initializer
+        data["train_num_samples"] = train_data["num_samples"]
+        data["train_batches"] = train_data["num_samples"] // args.batch_size
+        args.test_every = train_data["num_samples"] // (args.test_freq * args.batch_size)
+        # test_freq: how many times to test in one training epoch
+
+    return data, args
+
+
+def load_mnist_with_noise(args):
+    """
+    Load self_saved data. A dict, data["features"], data["labels"]. See the save function in split_data_for_val()
+    # First time preprocess data functions are needed: split_data_for_val(args),split_data_for_lout_val(args)
+    :param args: Param object with path to the data
+    :return:
+    """
+    from tensorflow.keras.datasets import mnist
+
+    args.num_classes = 10
+    (X_train, Y_train), (X_test, Y_test) = mnist.load_data()
+
+    whole_set = np.concatenate((np.append(Y_train, Y_test).reshape(-1, 1), np.vstack(
+        (X_train.reshape(X_train.shape[0], -1), X_test.reshape(X_test.shape[0], -1)))), axis=1)
+    new_mat = np.zeros((whole_set.shape[0], whole_set.shape[1] + 2))
+    new_mat[:, 0] = np.arange(whole_set.shape[0])  # tag every sample
+    new_mat[:, 2:] = whole_set
+    new_mat = new_mat.astype(np.float32)
+    train_data = {}
+    test_data = {}
+
+    Y_tot_noisy = introduce_label_noisy(whole_set[:, 0], noisy_ratio=args.noise_ratio, num_classes=args.num_classes, save_dir=args.output_path)
+    new_mat[:, 1] = Y_tot_noisy  # noisy labels
+
+    np.random.shuffle(new_mat)
+    print("data labels: ", new_mat[:, 2])
+
+    if args.test_ratio == 1:
+        X_train, X_test, Y_train, Y_test = [], new_mat, [], new_mat[:, 2]
+    else:
+        X_train, X_test, Y_train, Y_test = train_test_split(new_mat, new_mat[:, 2], test_size=args.test_ratio)
+
+    test_data["spectra"] = X_test[:, 3:]
+    test_data["labels"] = Y_test.astype(np.int32)
+    assert np.sum(Y_test.astype(np.int32) == X_test[:, 2].astype(np.int32)) == len(
+        X_test), "train_test_split messed up the data!"
+    test_data["ids"] = X_test[:, 1].astype(np.int32)
+    test_data["sample_ids"] = X_test[:, 0].astype(np.int32)
+    test_data["num_samples"] = len(test_data["labels"])
+    print("num_samples: ", test_data["num_samples"])
+    #
+    test_count = dict(Counter(list(test_data["ids"])))  # count the num of samples of each id
+    sorted_count = sorted(test_count.items(), key=lambda kv: kv[1])
+    np.savetxt(os.path.join(args.output_path, "test_ids_count_{}.csv".format(args.data_source)), np.array(sorted_count), fmt='%d', delimiter=',')
+    np.savetxt(os.path.join(args.output_path, "original_labels_{}.csv".format(args.data_source)),
+               np.array(test_data["labels"]), fmt='%d',
+               delimiter=',')
+
+    ## oversample the minority samples ONLY in training data
+    if args.test_or_train == 'train':
+        if args.aug_folds != 0:
+            train_data = augment_data(new_mat, X_train, args)
+            args.num_train = train_data["spectra"].shape[0]
+            print("After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]),
+                  "num of train class 1: ",
+                  len(np.where(train_data["labels"] == 1)[0]))
+        else:
+            train_data["spectra"] = X_train[:, 3:]
+            train_data["labels"] = Y_train
+            true_lables = X_train[:, 2]
+            train_data["ids"] = X_train[:, 1]
+            train_data["sample_ids"] = X_train[:, 0]
+
+        train_data["sample_ids"], train_data["ids"], train_data["labels"], train_data["spectra"] = \
+            oversample_train(train_data["sample_ids"], train_data["ids"],
+                             train_data["labels"], train_data["spectra"])
+        print("After oversampling--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]),
+              "\n num of train class 1: ", len(np.where(train_data["labels"] == 1)[0]))
+        train_data["num_samples"] = len(Y_train)
+        train_data["spectra"] = zscore(train_data["spectra"], axis=1).astype(np.float32)
+        train_data["labels"] = train_data["labels"].astype(np.int32)
+        # assert np.sum(train_data["labels"].astype(np.int32) == true_lables.astype(np.int32)) == len(
+        #     train_data["labels"]), "train_test_split messed up the data!"
+        train_data["ids"] = train_data["ids"].astype(np.int32)
+        train_data["sample_ids"] = train_data["sample_ids"].astype(np.int32)
+
+        train_count = dict(Counter(list(train_data["ids"])))  # count the num of samples of each id
+        sorted_count = sorted(train_count.items(), key=lambda kv: kv[1])
+        np.savetxt(os.path.join(args.output_path, "train_ids_count_{}.csv".format(args.data_source)),
+                   np.array(sorted_count), fmt='%d', delimiter=',')
+
+    return train_data, test_data
+
+
 ## Make the output dir
 # @param args the arguments passed to the software
 def make_output_dir(args, sub_folders=["CAMs"]):
-    if os.path.isdir(args.output_path):
-        print("Overwriting existing folder")
-        # raise FileExistsError("Output path already exists.")
-    else:
-        os.makedirs(args.output_path)
-        os.makedirs(args.model_save_dir)
-        for sub in sub_folders:
-            os.makedirs(os.path.join(args.output_path, sub))
-        # copy and save all the files
-        copy_save_all_files(args)
-        print(args.input_data)
-        print(args.output_path)
+    os.makedirs(args.output_path)
+    args.model_save_dir = os.path.join(args.output_path, "network")
+    os.makedirs(args.model_save_dir )
+    for sub in sub_folders:
+        os.makedirs(os.path.join(args.output_path, sub))
+    # copy and save all the files
+    copy_save_all_files(args)
+    print(args.input_data)
+    print(args.output_path)
 
 
 def save_command_line(args):
@@ -659,3 +790,42 @@ def copy_save_all_files(args):
                         file_dst.write(line)
     print('Done WithCopy File!')
 
+def introduce_label_noisy(original_lbs, noisy_ratio=0.2, num_classes=10, save_dir="save"):
+    """
+    Randomly introduce noisy to the labels
+    :param noisy_ratio:
+    :param num_classes:
+    :return:
+    """
+    count_noise = []
+    noisy_lbs = original_lbs.copy()
+    for c in range(num_classes):
+        c_inds = np.where(original_lbs == c)[0]
+        # first round random selection and random flipping
+        noisy_c_inds = np.random.choice(c_inds, np.int(c_inds.size * noisy_ratio))
+        noisy_lbs_1 = np.random.uniform(0, 10, len(noisy_c_inds))
+
+        # second round: there are still randomly assigned with the true labels
+        noisy_inds_2 = np.where([a > c and a < (c + 1) for a in noisy_lbs_1])[0]
+        noisy_lbs_2 = (10 * (noisy_lbs_1[noisy_inds_2] - c)).astype(np.int)
+
+        # reassign the noisy label to those had the same labels in the first round
+        new_ns_lbs = noisy_lbs_1.astype(np.int)
+        new_ns_lbs[noisy_inds_2] = noisy_lbs_2
+
+        noisy_lbs[noisy_c_inds] = new_ns_lbs
+
+        count_noise.append([c, len(c_inds), np.sum(original_lbs[c_inds] != noisy_lbs[c_inds])])
+    print(np.array(count_noise))
+
+    plt.figure()
+    plt.bar(np.array(count_noise)[:, 0], np.array(count_noise)[:, 1], 0.4, label="total count"),
+    plt.bar(np.array(count_noise)[:, 0], np.array(count_noise)[:, 2], 0.4, label="noise label count")
+    plt.xlabel("digits")
+    plt.ylabel("count")
+    plt.legend(),
+    plt.title("Noisy labeling ratio {}%".format(noisy_ratio*100)),
+    plt.savefig(save_dir + '/distribution of noisy labels in mnist.png', format='png')
+    plt.close()
+
+    return noisy_lbs

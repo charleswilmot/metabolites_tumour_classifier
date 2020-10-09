@@ -5,13 +5,16 @@ import itertools
 import scipy as scipy
 from collections import Counter
 from sklearn import metrics
-from scipy import interp, io
+from scipy import io
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 import matplotlib.pylab as pylab
 import pickle
+
+from dataio import introduce_label_noisy
+
 base = 22
 params = {'legend.fontsize': base-8,
           'figure.figsize': (10, 7),
@@ -364,7 +367,9 @@ def two_axis_in_one_plot():
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "100_single_ep_corr_classification_rate"
+plot_name = "test_distill_on_mnist"
+
+
 
 
 if plot_name == "indi_rating_with_model":
@@ -810,13 +815,15 @@ elif plot_name == "100_single_ep_corr_classification_rate":
     Get the correct classification rate with 100 runs of single-epoch-training
     """
     import ipdb
+    from scipy.stats import spearmanr
+    
     data_dirs = [
         # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-31-MLP-nonex0-factor-0-from-ep-0-from-lout40-data7-theta-None-s129-100rns-train/certains",
         # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-30-MLP-nonex0-factor-0-from-ep-0-from-lout40-data5-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-29-MLP-nonex0-factor-0-from-ep-0-from-lout40-data3-theta-None-s129-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-28-MLP-nonex0-factor-0-from-ep-0-from-lout40-data1-theta-None-s129-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-32-MLP-nonex0-factor-0-from-ep-0-from-lout40-data9-theta-None-s129-100rns-train",
-        # "C:/Users/LDY/Desktop/New_folder/certains"
+        # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-29-MLP-nonex0-factor-0-from-ep-0-from-lout40-data3-theta-None-s129-100rns-train",
+        # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-28-MLP-nonex0-factor-0-from-ep-0-from-lout40-data1-theta-None-s129-100rns-train",
+        # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-32-MLP-nonex0-factor-0-from-ep-0-from-lout40-data9-theta-None-s129-100rns-train",
+        "/home/epilepsy-data/data/metabolites/results/2020-08-30-restuls_after_review/2020-10-09T21-24-24--MLP-noisex0-factor-None-from-ep-None-from-lout40-data5-theta-0.99-s859-100rns-train"
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                          "data3": 8454, "data4": 8440, "data5": 8231,
