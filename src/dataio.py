@@ -198,9 +198,9 @@ def get_data(args):
     mat = scipy.io.loadmat(args.input_data)["DATA"]
     labels = mat[:, 1]
 
-    new_mat = np.zeros((mat.shape[0], mat.shape[1] + 1))
-    new_mat[:, 0] = np.arange(mat.shape[0])  # tag every sample
-    new_mat[:, 1:] = mat
+    whole_set = np.zeros((mat.shape[0], mat.shape[1] + 1))
+    whole_set[:, 0] = np.arange(mat.shape[0])  # tag every sample
+    whole_set[:, 1:] = mat
     train_data = {}
     test_data = {}
 
@@ -210,9 +210,9 @@ def get_data(args):
         for class_id in range(args.num_classes):
             sub_inds = np.append(sub_inds, np.where(labels == class_id)[0])
         sub_inds = sub_inds.astype(np.int32)
-        sub_mat = new_mat[sub_inds]
+        sub_mat = whole_set[sub_inds]
     else:
-        sub_mat = new_mat
+        sub_mat = whole_set
 
     np.random.shuffle(sub_mat)
     print("data labels: ", sub_mat[:, 2])
@@ -244,9 +244,9 @@ def get_data(args):
     ## oversample the minority samples ONLY in training data
     if args.test_or_train == 'train':
         if args.aug_folds != 0:
-            train_data = augment_data(new_mat, X_train, args)
+            train_data = augment_data(X_train, X_train, args)  #If not from certain, then random pick from train to aug train
             args.num_train = train_data["spectra"].shape[0]
-            print("After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]),
+            print("Use X_train aug. X_train \n After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]),
                   "num of train class 1: ",
                   len(np.where(train_data["labels"] == 1)[0]))
         else:
@@ -277,7 +277,7 @@ def get_data(args):
     return train_data, test_data
 
 
-def get_data_from_certain_ids(args, certain_fns=["f1", "f2"]):
+def get_data_from_certain_ids(args, certain_fns="f1"):
     """
     Load data from previous certain examples
     :param args:
@@ -285,36 +285,47 @@ def get_data_from_certain_ids(args, certain_fns=["f1", "f2"]):
     :return:
     """
     mat = scipy.io.loadmat(args.input_data)["DATA"]
+    labels = mat[:, 1]
 
-    new_mat = np.zeros((mat.shape[0], mat.shape[1] + 1))
-    new_mat[:, 0] = np.arange(mat.shape[0])  # tag every sample
-    new_mat[:, 1:] = mat
+    whole_set = np.zeros((mat.shape[0], mat.shape[1] + 1))
+    whole_set[:, 0] = np.arange(mat.shape[0])  # tag every sample
+    whole_set[:, 1:] = mat
     train_data = {}
     test_data = {}
 
     # certain_mat = np.empty((0, new_mat.shape[1]))
-    certain_inds_tot = np.empty((0))
-    for fn in certain_fns:
-        certain = pd.read_csv(fn, header=0).values
-        certain_inds = certain[:, 0].astype(np.int)
-        certain_inds_tot = np.append(certain_inds_tot, certain_inds)
-        print(os.path.basename(fn), len(certain_inds), "samples\n")
+    sort_data = pd.read_csv(certain_fns, header=0).values
+    sort_samp_ids = sort_data[:, 0].astype(np.int)
+    sort_rate= sort_data[:, 1].astype(np.float32)
+    picked_ids = sort_samp_ids[-np.int(args.theta_thr*len(sort_data)):]
+    print(os.path.basename(certain_fns), len(picked_ids), "samples\n")
+    certain_mat = whole_set[picked_ids]
 
-    uniq_inds = np.unique(certain_inds_tot).astype(np.int)
-    certain_mat = new_mat[uniq_inds]
+    ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
+    if args.num_classes - 1 < np.max(labels):
+        sub_inds = np.empty((0))
+        for class_id in range(args.num_classes):
+            sub_inds = np.append(sub_inds, np.where(labels == class_id)[0])
+        sub_inds = sub_inds.astype(np.int32)
+        sub_mat = whole_set[sub_inds]
+    else:
+        sub_mat = whole_set
 
-    print("certain samples 0: ", len(np.where(certain_mat[:, 2] == 0)[0]),
+    np.random.shuffle(sub_mat)
+    print("data labels: ", sub_mat[:, 2])
+
+    print("top", args.theta_thr*100, "% as distill, certain samples 0: ", len(np.where(certain_mat[:, 2] == 0)[0]),
           "\ncertain samples 1: ", len(np.where(certain_mat[:, 2] == 1)[0]))
 
     if args.test_or_train == 'train':
-        temp_rand = np.arange(len(certain_mat))
+        temp_rand = np.arange(len(sub_mat))
         np.random.shuffle(temp_rand)
-        mat_shuffle = certain_mat[temp_rand]
+        sub_mat_shuflle = sub_mat[temp_rand]
     elif args.test_or_train == 'test':  # In test, don't shuffle
-        mat_shuffle = certain_mat
-        print("data labels: ", mat_shuffle[:, 2])
+        sub_mat_shuflle = sub_mat
+        print("data labels: ", sub_mat_shuflle[:, 2])
 
-    X_train, X_test, Y_train, Y_test = train_test_split(mat_shuffle, mat_shuffle[:, 2],
+    X_train, X_test, Y_train, Y_test = train_test_split(sub_mat_shuflle, sub_mat_shuflle[:, 2],
                                                         test_size=args.test_ratio)
 
     test_data["spectra"] = zscore(X_test[:, 3:], axis=1).astype(np.float32)
@@ -338,9 +349,9 @@ def get_data_from_certain_ids(args, certain_fns=["f1", "f2"]):
     if args.test_or_train == 'train':
         # augment the training data
         if args.aug_folds != 0:
-            train_data = augment_data(new_mat, X_train, args)
+            train_data = augment_data(X_train, certain_mat, args)
             args.num_train = train_data["spectra"].shape[0]
-            print("After augmentation--class 0: ", len(np.where(train_data["labels"] == 0)[0]), "class 1: ",
+            print("Use Certain aug. X_trainAfter augmentation--class 0: ", len(np.where(train_data["labels"] == 0)[0]), "class 1: ",
                   len(np.where(train_data["labels"] == 1)[0]))
         else:
             train_data["spectra"] = X_train[:, 3:]
@@ -410,13 +421,10 @@ def augment_data(aug_target, augs, args):
     """
     train_data_aug = {}
     # X_train_aug = aug_target
-
     if "mean" in args.aug_method:
         augmented_whole = augment_with_batch_mean(args, aug_target, augs)
     elif "noise" == args.aug_method:
         augmented_whole = augment_with_random_noise(args, aug_target)
-    else:  # augment with random samples from the whole set
-        augmented_whole = augment_with_random_samples(args, aug_target)
     #
     # print("Augmentation number of class 0", np.where(X_train_aug[:, 2] == 0)[0].size, "number of class 1", np.where(X_train_aug[:, 2] == 1)[0].size)
     train_data_aug["spectra"] = augmented_whole[:, 3:].astype(np.float32)
@@ -439,11 +447,11 @@ def augment_with_batch_mean(args, aug_target, augs):
     X_train_aug = np.empty((0, aug_target.shape[1]))
     for class_id in range(args.num_classes):
         # find all the samples from this class from the samples that used to augment other samples
-        if args.aug_method == "ops-mean":
+        if args.aug_method == "ops-mean" or args.aug_method == "ops_mean":
             inds = np.where(augs[:, 2] == args.num_classes - 1 - class_id)[0]
-        elif args.aug_method == "same-mean":
+        elif args.aug_method == "same-mean" or args.aug_method == "same_mean":
             inds = np.where(augs[:, 2] == class_id)[0]
-        elif args.aug_method == "both-mean":
+        elif args.aug_method == "both-mean" or args.aug_method == "both_mean":
             inds = np.arange(len(augs[:, 2]))  # use all labels to augment
 
         # randomly select 100 groups of 100 samples each and get mean
@@ -499,6 +507,18 @@ def augment_with_random_samples(args, target):
     noise = args.aug_scale * \
             np.random.uniform(low=0.0, high=1.0, size=[args.aug_folds, target[:, 2].size, target[:, 3:].shape[-1]])
     combine = np.empty((0, args.data_len))
+
+    # randomly select 100 groups of 100 samples each and get mean
+    aug_inds = np.random.choice(target[:, 2].size, args.aug_folds * len(np.where(aug_target[:, 2] == class_id)[0]) * num2average, replace=True).reshape(-1, num2average)
+    target_inds = np.random.choice(np.where(aug_target[:, 2] == class_id)[0], args.aug_folds * len(
+        np.where(aug_target[:, 2] == class_id)[0]) * num2average).reshape(-1, num2average)
+    mean_batch = np.mean(augs[:, 3:][aug_inds], axis=1)  # get a batch of spectra to get the mean
+    aug_zspec = (1 - args.aug_scale) * aug_target[:, 3:][np.squeeze(target_inds)] + mean_batch * args.aug_scale
+    combine = np.concatenate((aug_target[:, 0][target_inds].reshape(-1, 1),
+                              aug_target[:, 1][target_inds].reshape(-1, 1),
+                              aug_target[:, 2][target_inds].reshape(-1, 1), aug_zspec), axis=1)
+    X_train_aug = np.vstack((X_train_aug, combine))
+
     for fold in range(args.aug_folds):
         aug_zspec = target[:, 3:] + noise[fold]
         combine = np.vstack((combine, aug_zspec))
@@ -610,7 +630,7 @@ def get_noisy_mnist_data(args):
         data["train_sample_ids"] = batch_train[3]  # in training, we don't consider patient-ids
         data["train_initializer"] = iter_train.initializer
         data["train_num_samples"] = train_data["num_samples"]
-        data["train_batches"] = train_data["num_samples"] // args.batch_size
+        data["train_batches"] = train_data["num_samples"] // args.batch_size + 1
         args.test_every = train_data["num_samples"] // (args.test_freq * args.batch_size)
         # test_freq: how many times to test in one training epoch
 
@@ -680,11 +700,11 @@ def load_mnist_with_noise(args):
             train_data["ids"] = X_train[:, 1]
             train_data["sample_ids"] = X_train[:, 0]
 
-        train_data["sample_ids"], train_data["ids"], train_data["labels"], train_data["spectra"] = \
-            oversample_train(train_data["sample_ids"], train_data["ids"],
-                             train_data["labels"], train_data["spectra"])
-        print("After oversampling--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]),
-              "\n num of train class 1: ", len(np.where(train_data["labels"] == 1)[0]))
+        # train_data["sample_ids"], train_data["ids"], train_data["labels"], train_data["spectra"] = \
+        #     oversample_train(train_data["sample_ids"], train_data["ids"],
+        #                      train_data["labels"], train_data["spectra"])
+        # print("After oversampling--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]),
+        #       "\n num of train class 1: ", len(np.where(train_data["labels"] == 1)[0]))
         train_data["num_samples"] = len(Y_train)
         train_data["spectra"] = zscore(train_data["spectra"], axis=1).astype(np.float32)
         train_data["labels"] = train_data["labels"].astype(np.int32)
@@ -799,21 +819,16 @@ def introduce_label_noisy(original_lbs, noisy_ratio=0.2, num_classes=10, save_di
     """
     count_noise = []
     noisy_lbs = original_lbs.copy()
+
+    all_classes = np.arange(10)
     for c in range(num_classes):
         c_inds = np.where(original_lbs == c)[0]
+        rest_lbs = all_classes[all_classes != c]
         # first round random selection and random flipping
-        noisy_c_inds = np.random.choice(c_inds, np.int(c_inds.size * noisy_ratio))
-        noisy_lbs_1 = np.random.uniform(0, 10, len(noisy_c_inds))
-
-        # second round: there are still randomly assigned with the true labels
-        noisy_inds_2 = np.where([a > c and a < (c + 1) for a in noisy_lbs_1])[0]
-        noisy_lbs_2 = (10 * (noisy_lbs_1[noisy_inds_2] - c)).astype(np.int)
-
-        # reassign the noisy label to those had the same labels in the first round
-        new_ns_lbs = noisy_lbs_1.astype(np.int)
-        new_ns_lbs[noisy_inds_2] = noisy_lbs_2
-
-        noisy_lbs[noisy_c_inds] = new_ns_lbs
+        noisy_c_inds = np.random.choice(c_inds, np.int(c_inds.size * noisy_ratio), replace=False)   # indices that we want to random flip classes
+        rest_lbs_inds = np.random.uniform(0, len(rest_lbs), len(noisy_c_inds)).astype(np.int)
+        flipped_lbs = rest_lbs[rest_lbs_inds]
+        noisy_lbs[noisy_c_inds] = flipped_lbs
 
         count_noise.append([c, len(c_inds), np.sum(original_lbs[c_inds] != noisy_lbs[c_inds])])
     print(np.array(count_noise))

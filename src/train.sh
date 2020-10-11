@@ -62,7 +62,7 @@ srun -p sleuths -w turbine -N 2 --mem=15000 --pty bash -i
 
 srun -p sleuths -w scuderi --mem=15000 --gres gpu:titanxp:1 python3 cluster.py
 srun -p sleuths -w turbine --mem=10000 --gres gpu:titanx:1 python3 cluster.py
-srun -p sleuths -w jetski --mem=15000  --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 vae_main.py
+srun -p sleuths -w jetski --mem=10000  --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py
 srun -p sleuths -w vane --mem=15000 --gres gpu:rtx2080tirev.a:1
 srun -p x-men --mem=15000 python3 acti_max.py
 srun -p x-men --mem=15000 python3 plot_average_plots.py

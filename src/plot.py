@@ -662,12 +662,13 @@ def plot_train_samples(samples, true_labels, args, postfix="samples"):
         indices = np.random.choice(np.where(true_labels == class_id)[0], min(row*col, np.where(true_labels == class_id)[0].size))
         if len(indices) > 0:
             samp_plot = samples[indices]
-            f.suptitle("Training samples in class {}".format(class_id), fontsize=base)
+            f.suptitle("Training samples after aug. in class {}".format(class_id), fontsize=base)
             for ii in range(indices.size):
                 axs[ii // col, np.mod(ii, col)].plot(samp_plot[ii])
             plt.tight_layout()
             # plt.setp(ax1.get_xticklabels(), visible=False)
             # plt.subplots_adjust(hspace=0.00, wspace=0.15)
             plt.savefig(args.output_path + '/augmented_samples-class-{}-{}.png'.format(class_id, args.aug_method), format = 'png')
+            plt.savefig(args.output_path + '/augmented_samples-class-{}-{}.pdf'.format(class_id, args.aug_method), format = 'pdf')
 
             plt.close()

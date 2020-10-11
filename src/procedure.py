@@ -546,7 +546,7 @@ def training(sess, args, graph, saver):
                 class_maps, rand_inds = plot.get_class_map(ret_test["test_labels"],
                                                            ret_test["test_conv"],
                                                            ret_test["test_gap_w"],
-                                                           args.data_len, 1, number2use=200)
+                                                           args.height, 1, number2use=200)
                 plot.plot_class_activation_map(sess, class_maps,
                                                ret_test["test_features"][rand_inds],
                                                ret_test["test_labels"][rand_inds],
@@ -602,16 +602,7 @@ def single_epo_runs(sess, args, graph):
                                 lr=lr, if_get_wrong=False,
                                 if_get_certain=True, train_or_test="train")
         
-        # save the certain as well as the logits for all samples
-        if args.if_save_certain:
-            certain_data = np.concatenate((np.array(ret_train["train_certain_sample_ids"]).reshape(-1, 1),
-                                           np.array(ret_train["train_certain_ids"]).reshape(-1, 1),
-                                           np.array(ret_train["train_certain_labels"]).reshape(-1, 1),
-                                           ret_train["train_certain_logits"]), axis=1)
-            np.savetxt(os.path.join(args.output_path, "certains",
-                                    "certain_data_{}_epoch_{}_num_{}_{}_theta_{}_s{}.csv".format("train", epoch, ret_train[
-                                        "train_certain_sample_ids"].size, args.data_source, args.theta_thr, args.randseed)),
-                       certain_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
+
         one_ep_data = np.concatenate((np.array(ret_train["train_one_ep_sample_ids"]).reshape(-1, 1),
                                       np.array(ret_train["train_one_ep_ids"]).reshape(-1, 1),
                                     np.array(ret_train["train_one_ep_labels"]).reshape(-1, 1),
@@ -828,6 +819,7 @@ def condition(end, output_data, epoch, number_of_epochs):
 # @param input_data training and testing data
 def main_train(sess, args, graph):
     saver = tf.compat.v1.train.Saver()
+
     if args.restore_from:
         print("restore_from", args.restore_from)
         global_step = load_model(saver, sess, args.restore_from)
@@ -840,8 +832,8 @@ def main_train(sess, args, graph):
     if args.test_or_train == 'train' and not args.if_single_runs:
         logger.info("Starting training")
         initialize(sess, graph, test_only=False)
-        output_data = training(sess, args, graph, saver)
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
+        output_data = training(sess, args, graph, saver)
         dataio.save_plots(sess, args, output_data, training=True)
     elif args.test_or_train == 'test':
         logger.info("Starting testing")
@@ -869,7 +861,7 @@ def main_train(sess, args, graph):
     elif args.test_or_train == 'train' and args.if_single_runs:
         logger.info("Starting single epoch training")
         initialize(sess, graph, test_only=False)
-        output_data = single_epo_runs(sess, args, graph)
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
+        output_data = single_epo_runs(sess, args, graph)
         dataio.save_plots(sess, args, output_data, training=True)
 
