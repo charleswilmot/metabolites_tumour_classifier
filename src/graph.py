@@ -6,7 +6,6 @@
 import tensorflow as tf
 import numpy as np
 import logging as log
-import ipdb
 
 logger = log.getLogger("classifier")
 

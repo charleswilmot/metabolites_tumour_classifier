@@ -259,7 +259,7 @@ train_parser.add_argument(
 )
 train_parser.add_argument(
     '--noise_ratio', type=log_debug_arg(float, "the percentage of mis-labeled samples"),
-    default=0.8,
+    default=0.05,
 )
 train_parser.add_argument(
     '--from_clusterpy', type=log_debug_arg(bool, "the percentage of mis-labeled samples"),
@@ -304,7 +304,7 @@ _layer_number_activation = 1
 
 # Re-read the arguments after the verbosity has been set correctly
 args = parser.parse_args()
-print("train.restore_from {},\n "
+print(
       "aug_method: {},\n "
       "aug_scale: {},\n "
       "aug_folds: {},\n "
@@ -313,7 +313,7 @@ print("train.restore_from {},\n "
       "output_path: {},\n "
       "if_single_runs: {},\n "
       "from_clusterpy: {},\n "
-      "certain_dir: {},\n ".format(args.restore_from,
+      "certain_dir: {},\n ".format(
                          args.aug_method,
                          args.aug_scale,
                          args.aug_folds,

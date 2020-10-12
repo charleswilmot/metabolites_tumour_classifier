@@ -6,9 +6,9 @@ default_aug_method = "same_mean"
 default_factor = 0.5
 default_folds = 10
 default_theta = 0.9
-default_model_name = "RNN"
+default_model_name = "RNN+random-augmentation"
 default_source = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
-EXPERIMENT_DIR_ROOT = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate"
+EXPERIMENT_DIR_ROOT = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
 
 
 def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None,
@@ -28,7 +28,7 @@ def generate_experiment_path_str(aug_method=None, aug_scale=None, aug_folds=None
     if_from_certain = 1 if certain_dir is not None else 0
     description = description if description else "train"
     description = "100rns-" + description if if_single_runs else description
-    output_path = os.path.join(EXPERIMENT_DIR_ROOT, "{}-{}-{}x{}-factor-{}-from-{}-certain{}-theta-{}-s{}-{}".format(date, default_model_name, aug_method, aug_folds, aug_scale, cv_set_id, if_from_certain, theta_thr, rand_seed, description))
+    output_path = os.path.join(EXPERIMENT_DIR_ROOT, default_model_name, "{}-{}-{}x{}-factor-{}-from-{}-certain{}-theta-{}-s{}-{}".format(date, default_model_name, aug_method, aug_folds, aug_scale, cv_set_id, if_from_certain, theta_thr, rand_seed, description))
     # experiment_dir = EXPERIMENT_DIR_ROOT + "{}_exp0.776_{}x{}_factor_{}_from-epoch_{}_{}".format(date, aug_method, aug_folds, aug_scale, from_epoch, description)
     print("end of generate_experiment_path_str: cluster.py if_single_runs", if_single_runs)
     return output_path
@@ -130,9 +130,9 @@ class ClusterQueue:
 
 data_source_dirs = [
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data0.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
@@ -141,27 +141,41 @@ data_source_dirs = [
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat"
 ]
 certain_dirs = [
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-06-51-RNN-nonex0-factor-0-from-ep-0-from-lout40-data9-theta-None-s129-100rns-train/certains",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-06-50-RNN-nonex0-factor-0-from-ep-0-from-lout40-data7-theta-None-s129-100rns-train/certains",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-06-49-RNN-nonex0-factor-0-from-ep-0-from-lout40-data5-theta-None-s129-100rns-train/certains",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-06-48-RNN-nonex0-factor-0-from-ep-0-from-lout40-data3-theta-None-s129-100rns-train/certains",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-06-47-RNN-nonex0-factor-0-from-ep-0-from-lout40-data1-theta-None-s129-100rns-train/certains"
+    # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-32-MLP-nonex0-factor-0-from-ep-0-from-lout40-data9-theta-None-s129-100rns-train/certains",
+    # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-31-MLP-nonex0-factor-0-from-ep-0-from-lout40-data7-theta-None-s129-100rns-train/certains",
+    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-30-MLP-nonex0-factor-0-from-ep-0-from-lout40-data5-theta-None-s129-100rns-train/certains",
+    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-29-MLP-nonex0-factor-0-from-ep-0-from-lout40-data3-theta-None-s129-100rns-train/certains",
+    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-28-MLP-nonex0-factor-0-from-ep-0-from-lout40-data1-theta-None-s129-100rns-train/certains"
 ]
 
-# #100 single-epoch runs
-# for ct_dir, dd in zip(certain_dirs, data_source_dirs):
+# use random-pick to augment.
+# for dd in data_source_dirs:
+#     for method in ["both_mean"]:  #"same_mean", "ops_mean",
+#             for fold in [1, 3, 5, 7, 9]:  #
+#                 for scale in [0.1, 0.3, 0.5]:  #
+#                     for theta in [0.1, 0.2, 0.3, 0.4, 0.5]:  #
+#                         cq = ClusterQueue(
+#                             certain_dir=None,
+#                             aug_method=method,
+#                             aug_scale=scale,
+#                             aug_folds=fold,
+#                             theta_thr=theta,
+#                             randseed=129,
+#                             if_single_runs=False,
+#                             from_clusterpy=True)
+
+# use distilled certain to augment
 for dd in data_source_dirs:
-    for method in ["same_mean", "ops_mean", "both_mean"]:
-            for fold in [0, 1, 3, 5, 7, 9]:
-                for scale in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]:
-                    for theta in [0.1, 0.2, 0.3, 0.4, 0.5]:
-                        cq = ClusterQueue(
+    for method in ["both_mean"]:  #"same_mean", "ops_mean",
+            for fold in [1, 3]:  #, 5, 9, 3, 5, 7, 9
+                for scale in [0.05, 0.2]:  #, 0.35, 0.5, 0.3, 0.5
+                    cq = ClusterQueue(
                             input_data=dd,
                             certain_dir=None,
                             aug_method=method,
                             aug_scale=scale,
                             aug_folds=fold,
-                            theta_thr=theta,
+                            theta_thr=1,
                             randseed=129,
                             if_single_runs=False,
                             from_clusterpy=True)

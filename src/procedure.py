@@ -9,7 +9,6 @@ from dataio import save_my_model, load_model, save_plots
 import plot as plot
 import pickle
 import dataio
-import ipdb
 from sklearn import metrics
 
 logger = log.getLogger("classifier")

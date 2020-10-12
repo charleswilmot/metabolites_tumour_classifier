@@ -367,7 +367,7 @@ def two_axis_in_one_plot():
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "100_single_ep_corr_classification_rate"
+plot_name = "100_single_ep_corr_classification_rate_mnist"
 
 
 
@@ -935,10 +935,12 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
     for data_dir in data_dirs:
         files = find_files(data_dir, pattern="one_ep_data_train*.csv")
 
+        spearmanr_rec = []
         # get correct count in 100 rauns
         data_source = os.path.basename(files[0]).split("_")[8]
-        for ind, fn in enumerate(files):
-            values = pd.read_csv(fn, header=0).values
+        for ind in range(len(files)):
+            fn = find_files(data_dir, pattern="one_ep_data_train_epoch_{}*.csv".format(ind))
+            values = pd.read_csv(fn[0], header=0).values
             smp_ids = values[:, 0].astype(np.int)
             pat_ids = values[:, 1].astype(np.int)
             lbs = values[:, 2]
@@ -949,12 +951,22 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
                 noisy_lb_counts = []
                 dict_count = {key: 0 for key in np.arange(total_num)}  # total number 9243
                 noisy_lb_rec = {key: 0 for key in np.arange(total_num)}  # total number 9243
+                pre_rank = np.arange(total_num)  #indices
 
             pred_lbs = np.argmax(prob, axis=1)
             right_inds = np.where(pred_lbs == pat_ids)[0]
             correct = np.unique(smp_ids[right_inds])
             ids_w_count += list(correct)
             noisy_lb_counts += list(smp_ids[pat_ids != lbs])  # sample ids that with noisy labels
+
+            if ind % 10 == 0:
+                count_all = Counter(ids_w_count)
+                dict_count.update(count_all)
+                curr_count_array = np.array([[key, val] for (key, val) in dict_count.items()])
+                curr_rank = curr_count_array[np.argsort(curr_count_array[:, 1]),0]
+                spearmanr_rec.append([ind, np.sum(curr_rank==pre_rank)])
+                # spearmanr_rec.append([ind, spearmanr(pre_rank, curr_rank)[0]])
+                pre_rank = curr_rank.copy()
 
         count_all = Counter(ids_w_count)
         dict_count.update(count_all)
@@ -973,20 +985,19 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
         assert np.sum(counter_array[sort_inds, 0] == noisy_inds_array[sort_inds, 0]), "sorted sample indices mismatch"
 
         fig, ax1 = plt.subplots()
-        ax1.set_xlabel("sample index (sorted)"),
+        ax1.set_xlabel("sample sorted by the correct clf. rate"),
         ax1.set_ylabel("correct clf. rate (over 100 runs)"),
-        ax1.plot(rates, label="whole data set"),
+        ax1.plot(rates, label="original data set"),
         ax1.tick_params(axis='y'),
         ax1.set_ylim([0, 1.0])
         ax1.legend(loc="upper left")
 
         ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-        color = 'tab:orange'
-        ax2.set_ylabel('counts', color=color),  # we already handled the x-label with ax1
-        ax2.plot(noisy_lb_rate.cumsum(), label="cum. # of noisy labels", linestyle="-.", color=color),
-        ax2.plot(np.ones(total_num).cumsum(), label="cum. # of all samples", linestyle="--", color=color)
+        ax2.set_ylabel('counts'),  # we already handled the x-label with ax1
+        ax2.plot(noisy_lb_rate.cumsum(), "m", label="accum. # of noisy labels"),
+        ax2.plot(np.ones(total_num).cumsum(), "c", label="accum. # of all samples")
         ax2.set_ylim([0, total_num])
-        ax2.tick_params(axis='y', labelcolor=color)
+        ax2.tick_params(axis='y')
         ax2.legend(loc="upper right")
         plt.title("distillation effect-{}.png".format(data_source))
         plt.savefig(

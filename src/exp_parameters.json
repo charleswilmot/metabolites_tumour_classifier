@@ -17,19 +17,19 @@
             "model_save_dir": null,
             "restore_from": null,
             "data_source": null,
-            "data_mode": "metabolite",
+            "data_mode": "metabolites",
 
             "model_name": "RNN",
             "optimizer_type": "adam",
             "loss_type": "softmax_ce",
-            "learning_rate": 0.001,
+            "learning_rate": 0.0005,
             "postfix": "none",
             "if_from_certain": false,
             "if_save_certain": false
         },
 
         "train": {
-            "number_of_epochs": 10,
+            "number_of_epochs": 201,
             "test_freq": 1,
             "test_every": null,
             "test_ratio": 0.2,
