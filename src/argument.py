@@ -51,6 +51,21 @@ class Params():
             else:
                 model_params = dicts["model"][mode]
                 self.__dict__.update(model_params)
+    def update(self, json_path, mode=None):
+        """Loads parameters from json file. if specify a modelkey, only load the params under thta modelkey"""
+        with open(json_path) as f:
+            dicts = json.load(f)
+            if not mode:
+                self.__dict__.update(dicts)
+            elif mode == "train" or mode == "test":
+                # general_params = dicts["train_or_test"]["general"]
+                general_params = dicts["general"]
+                exp_params = dicts[mode]
+                self.__dict__.update(general_params)
+                self.__dict__.update(exp_params)
+            else:
+                model_params = dicts["model"][mode]
+                self.__dict__.update(model_params)
 
     @property
     def dict(self):
@@ -178,229 +193,212 @@ def log_debug_arg(type_constructor, message):
         return r
     return f
 
-
+#
 parser = argparse.ArgumentParser()
+# parser.add_argument(
+#     '-v', '--verbose', action='count', default=1,
+#     help="Verbosity level. Use -v, -vv, -vvv -vvvv."
+# )
+# parser.add_argument(
+#     '-T', dest='separator', action='store_true',
+#     help="Separator in case the option before train/test is a list. See https://bugs.python.org/issue9338 ."
+# )
 parser.add_argument(
-    '-v', '--verbose', action='count', default=1,
-    help="Verbosity level. Use -v, -vv, -vvv -vvvv."
-)
-parser.add_argument(
-    '-T', dest='separator', action='store_true',
-    help="Separator in case the option before train/test is a list. See https://bugs.python.org/issue9338 ."
-)
-parser.add_argument(
-    '-exp_config', default="./exp_parameters.json",
+    '--output_path', default="./exp_parameters.json",
     help="Json file path for experiment parameters"
 )
 parser.add_argument(
-    '-model_config', default="./model_parameters.json",
-    help="Json file path for model parameters"
+    '--exp_config', default="./exp_parameters.json",
+    help="Json file path for experiment parameters"
 )
 parser.add_argument(
-    '-A', '--activations', type=activation, action='store', nargs='+',
-    default=['lrelu', 'lrelu', 'lrelu', 'lrelu', 'sigmoid'],
-    help="Activation functions for every layer. Taken in 'lrelu', 'relu', 'sigmoid', 'tanh'"
+    '--model_config', default="./model_parameters.json",
+    help="Json file path for model parameters"
 )
-subparsers = parser.add_subparsers(dest="test_or_train")
-
-train_parser = subparsers.add_parser("train")
-# train_parser.add_argument(
-#     'output_path', metavar='OUTPUT',
-#     type=log_debug_arg(str, "Output path:"),
-#     nargs='?', default='../results',
-#     help="Path to the output data."
+# parser.add_argument(
+#     '-A', '--activations', type=activation, action='store', nargs='+',
+#     default=['lrelu', 'lrelu', 'lrelu', 'lrelu', 'sigmoid'],
+#     help="Activation functions for every layer. Taken in 'lrelu', 'relu', 'sigmoid', 'tanh'"
 # )
-train_parser.add_argument(
-    '--restore_from', type=log_debug_arg(str, "Restore model from:"),
-    nargs='?', default= None,
-    help="Path to a previously trained model."
-)
-
-train_parser.add_argument(
-    '--aug_method', type=log_debug_arg(str, "the augmentation method"),
-    default='same-mean',
-    help="augmentation methods: mean, ops_mean, both"
-)
-
-train_parser.add_argument(
-    '--aug_scale', type=log_debug_arg(float, "augmenatation scale w: w*another + (1-w)*self"),
-     default=0.1,
-    help="a float number of aug scale."
-)
-train_parser.add_argument(
-    '--aug_folds', type=log_debug_arg(int, "How many folds to augment"),
-    default=2,
-    help="How many folds to augment the data"
-)
-train_parser.add_argument(
-    '--theta_thr', type=float, dest="theta_thr",
-    default=0.20,
-    help="top .. percent of correct clf. rate samples"
-)
-train_parser.add_argument(
-    '--randseed', type=float, dest="randseed",
-    default=859,
-    help="the threshold to determine certain"
-)
-# when use cluster
-train_parser.add_argument(
-    '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
-    default=None,
-    help="which cross-validation set is used"
-)
-
-train_parser.add_argument(
-    '--output_path', type=log_debug_arg(str, "output path"),
-    default=None,
-)
-train_parser.add_argument(
-    '--if_single_runs', type=log_debug_arg(bool, "whether the mode of single runs to get correct clf rate"),
-    default=False,
-)
-train_parser.add_argument(
-    '--noise_ratio', type=log_debug_arg(float, "the percentage of mis-labeled samples"),
-    default=0.05,
-)
-train_parser.add_argument(
-    '--from_clusterpy', type=log_debug_arg(bool, "the percentage of mis-labeled samples"),
-    default=False,
-)
-train_parser.add_argument(
-    '--certain_dir', type=log_debug_arg(str, "dir of pre 100-single-ep-run exp."),
-    default=None,
-)
-test_parser = subparsers.add_parser("test")
-test_parser.add_argument(
-    '--restore_from', metavar='restore from MODEL',
-    type=log_debug_arg(str, "Restore model from:"),
-    help="Path to a previously trained model.",
-    default=None
-)
-test_parser.add_argument(
-    '-x', '--data-not-labeled', action='store_true',
-    help="Set this flag if the data you want to classify is not labeled."
-)
-test_parser.add_argument(
-    '--output_path', type=log_debug_arg(str, "output path"),
-    default=None,
-)
-test_parser.add_argument(
-    '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
-    default=None,
-    help="which cross-validation set is used"
-)
+# subparsers = parser.add_subparsers(dest="test_or_train")
+#
+# train_parser = subparsers.add_parser("train")
+# # train_parser.add_argument(
+# #     'output_path', metavar='OUTPUT',
+# #     type=log_debug_arg(str, "Output path:"),
+# #     nargs='?', default='../results',
+# #     help="Path to the output data."
+# # )
+# train_parser.add_argument(
+#     '--restore_from', type=log_debug_arg(str, "Restore model from:"),
+#     nargs='?', default= None,
+#     help="Path to a previously trained model."
+# )
+#
+# train_parser.add_argument(
+#     '--aug_method', type=log_debug_arg(str, "the augmentation method"),
+#     default='same-mean',
+#     help="augmentation methods: mean, ops_mean, both"
+# )
+#
+# train_parser.add_argument(
+#     '--aug_scale', type=log_debug_arg(float, "augmenatation scale w: w*another + (1-w)*self"),
+#      default=0.1,
+#     help="a float number of aug scale."
+# )
+# train_parser.add_argument(
+#     '--aug_folds', type=log_debug_arg(int, "How many folds to augment"),
+#     default=2,
+#     help="How many folds to augment the data"
+# )
+# train_parser.add_argument(
+#     '--theta_thr', type=float, dest="theta_thr",
+#     default=0.20,
+#     help="top .. percent of correct clf. rate samples"
+# )
+# train_parser.add_argument(
+#     '--randseed', type=float, dest="randseed",
+#     default=859,
+#     help="the threshold to determine certain"
+# )
+# # when use cluster
+# train_parser.add_argument(
+#     '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
+#     default=None,
+#     help="which cross-validation set is used"
+# )
+#
+# train_parser.add_argument(
+#     '--output_path', type=log_debug_arg(str, "output path"),
+#     default=None,
+# )
+# train_parser.add_argument(
+#     '--if_single_runs', type=log_debug_arg(bool, "whether the mode of single runs to get correct clf rate"),
+#     default=False,
+# )
+# train_parser.add_argument(
+#     '--noise_ratio', type=log_debug_arg(float, "the percentage of mis-labeled samples"),
+#     default=0.05,
+# )
+# train_parser.add_argument(
+#     '--from_clusterpy', type=log_debug_arg(bool, "the percentage of mis-labeled samples"),
+#     default=False,
+# )
+# train_parser.add_argument(
+#     '--certain_dir', type=log_debug_arg(str, "dir of pre 100-single-ep-run exp."),
+#     default=None,
+# )
+# test_parser = subparsers.add_parser("test")
+# test_parser.add_argument(
+#     '--restore_from', metavar='restore from MODEL',
+#     type=log_debug_arg(str, "Restore model from:"),
+#     help="Path to a previously trained model.",
+#     default=None
+# )
+# test_parser.add_argument(
+#     '-x', '--data-not-labeled', action='store_true',
+#     help="Set this flag if the data you want to classify is not labeled."
+# )
+# test_parser.add_argument(
+#     '--output_path', type=log_debug_arg(str, "output path"),
+#     default=None,
+# )
+# test_parser.add_argument(
+#     '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
+#     default=None,
+#     help="which cross-validation set is used"
+# )
 # test_parser.add_argument(
 #     '--output_path', type=log_debug_arg(str, "Test Output path"),
 #     default='/home/epilepsy-data/data/metabolites/results',
 # )
 
-
-## Read arguments once to get the verbosity level
-_layer_number_dim = 0
-_layer_number_dropout = 1
-_layer_number_batch_norm = 1
-_layer_number_activation = 1
+#
+# ## Read arguments once to get the verbosity level
+# _layer_number_dim = 0
+# _layer_number_dropout = 1
+# _layer_number_batch_norm = 1
+# _layer_number_activation = 1
 
 # Re-read the arguments after the verbosity has been set correctly
-args = parser.parse_args()
-print(
-        "restore_from"
-        "aug_method: {},\n "
-        "aug_scale: {},\n "
-        "aug_folds: {},\n "
-        "theta_thr: {},\n "
-        "input_data: {},\n "
-        "output_path: {},\n "
-        "if_single_runs: {},\n "
-        "from_clusterpy: {},\n "
-        "certain_dir: {},\n ".format(
-                         args.aug_method,
-                         args.aug_scale,
-                         args.aug_folds,
-                         args.theta_thr,
-                         args.input_data,
-                         args.output_path,
-                         args.if_single_runs,
-                         args.from_clusterpy,
-                         args.certain_dir,
-                         ))
-## Load experiment parameters and model parameters
-json_path = args.exp_config  # exp_param stores general training params
-assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
-args = Params(json_path)
-args.update(json_path, mode=args.test_or_train)
+def load_all_params(args):
+# args = parser.parse_args()
+    json_path = args.exp_config  # exp_param stores general training params
+    assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
+    args = Params(json_path)
+    args.update(json_path, mode=args.test_or_train)
 
-# load model specific parameters
-json_path = args.model_config
-assert os.path.isfile(json_path), "No json file found at {}".format(json_path)
+    # load model specific parameters
+    json_path = args.model_config
+    assert os.path.isfile(json_path), "No json file found at {}".format(json_path)
 
-args.update(json_path, mode=args.model_name) # update params with the model configuration
-args.from_clusterpy = args.from_clusterpy
-args.certain_dir = args.certain_dir
-
-
-if args.data_mode == "mnist" or args.data_mode == "MNIST":
-    args.width = 28
-    args.height = 28
-    args.data_source = "mnist"
-    args.noise_ratio = args.noise_ratio
-elif args.data_mode == "metabolite" or args.data_mode == "metabolites":
-    args.width = 1
-    args.height = 288
-    # TODO, cluster and param.json all give this parameter
-
-if not args.from_clusterpy:
-    print("Not run from cluster.py params.input data dir: ", args.input_data)
-    if args.data_mode == "metabolite":
-        args.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
-    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
-        args.data_source = "mnist"
-
-    # specify some params
-    time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
-    if args.restore_from is None:  # and args.output_path is None:  #cluster.py
-        postfix = "100rns-" + args.test_or_train if args.if_single_runs else args.test_or_train
-        args.output_path = os.path.join(args.output_root,
-                                          "{}-{}-{}x{}-factor-{}-from-{}-certain{}-theta-{}-s{}-{}".format(
-                                              time_str, args.model_name, args.aug_method, args.aug_folds,
-                                              args.aug_scale, args.data_source,
-                                              args.if_from_certain, args.theta_thr,
-                                              args.randseed, postfix))
-        # params.postfix = "-test"
-    # elif args.restore_from is None and args.output_path is not None:
-    #     params.output_path = args.output_path
-    elif args.restore_from is not None:  # restore a model
-        args.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(args.data_source, "test")
-        args.postfix = "-test"
-    dataio.make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
-else:
-    print("Run from cluster.py args.input data dir: ", args.input_data)
-    if args.data_mode == "metabolite":
-        args.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
-    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
-        args.data_source = "mnist"
-    args.output_path = args.output_path
-
-# params.resplit_data = args.resplit_data
-args.restore_from = args.restore_from
-args.test_or_train = args.test_or_train
-args.resume_training = (args.restore_from != None)
-args.randseed = args.randseed
-args.if_single_runs = False
-print("argument.py, params.if_single_runs: ", args.if_single_runs)
-
-args.model_save_dir = os.path.join(args.output_path, "network")
-print("output dir: ", args.output_path)
-
-
-if args.test_or_train == "test":
-    args.if_from_certain = False
-    args.if_save_certain = False
-elif args.test_or_train == "train":
-    args.aug_scale = args.aug_scale
-    args.aug_method = args.aug_method
-    args.aug_folds = args.aug_folds
-    args.theta_thr = args.theta_thr
+    args.update(json_path, mode=args.model_name) # update params with the model configuration
+# args.from_clusterpy = args.from_clusterpy
+# args.certain_dir = args.certain_dir
+#
+#
+# if args.data_mode == "mnist" or args.data_mode == "MNIST":
+#     args.width = 28
+#     args.height = 28
+#     args.data_source = "mnist"
+#     args.noise_ratio = args.noise_ratio
+# elif args.data_mode == "metabolite" or args.data_mode == "metabolites":
+#     args.width = 1
+#     args.height = 288
+#     # TODO, cluster and param.json all give this parameter
+#
+# if not args.from_clusterpy:
+#     print("Not run from cluster.py params.input data dir: ", args.input_data)
+#     if args.data_mode == "metabolite":
+#         args.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
+#     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+#         args.data_source = "mnist"
+#
+#     # specify some params
+#     time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
+#     if args.restore_from is None:  # and args.output_path is None:  #cluster.py
+#         postfix = "100rns-" + args.test_or_train if args.if_single_runs else args.test_or_train
+#         args.output_path = os.path.join(args.output_root,
+#                                           "{}-{}-{}x{}-factor-{}-from-{}-certain{}-theta-{}-s{}-{}".format(
+#                                               time_str, args.model_name, args.aug_method, args.aug_folds,
+#                                               args.aug_scale, args.data_source,
+#                                               args.if_from_certain, args.theta_thr,
+#                                               args.randseed, postfix))
+#         # params.postfix = "-test"
+#     # elif args.restore_from is None and args.output_path is not None:
+#     #     params.output_path = args.output_path
+#     elif args.restore_from is not None:  # restore a model
+#         args.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(args.data_source, "test")
+#         args.postfix = "-test"
+#     dataio.make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+# else:
+#     print("Run from cluster.py args.input data dir: ", args.input_data)
+#     if args.data_mode == "metabolite":
+#         args.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
+#     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+#         args.data_source = "mnist"
+#     args.output_path = args.output_path
+#
+# # params.resplit_data = args.resplit_data
+# args.restore_from = args.restore_from
+# args.test_or_train = args.test_or_train
+# args.resume_training = (args.restore_from != None)
+# args.randseed = args.randseed
+# args.if_single_runs = False
+# print("argument.py, params.if_single_runs: ", args.if_single_runs)
+#
+# args.model_save_dir = os.path.join(args.output_path, "network")
+# print("output dir: ", args.output_path)
+#
+#
+# if args.test_or_train == "test":
+#     args.if_from_certain = False
+#     args.if_save_certain = False
+# elif args.test_or_train == "train":
+#     args.aug_scale = args.aug_scale
+#     args.aug_method = args.aug_method
+#     args.aug_folds = args.aug_folds
+#     args.theta_thr = args.theta_thr
 
 # Verbosity level:
 level = 50 - (args.verbose * 10) + 1

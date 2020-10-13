@@ -7,14 +7,41 @@ import sys
 sys.path.append("..")
 import graph
 import dataio
-import argument
+import utils
+import argparse
 import procedure
 import logging as log
 import tensorflow as tf
 import numpy as np
+import datetime
 import logging
 from tensorflow.python.client import device_lib
+from dataio import make_output_dir
 tf.compat.v1.disable_v2_behavior()
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    '--output_path', default="/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review",
+    help="output dir"
+)
+parser.add_argument(
+    '--exp_config', default="./exp_parameters.json",
+    help="Json file path for experiment parameters"
+)
+parser.add_argument(
+    '--model_config', default="./model_parameters.json",
+    help="Json file path for model parameters"
+)
+
+# args = argument.params
+params = parser.parse_args()
+args = utils.load_all_params(params.exp_config, params.model_config)
+args = utils.generate_output_path(args, time_str='{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now()))
+if args.from_clusterpy:
+    pass
+else:
+    make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+
 
 def get_available_gpus():
     local_device_protos = device_lib.list_local_devices()
@@ -23,7 +50,6 @@ def get_available_gpus():
 
 
 logger = log.getLogger("classifier")
-args = argument.params
 dataio.save_command_line(args)
 get_available_gpus()
 
@@ -51,17 +77,12 @@ else:
         data_tensors, args = dataio.get_noisy_mnist_data(args)
     else:
         data_tensors, args = dataio.get_data_tensors(args)
-
 print("------------Successfully get data tensors")
-print("---args.if_single_runs--: ", args.if_single_runs)
-
 
 graph = graph.get_graph(args, data_tensors)
-
 
 with tf.compat.v1.Session() as sess:
     output_data = procedure.main_train(sess, args, graph)
 
-print("args.seed", args.seed)
 if args.if_from_certain:
     print("certain_files", certain_files)

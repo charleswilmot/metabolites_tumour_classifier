@@ -462,13 +462,13 @@ def augment_with_batch_mean(args, aug_target, augs):
         target_inds = np.random.choice(np.where(aug_target[:, 2] == class_id)[0], args.aug_folds * len(
             np.where(aug_target[:, 2] == class_id)[0]) * num2average).reshape(-1, num2average)
         mean_batch = np.mean(augs[:, 3:][aug_inds], axis=1)  # get a batch of spectra to get the mean
-        aug_zspec = (1 - args.aug_scale) * aug_target[:, 3:][np.squeeze(target_inds)] + mean_batch * args.aug_scale
+        noise_aug_scale = np.random.uniform(args.aug_scale-0.02, args.aug_scale+0.02, size=[len(mean_batch), 1])
+        aug_zspec = (1 - args.aug_scale) * aug_target[:, 3:][np.squeeze(target_inds)] + mean_batch * noise_aug_scale
         combine = np.concatenate((aug_target[:, 0][target_inds].reshape(-1, 1),
                                   aug_target[:, 1][target_inds].reshape(-1, 1),
                                   aug_target[:, 2][target_inds].reshape(-1, 1), aug_zspec), axis=1)
         X_train_aug = np.vstack((X_train_aug, combine))
 
-        data_dim = "1d" if args.data_mode == "metabolites" else "2d"
         Plot.plot_train_samples(aug_zspec, aug_target[:, 2][target_inds], args, postfix="samples", data_dim=data_dim)
 
     print("original spec total shape", class_id, aug_target[:, 3:].shape, "augment spec shape: ",
