@@ -26,14 +26,14 @@ import dataio as dataio
 
 import matplotlib.pylab as pylab
 base_size = 24
-params = {'legend.fontsize': base_size - 2,
+args = {'legend.fontsize': base_size - 2,
           'figure.figsize': (12, 10),
           'axes.labelsize': base_size - 2,
-          # 'weight' : 'bold',
+        # 'weight' : 'bold',
           'axes.titlesize': base_size,
           'xtick.labelsize': base_size - 3,
           'ytick.labelsize': base_size - 3}
-pylab.rcParams.update(params)
+pylab.rcParams.update(args)
 
 
 def find_files(directory, pattern='Data*.csv', withlabel=True, rand_label=True):
@@ -1115,12 +1115,12 @@ if __name__ == "__main__":
                 check_make_dir(results_dir, [])
 
                 certain_files = dataio.find_files(ct_dir, pattern="train_top_{}th_*.csv".format(theta))
-                params = {"input_data": input_data_dir,
+                args = {"input_data": input_data_dir,
                           "output_path": results_dir, "num_classes": num_classes,
                           "test_ratio":0.2, "test_or_train":"train",
                           "aug_method":"both-mean", "aug_folds":5, "aug_scale":0.5}
                 from types import SimpleNamespace
-                args = SimpleNamespace(**params)
+                args = SimpleNamespace(**args)
                 train_data, test_data = dataio.get_data_from_certain_ids(args,
                                                                   certain_fns=certain_files)
                 SVM_classifier(train_data, test_data, data_source="{}".format(set),
@@ -1165,13 +1165,13 @@ if __name__ == "__main__":
                 test_data["spec"], test_data["lbs"], test_data["pat_ids"], test_data["samp_ids"] = load_data(
                     test_dir, num_classes=num_classes)
 
-                params = {"input_data": train_dir,
+                args = {"input_data": train_dir,
                           "output_path": results_dir, "num_classes": num_classes,
                           "test_ratio": 0.2, "test_or_train": "train",
                           "aug_method": "both-mean", "aug_folds": 5, "aug_scale": 0.5}
                 from types import SimpleNamespace
 
-                args = SimpleNamespace(**params)
+                args = SimpleNamespace(**args)
                 train_data, test_data = dataio.get_data_from_certain_ids(args)
 
                 if if_aug_data:
@@ -1200,13 +1200,13 @@ if __name__ == "__main__":
                 train_data["spec"], train_data["lbs"], train_data["pat_ids"], train_data["samp_ids"] = load_data(
                     train_dir, num_classes=2)
 
-                params = {"input_data": train_dir,
+                args = {"input_data": train_dir,
                           "output_path": results_dir, "num_classes": num_classes,
                           "test_ratio": 0.2, "test_or_train": "train",
                           "aug_method": "both-mean", "aug_folds": 5, "aug_scale": 0.5}
                 from types import SimpleNamespace
 
-                args = SimpleNamespace(**params)
+                args = SimpleNamespace(**args)
                 # train_data, test_data = dataio.get_data_from_certain_ids(args)
                 data_tensors, args = dataio.get_data_tensors(args)
 

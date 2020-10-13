@@ -938,7 +938,7 @@ def get_graph(args, data_tensors):
                                                                        data_tensors["test_labels"])
     graph["test_confusion"] = get_confusion_matrix(graph["test_logits"], data_tensors["test_labels"], args.num_classes)
     graph["test_auc"] = get_roc_curve(graph["test_logits"], data_tensors["test_labels"], args.num_classes)
-    if args.test_or_train == "train":
+    if args.train_or_test == "train":
         net_out = net(data_tensors["train_features"], training=True)
         graph["train_logits"] = net_out["logits"]
         graph["train_labels"] = data_tensors["train_labels"]

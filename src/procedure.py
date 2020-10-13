@@ -828,13 +828,13 @@ def main_train(sess, args, graph):
         logger.info("Initializing network with random weights")
         sess.run([tf.compat.v1.global_variables_initializer(), tf.compat.v1.local_variables_initializer()])
 
-    if args.test_or_train == 'train' and not args.if_single_runs:
+    if args.train_or_test == 'train' and not args.if_single_runs:
         logger.info("Starting training")
         initialize(sess, graph, test_only=False)
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
         output_data = training(sess, args, graph, saver)
         dataio.save_plots(sess, args, output_data, training=True)
-    elif args.test_or_train == 'test':
+    elif args.train_or_test == 'test':
         logger.info("Starting testing")
         initialize(sess, graph, test_only=True)
         if_check_cam = True if "CAM" in args.model_name else False
@@ -857,7 +857,7 @@ def main_train(sess, args, graph):
 
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
     # to get the correct clf rate of the whole data
-    elif args.test_or_train == 'train' and args.if_single_runs:
+    elif args.train_or_test == 'train' and args.if_single_runs:
         logger.info("Starting single epoch training")
         initialize(sess, graph, test_only=False)
         args.save(os.path.join(args.output_path, "network", "parameters.json"))

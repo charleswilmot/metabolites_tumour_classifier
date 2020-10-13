@@ -18,14 +18,14 @@ from sklearn.manifold import TSNE
 
 import matplotlib.pylab as pylab
 base_size = 24
-params = {'legend.fontsize': base_size - 2,
+args = {'legend.fontsize': base_size - 2,
           'figure.figsize': (12, 10),
           'axes.labelsize': base_size - 2,
-          # 'weight' : 'bold',
+        # 'weight' : 'bold',
           'axes.titlesize': base_size,
           'xtick.labelsize': base_size - 3,
           'ytick.labelsize': base_size - 3}
-pylab.rcParams.update(params)
+pylab.rcParams.update(args)
 
 
 

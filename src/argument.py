@@ -296,7 +296,6 @@ test_parser.add_argument(
 
 
 ## Read arguments once to get the verbosity level
-args = parser.parse_args()
 _layer_number_dim = 0
 _layer_number_dropout = 1
 _layer_number_batch_norm = 1
@@ -305,15 +304,16 @@ _layer_number_activation = 1
 # Re-read the arguments after the verbosity has been set correctly
 args = parser.parse_args()
 print(
-      "aug_method: {},\n "
-      "aug_scale: {},\n "
-      "aug_folds: {},\n "
-      "theta_thr: {},\n "
-      "input_data: {},\n "
-      "output_path: {},\n "
-      "if_single_runs: {},\n "
-      "from_clusterpy: {},\n "
-      "certain_dir: {},\n ".format(
+        "restore_from"
+        "aug_method: {},\n "
+        "aug_scale: {},\n "
+        "aug_folds: {},\n "
+        "theta_thr: {},\n "
+        "input_data: {},\n "
+        "output_path: {},\n "
+        "if_single_runs: {},\n "
+        "from_clusterpy: {},\n "
+        "certain_dir: {},\n ".format(
                          args.aug_method,
                          args.aug_scale,
                          args.aug_folds,
@@ -327,80 +327,80 @@ print(
 ## Load experiment parameters and model parameters
 json_path = args.exp_config  # exp_param stores general training params
 assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
-params = Params(json_path)
-params.update(json_path, mode=args.test_or_train)
+args = Params(json_path)
+args.update(json_path, mode=args.test_or_train)
 
 # load model specific parameters
 json_path = args.model_config
 assert os.path.isfile(json_path), "No json file found at {}".format(json_path)
 
-params.update(json_path, mode=params.model_name) # update params with the model configuration
-params.from_clusterpy = args.from_clusterpy
-params.certain_dir = args.certain_dir
+args.update(json_path, mode=args.model_name) # update params with the model configuration
+args.from_clusterpy = args.from_clusterpy
+args.certain_dir = args.certain_dir
 
 
-if params.data_mode == "mnist" or params.data_mode == "MNIST":
-    params.width = 28
-    params.height = 28
-    params.data_source = "mnist"
-    params.noise_ratio = args.noise_ratio
-elif params.data_mode == "metabolite":
-    params.width = 1
-    params.height = 288
+if args.data_mode == "mnist" or args.data_mode == "MNIST":
+    args.width = 28
+    args.height = 28
+    args.data_source = "mnist"
+    args.noise_ratio = args.noise_ratio
+elif args.data_mode == "metabolite" or args.data_mode == "metabolites":
+    args.width = 1
+    args.height = 288
     # TODO, cluster and param.json all give this parameter
 
 if not args.from_clusterpy:
-    print("Not run from cluster.py params.input data dir: ", params.input_data)
-    if params.data_mode == "metabolite":
-        params.data_source = os.path.basename(params.input_data).split("_")[-1].split(".")[0]
-    elif params.data_mode == "mnist" or params.data_mode == "MNIST":
-        params.data_source = "mnist"
+    print("Not run from cluster.py params.input data dir: ", args.input_data)
+    if args.data_mode == "metabolite":
+        args.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
+    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+        args.data_source = "mnist"
 
     # specify some params
     time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
     if args.restore_from is None:  # and args.output_path is None:  #cluster.py
         postfix = "100rns-" + args.test_or_train if args.if_single_runs else args.test_or_train
-        params.output_path = os.path.join(params.output_root,
+        args.output_path = os.path.join(args.output_root,
                                           "{}-{}-{}x{}-factor-{}-from-{}-certain{}-theta-{}-s{}-{}".format(
-                                              time_str, params.model_name, args.aug_method, args.aug_folds,
-                                              args.aug_scale, params.data_source,
-                                              params.if_from_certain, args.theta_thr,
+                                              time_str, args.model_name, args.aug_method, args.aug_folds,
+                                              args.aug_scale, args.data_source,
+                                              args.if_from_certain, args.theta_thr,
                                               args.randseed, postfix))
         # params.postfix = "-test"
     # elif args.restore_from is None and args.output_path is not None:
     #     params.output_path = args.output_path
     elif args.restore_from is not None:  # restore a model
-        params.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(params.data_source, "test")
-        params.postfix = "-test"
-    dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+        args.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(args.data_source, "test")
+        args.postfix = "-test"
+    dataio.make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
 else:
     print("Run from cluster.py args.input data dir: ", args.input_data)
-    if params.data_mode == "metabolite":
-        params.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
-    elif params.data_mode == "mnist" or params.data_mode == "MNIST":
-        params.data_source = "mnist"
-    params.output_path = args.output_path
+    if args.data_mode == "metabolite":
+        args.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
+    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+        args.data_source = "mnist"
+    args.output_path = args.output_path
 
 # params.resplit_data = args.resplit_data
-params.restore_from = args.restore_from
-params.test_or_train = args.test_or_train
-params.resume_training = (args.restore_from != None)
-params.randseed = args.randseed
-params.if_single_runs = False
-print("argument.py, params.if_single_runs: ", params.if_single_runs)
+args.restore_from = args.restore_from
+args.test_or_train = args.test_or_train
+args.resume_training = (args.restore_from != None)
+args.randseed = args.randseed
+args.if_single_runs = False
+print("argument.py, params.if_single_runs: ", args.if_single_runs)
 
-params.model_save_dir = os.path.join(params.output_path, "network")
-print("output dir: ", params.output_path)
+args.model_save_dir = os.path.join(args.output_path, "network")
+print("output dir: ", args.output_path)
 
 
-if params.test_or_train == "test":
-    params.if_from_certain = False
-    params.if_save_certain = False
-elif params.test_or_train == "train":
-    params.aug_scale = args.aug_scale
-    params.aug_method = args.aug_method
-    params.aug_folds = args.aug_folds
-    params.theta_thr = args.theta_thr
+if args.test_or_train == "test":
+    args.if_from_certain = False
+    args.if_save_certain = False
+elif args.test_or_train == "train":
+    args.aug_scale = args.aug_scale
+    args.aug_method = args.aug_method
+    args.aug_folds = args.aug_folds
+    args.theta_thr = args.theta_thr
 
 # Verbosity level:
 level = 50 - (args.verbose * 10) + 1
@@ -409,7 +409,7 @@ ch = log.StreamHandler()
 ch.setLevel(level)
 formatter = log.Formatter(" " * 12 + '%(message)s\r' + '[\033[1m%(levelname)s\033[0m]')
 ch.setFormatter(formatter)
-fh = log.FileHandler(params.output_path + "/summary.log")
+fh = log.FileHandler(args.output_path + "/summary.log")
 fh.setLevel(1)
 formatter = log.Formatter('[%(levelname)s] %(message)s\r')
 fh.setFormatter(formatter)

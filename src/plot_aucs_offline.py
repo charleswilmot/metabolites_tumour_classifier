@@ -16,14 +16,14 @@ import pickle
 from dataio import introduce_label_noisy
 
 base = 22
-params = {'legend.fontsize': base-8,
+args = {'legend.fontsize': base - 8,
           'figure.figsize': (10, 7),
          'axes.labelsize': base-4,
-         #'weight' : 'bold',
+        #'weight' : 'bold',
          'axes.titlesize':base,
          'xtick.labelsize':base-8,
          'ytick.labelsize':base-8}
-pylab.rcParams.update(params)
+pylab.rcParams.update(args)
 
 def find_files(directory, pattern='*.csv'):
     files = []

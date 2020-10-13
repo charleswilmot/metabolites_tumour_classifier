@@ -242,7 +242,7 @@ def get_data(args):
                delimiter=',')
 
     ## oversample the minority samples ONLY in training data
-    if args.test_or_train == 'train':
+    if args.train_or_test == 'train':
         if args.aug_folds != 0:
             train_data = augment_data(X_train, X_train, args)  #If not from certain, then random pick from train to aug train
             args.num_train = train_data["spectra"].shape[0]
@@ -319,11 +319,11 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
     print("top", args.theta_thr*100, "% as distill, certain samples 0: ", len(np.where(certain_mat[:, 2] == 0)[0]),
           "\ncertain samples 1: ", len(np.where(certain_mat[:, 2] == 1)[0]))
 
-    if args.test_or_train == 'train':
+    if args.train_or_test == 'train':
         temp_rand = np.arange(len(sub_mat))
         np.random.shuffle(temp_rand)
         sub_mat_shuflle = sub_mat[temp_rand]
-    elif args.test_or_train == 'test':  # In test, don't shuffle
+    elif args.train_or_test == 'test':  # In test, don't shuffle
         sub_mat_shuflle = sub_mat
         print("data labels: ", sub_mat_shuflle[:, 2])
 
@@ -347,7 +347,7 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
     np.savetxt(os.path.join(args.output_path, "original_labels.csv"), np.array(test_data["labels"]), fmt='%d', delimiter=',')
 
     ## oversample the minority samples ONLY in training data
-    if args.test_or_train == 'train':
+    if args.train_or_test == 'train':
         # augment the training data
         if args.aug_folds != 0:
             train_data = augment_data(X_train, certain_mat, args)
@@ -569,7 +569,7 @@ def get_data_tensors(args, certain_fns=None):
     data["test_num_samples"] = test_data["num_samples"]
     data["test_batches"] = test_data["num_samples"] // args.test_bs
     print("test samples: ", test_data["num_samples"], "num_batches: ", data["test_batches"])
-    if args.test_or_train == 'train':
+    if args.train_or_test == 'train':
         train_spectra, train_labels, train_ids, train_sample_ids = tf.constant(train_data["spectra"]), tf.constant(
             train_data["labels"]), tf.constant(train_data["ids"]), tf.constant(train_data["sample_ids"])
         train_ds = tf.compat.v1.data.Dataset.from_tensor_slices(
@@ -619,7 +619,7 @@ def get_noisy_mnist_data(args):
     data["test_num_samples"] = test_data["num_samples"]
     data["test_batches"] = test_data["num_samples"] // args.test_bs
     print("test samples: ", test_data["num_samples"], "num_batches: ", data["test_batches"])
-    if args.test_or_train == 'train':
+    if args.train_or_test == 'train':
         train_spectra, train_labels, train_ids, train_sample_ids = tf.constant(train_data["spectra"]), tf.constant(
             train_data["labels"]), tf.constant(train_data["ids"]), tf.constant(train_data["sample_ids"])
         train_ds = tf.compat.v1.data.Dataset.from_tensor_slices(
@@ -689,7 +689,7 @@ def load_mnist_with_noise(args):
                delimiter=',')
 
     ## oversample the minority samples ONLY in training data
-    if args.test_or_train == 'train':
+    if args.train_or_test == 'train':
         if args.aug_folds != 0:
             train_data = augment_data(X_train, X_train, args)
             args.num_train = train_data["spectra"].shape[0]

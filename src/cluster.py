@@ -6,7 +6,7 @@ default_aug_method = "same_mean"
 default_factor = 0.5
 default_folds = 10
 default_theta = 0.9
-default_model_name = "RNN+random-augmentation"
+default_model_name = "randomDA-Res_ECG_CAM"
 default_source = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
 EXPERIMENT_DIR_ROOT = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
 
@@ -166,9 +166,9 @@ certain_dirs = [
 
 # use distilled certain to augment
 for dd in data_source_dirs:
-    for method in ["both_mean"]:  #"same_mean", "ops_mean",
-            for fold in [1, 3]:  #, 5, 9, 3, 5, 7, 9
-                for scale in [0.05, 0.2]:  #, 0.35, 0.5, 0.3, 0.5
+    for method in ["same_mean", "ops_mean","both_mean"]:  #
+            for fold in [1, 3, 5, 9]:  #, 3, 5, 7, 9
+                for scale in [0.05, 0.2, 0.35, 0.5]:  #, 0.3, 0.5
                     cq = ClusterQueue(
                             input_data=dd,
                             certain_dir=None,
@@ -179,3 +179,19 @@ for dd in data_source_dirs:
                             randseed=129,
                             if_single_runs=False,
                             from_clusterpy=True)
+
+# few jobs for testing
+# for dd in data_source_dirs:
+#     for method in ["both_mean"]:  #"same_mean", "ops_mean",
+#             for fold in [3]:  #, 3, 5, 7, 9
+#                 for scale in [0.35]:  #, 0.3, 0.5
+#                     cq = ClusterQueue(
+#                             input_data=dd,
+#                             certain_dir=None,
+#                             aug_method=method,
+#                             aug_scale=scale,
+#                             aug_folds=fold,
+#                             theta_thr=1,
+#                             randseed=129,
+#                             if_single_runs=False,
+#                             from_clusterpy=True)

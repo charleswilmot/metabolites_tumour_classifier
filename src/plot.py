@@ -14,14 +14,14 @@ import tensorflow as tf
 import os
 import matplotlib.pylab as pylab
 base = 22
-params = {'legend.fontsize': base-8,
+args = {'legend.fontsize': base - 8,
           'figure.figsize': (13, 8.6),
          'axes.labelsize': base-4,
-         #'weight' : 'bold',
+        #'weight' : 'bold',
          'axes.titlesize':base,
          'xtick.labelsize':base-8,
          'ytick.labelsize':base-8}
-pylab.rcParams.update(params)
+pylab.rcParams.update(args)
 
 logger = log.getLogger("classifier")
 
@@ -72,7 +72,7 @@ def accuracy_figure(args, data, training=False, epoch=0):
     auc = metrics.roc_auc_score(data["test_labels"], data["test_logits"])
     max_acc = accuracy_plot(ax, data, training=training)
 
-    f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}-{}.png'.format(epoch, max_acc, auc, args.data_source, args.test_or_train))
+    f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}-{}.png'.format(epoch, max_acc, auc, args.data_source, args.train_or_test))
     plt.close()
     logger.info("Accuracy plot saved")
 
@@ -91,8 +91,8 @@ def plot_auc_curve(args, data, epoch=0):
     plt.legend(loc=4)
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
-    f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.png'.format(epoch, auc, args.data_source, args.test_or_train))
-    np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.csv'.format(epoch, auc, args.data_source, args.test_or_train),
+    f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.png'.format(epoch, auc, args.data_source, args.train_or_test))
+    np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.csv'.format(epoch, auc, args.data_source, args.train_or_test),
                np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_logits"][:, 1].reshape(-1,1))), fmt="%.8f", delimiter=',', header="labels,pred[:,1]")
     plt.close()
     return auc
