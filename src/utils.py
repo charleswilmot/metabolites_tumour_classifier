@@ -153,8 +153,12 @@ def generate_output_path(args, time_str="2020_10_13"):
         args.width = 1
         args.height = 288
         args.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
-        args.data_dim = "2d"
+        args.data_dim = "1d"
         # TODO, cluster and param.json all give this parameter
+
+    if args.certain_dir is not None:
+        args.if_from_certain = True
+    args.if_save_certain = True if args.if_single_runs else False
 
     if args.new_folder: #is not None
         args.output_path = os.path.join(args.output_root, args.new_folder+"-{}".format(args.model_name))

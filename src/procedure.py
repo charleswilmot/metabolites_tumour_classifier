@@ -607,8 +607,8 @@ def single_epo_runs(sess, args, graph):
                                     np.array(ret_train["train_one_ep_labels"]).reshape(-1, 1),
                                     ret_train["train_one_ep_logits"]), axis=1)
         np.savetxt(os.path.join(args.output_path, "certains",
-                                "one_ep_data_{}_epoch_{}_num_{}_{}_theta_{}_s{}.csv".format("train", epoch, ret_train[
-                                    "train_one_ep_sample_ids"].size, args.data_source, args.theta_thr, args.randseed)),
+                                "one_ep_data_{}_epoch_{}_num_{}-{}_{}_theta_{}_s{}.csv".format("train", epoch, ret_train[
+                                    "train_one_ep_sample_ids"].size, ret_train["train_one_ep_sample_ids"].max(), args.data_source, args.theta_thr, args.randseed)),
                    one_ep_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
 
         if ret_train is not None:

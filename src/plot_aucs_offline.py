@@ -367,9 +367,7 @@ def two_axis_in_one_plot():
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "100_single_ep_corr_classification_rate_mnist"
-
-
+plot_name = "100_single_ep_corr_classification_rate"
 
 
 if plot_name == "indi_rating_with_model":
@@ -924,8 +922,8 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T15-52-32-MLP-nonex0-factor-0-from-ep-0-from-lout40-mnist-theta-None-s129-100rns-noise-ratio0.8-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T15-14-50-MLP-nonex0-factor-0-from-ep-0-from-lout40-mnist-theta-None-s129-100rns-noise-ratio0.2-train/certains"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T15-14-50-MLP-nonex0-factor-0-from-ep-0-from-lout40-mnist-theta-None-s129-100rns-noise-ratio0.2-train/certains",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T15-52-32-MLP-nonex0-factor-0-from-ep-0-from-lout40-mnist-theta-None-s129-100rns-noise-ratio0.8-train",
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,
@@ -964,8 +962,8 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
                 dict_count.update(count_all)
                 curr_count_array = np.array([[key, val] for (key, val) in dict_count.items()])
                 curr_rank = curr_count_array[np.argsort(curr_count_array[:, 1]),0]
-                spearmanr_rec.append([ind, np.sum(curr_rank==pre_rank)])
-                # spearmanr_rec.append([ind, spearmanr(pre_rank, curr_rank)[0]])
+                # spearmanr_rec.append([ind, np.sum(curr_rank==pre_rank)])
+                spearmanr_rec.append([ind, spearmanr(pre_rank, curr_rank)[0]])
                 pre_rank = curr_rank.copy()
 
         count_all = Counter(ids_w_count)
@@ -1024,26 +1022,11 @@ elif plot_name == "100_single_ep_corr_classification_rate":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T16-23-04-Res_ECG_CAM-nonex0-factor-0-from-ep-0-from-lout40-data9-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T16-23-03-Res_ECG_CAM-nonex0-factor-0-from-ep-0-from-lout40-data7-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T16-23-02-Res_ECG_CAM-nonex0-factor-0-from-ep-0-from-lout40-data5-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T16-23-01-Res_ECG_CAM-nonex0-factor-0-from-ep-0-from-lout40-data3-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T16-22-59-Res_ECG_CAM-nonex0-factor-0-from-ep-0-from-lout40-data1-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-27-01-Inception-nonex0-factor-0-from-ep-0-from-lout40-data9-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-26-59-Inception-nonex0-factor-0-from-ep-0-from-lout40-data7-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-26-58-Inception-nonex0-factor-0-from-ep-0-from-lout40-data5-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-26-57-Inception-nonex0-factor-0-from-ep-0-from-lout40-data3-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-26-56-Inception-nonex0-factor-0-from-ep-0-from-lout40-data1-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-06-51-RNN-nonex0-factor-0-from-ep-0-from-lout40-data9-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-06-50-RNN-nonex0-factor-0-from-ep-0-from-lout40-data7-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-06-49-RNN-nonex0-factor-0-from-ep-0-from-lout40-data5-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-06-48-RNN-nonex0-factor-0-from-ep-0-from-lout40-data3-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T13-06-47-RNN-nonex0-factor-0-from-ep-0-from-lout40-data1-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-32-MLP-nonex0-factor-0-from-ep-0-from-lout40-data9-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-31-MLP-nonex0-factor-0-from-ep-0-from-lout40-data7-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-30-MLP-nonex0-factor-0-from-ep-0-from-lout40-data5-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-29-MLP-nonex0-factor-0-from-ep-0-from-lout40-data3-theta-None-s129-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-28-MLP-nonex0-factor-0-from-ep-0-from-lout40-data1-theta-None-s129-100rns-train/certains"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-29-17--MLP-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-29-18--MLP-nonex0-factor-0-from-data3-certainFalse-theta-0-s989-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-29-19--MLP-nonex0-factor-0-from-data1-certainFalse-theta-0-s989-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-30-52--MLP-nonex0-factor-0-from-data9-certainFalse-theta-0-s989-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-30-53--MLP-nonex0-factor-0-from-data7-certainFalse-theta-0-s989-100rns-train"
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,

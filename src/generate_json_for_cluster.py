@@ -3,10 +3,10 @@ import os
 import utils
 import json
 import datetime
-from dataio import make_output_dir, make_output_dir
+from dataio import make_output_dir, save_command_line
 import shutil
+import numpy as np
 
-default_json_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src"
 
 class Params():
     """Class that loads hyperparameters from a json file.
@@ -47,39 +47,6 @@ class Params():
     def dict(self):
         """Gives dict-like access to Params instance by `params.dict['learning_rate']`"""
         return self.__dict__
-#
-# def make_output_dir(output_path, sub_folders=["CAMs"]):
-#     if os.path.isdir(output_path):
-#         raise FileExistsError("Output path already exists.", output_path)
-#     else:
-#         os.makedirs(output_path)
-#         model_save_dir = os.path.join(output_path, "network")
-#         os.makedirs(model_save_dir)
-#         for sub in sub_folders:
-#             os.makedirs(os.path.join(output_path, sub))
-
-
-# def copy_save_all_files(model_save_dir):
-#     """
-#     Copy and save all files related to model directory
-#     :param model_save_dir:
-#     :return:
-#     """
-#     src_dir = '../src'
-#     save_dir = os.path.join(model_save_dir, 'src')
-#     if not os.path.exists(save_dir):  # if subfolder doesn't exist, should make the directory and then save file.
-#         os.makedirs(save_dir)
-#     req_extentions = ['py', 'json']
-#     for filename in os.listdir(src_dir):
-#         exten = filename.split('.')[-1]
-#         if exten in req_extentions:
-#             src_file_name = os.path.join(src_dir, filename)
-#             target_file_name = os.path.join(save_dir, filename)
-#             with open(src_file_name, 'r') as file_src:
-#                 with open(target_file_name, 'w') as file_dst:
-#                     for line in file_src:
-#                         file_dst.write(line)
-#     print('Done WithCopy File!')
 
 def save_model_json(dest="./", source="./", file_name="model_parameters.json"):
     s = os.path.join(source, file_name)
@@ -102,24 +69,28 @@ def overwrite_params(args, cfg_dirs, **kwargs):
     args.rand_seed = kwargs["randseed"] if "randseed" in kwargs else 129
     args.if_single_runs = kwargs["if_single_runs"] if "if_single_runs" in kwargs else False
     args.certain_dir = kwargs["certain_dir"] if "certain_dir" in kwargs else None
+    args.from_clusterpy = kwargs["from_clusterpy"] if "from_clusterpy" in kwargs else False
 
     # GET output_path
-    args = utils.generate_output_path(args, time_str='{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now()))
-    make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+    time_str='{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
+    args = utils.generate_output_path(args, time_str=time_str)
 
     assert os.path.isfile(default_exp_json_dir), "No json configuration file found at {}".format(default_exp_json_dir)
-
-    args.save(os.path.join(args.output_path, "network", "exp_parameters.json"))
-    new_model_son_fn = save_model_json(dest=os.path.join(args.output_path, "network"), source=default_json_dir, file_name="model_parameters.json")
-
     new_exp_json_fn = os.path.join(args.output_path, "network", "exp_parameters.json")
-    cfg_dirs.append([args.output_path, new_exp_json_fn, new_model_son_fn])
 
+    # make dirs
+    make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+    save_command_line(args.model_save_dir)
+
+    new_model_son_fn = save_model_json(dest=os.path.join(args.output_path, "network"), source=default_json_dir, file_name="model_parameters.json")
+    args.save(os.path.join(args.output_path, "network", "exp_parameters.json"))
     time.sleep(1)
 
+    cfg_dirs.append([args.output_path, new_exp_json_fn, new_model_son_fn])
     return cfg_dirs
 
-
+######################################################################################################################
+default_json_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src"
 default_train_or_test = "train"
 ## Load experiment parameters and model parameters
 default_exp_json_dir = os.path.join(default_json_dir, "exp_parameters.json")
@@ -128,32 +99,53 @@ default_model_json_dir = os.path.join(default_json_dir, "model_parameters.json")
 args = utils.load_all_params(default_exp_json_dir, default_model_json_dir)
 
 data_source_dirs = [
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data0.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data8.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat"
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
 ]
-
+certain_dirs = [
+    # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-29-17--MLP-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train",
+    # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-29-18--MLP-nonex0-factor-0-from-data3-certainFalse-theta-0-s989-100rns-train",
+    # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-29-19--MLP-nonex0-factor-0-from-data1-certainFalse-theta-0-s989-100rns-train",
+    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-30-52--MLP-nonex0-factor-0-from-data9-certainFalse-theta-0-s989-100rns-train",
+    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-30-53--MLP-nonex0-factor-0-from-data7-certainFalse-theta-0-s989-100rns-train"
+]
 # overwrite part of the parameters given for training with cluster.py
 config_dirs = []
-for dd in data_source_dirs:
-    for method in ["both_mean", "same_mean", "ops_mean"]:  #
-        for fold in [1, 3, 5, 9]:  #, 3, 5, 7, 9
-            for scale in [0.05, 0.2, 0.35, 0.5]:  #, 0.3, 0.5
-                config_dirs = overwrite_params(args, config_dirs,
-                                               input_data=dd,  #data dir
-                                               certain_dir=None,
-                                               aug_method=method,
-                                               aug_scale=scale,
-                                               aug_folds=fold,
-                                               theta_thr=1,
-                                               randseed=99,
-                                               if_single_runs=False,
-                                               from_clusterpy=True)
+seed = np.random.randint(9999)
+if_single_runs = True  #False   #
+
+if if_single_runs:
+    ## 100 single-epoch runs
+    args.new_folder = "100-single-epoch-runs"
+    for dd in data_source_dirs:
+        config_dirs = overwrite_params(args, config_dirs,
+                                       input_data=dd,  # data dir
+                                       certain_dir=None,
+                                       aug_method="none",
+                                       aug_scale=0,
+                                       aug_folds=0,
+                                       theta_thr=0,
+                                       randseed=seed,
+                                       if_single_runs=True,
+                                       from_clusterpy=True)
+else:
+    for theta in [0.25]: #, 0.1, 0.3, 0.5
+        for dd, ct_dir in zip(data_source_dirs, certain_dirs):
+            for method in ["both_mean"]:  #, "same_mean", "ops_mean",  #
+                for fold in [3, 5, 9]:  #1,  #
+                    for scale in [0.05, 0.35, 0.5]:  #0.2, ,#
+                        config_dirs = overwrite_params(args, config_dirs,
+                                                       input_data=dd,  #data dir
+                                                       certain_dir=ct_dir,
+                                                       aug_method=method,
+                                                       aug_scale=scale,
+                                                       aug_folds=fold,
+                                                       theta_thr=theta,
+                                                       randseed=seed,
+                                                       if_single_runs=False,
+                                                       from_clusterpy=True)
+
 
