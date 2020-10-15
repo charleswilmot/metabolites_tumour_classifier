@@ -714,8 +714,8 @@ elif plot_name == "move_folder":
             shutil.copytree(fd, new_dest)
             
 elif plot_name == "certain_tsne":
-    pattern = "certain_data*.csv"
-    data_dir = "C:/Users/LDY/Desktop/metabolites-vae/data/certain_distillation/0.889-model"
+    pattern = "full_summary-*.csv"
+    data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-37--Res_ECG_CAM-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train"
     certain_fns = find_files(data_dir, pattern=pattern)
     certain_data = get_data_from_certain_ids(certain_fns, m_file="../data/lout40_train_val_data5.mat")
 

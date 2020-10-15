@@ -53,22 +53,20 @@ if __name__ == "__main__":
     config_dirs = gen_dir.config_dirs
 
     # Creating the flags to be passed to classifier.py
-    cmd_python = ""
-    cmds_to_sh = []
-    for config_files in config_dirs:   #three arguments
-        for k, v in zip(["output_path", "exp_config", "model_config"], [config_files[0], config_files[1], config_files[2]]):
-            # _key_to_flag transforms "something_stupid"   into   "--something-stupid"
-            flag = _key_to_flag(k)
-            # _to_arg transforms ("--something-stupid", a_value)   into   "--something-stupid a_value"
-            arg = _to_arg(flag, v)
-            cmd_python += arg
-        cmds_to_sh.append(cmd_python + " --output {}/%N_%j.log".format(config_files[0]))
-        cmd_python = ""
+    # cmd_python = ""
+    # cmds_to_sh = []
+    # for config_files in config_dirs:   #three arguments
+    #     for k, v in zip(["output_path", "exp_config", "model_config"], [config_files[0], config_files[1], config_files[2]]):
+    #         # _key_to_flag transforms "something_stupid"   into   "--something-stupid"
+    #         flag = _key_to_flag(k)
+    #         # _to_arg transforms ("--something-stupid", a_value)   into   "--something-stupid a_value"
+    #         arg = _to_arg(flag, v)
+    #         cmd_python += arg
+    #     cmds_to_sh.append(cmd_python + " --output {}/%N_%j.log".format(config_files[0]))
+    #     cmd_python = ""
+    #
+    # os.system("sh ./cluster.sh {}".format(cmds_to_sh))
 
-    os.system("sh ./cluster.sh {}".format(cmds_to_sh))
-
-# output path for the experiment log
-
-# for dirs in config_dirs:
-#     ClusterQueue(dirs)
+    for dirs in config_dirs:
+        ClusterQueue(dirs)
 
