@@ -1,14 +1,13 @@
 ## @package classifier
 #  This is the main file of the software.
-
-# import matplotlib
-# matplotlib.use('Agg')
-import sys
-sys.path.append("..")
+#
+#  For more details, try:\n
+#  python3 classifier.py -h\n
+#  python3 classifier.py train -h\n
+#  python3 classifier.py test -h\n
 import graph
 import dataio
-import utils
-import argparse
+import argument
 import procedure
 import logging as log
 import tensorflow as tf

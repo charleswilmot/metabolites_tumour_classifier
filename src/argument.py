@@ -103,6 +103,16 @@ def compute_ratio(s):
     return f
 
 
+## Interprets the string passed as an argument to the option --number-of-epochs
+# @param s the string
+def nepoch(s):
+    f = float(s)
+    if f < 0.05 and f != -1:
+        logger.critical("Not enough epochs (asked {}, minimum is 0.05)".format(s))
+        raise argparse.ArgumentTypeError("Not enough epochs (asked {}, minimum is 0.05)".format(s))
+    return f
+
+
 _layer_number_dropout = 1
 ## Interprets the string passed as an argument to the option --dropout-probs
 # @param s the string
@@ -139,6 +149,12 @@ def batch_norm(v):
     _layer_number_batch_norm += 1
 
 
+## custom activation function
+def lrelu(x):
+    a = 1 / 3
+    return tf.nn.relu(x) * (1 - a) + a * x
+
+
 _layer_number_activation = 1
 ## Interprets the string passed as an argument to the option --activations
 # @param s the string
@@ -151,8 +167,6 @@ def activation(s):
         return tf.tanh
     elif s == 'sigmoid':
         return tf.nn.sigmoid
-    elif s == 'None':
-        return None
     else:
         logger.critical("Activation function not recognized: {}".format(s))
         raise argparse.ArgumentTypeError("Activation function not recognized: {}".format(s))
@@ -413,6 +427,5 @@ fh.setLevel(1)
 formatter = log.Formatter('[%(levelname)s] %(message)s\r')
 fh.setFormatter(formatter)
 logger.addHandler(ch)
-logger.addHandler(fh)
 ## Re-read the arguments after the verbosity has been set correctly
 args = parser.parse_args()

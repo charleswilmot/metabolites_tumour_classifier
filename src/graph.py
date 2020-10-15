@@ -7,6 +7,7 @@ import tensorflow as tf
 import numpy as np
 import logging as log
 
+
 logger = log.getLogger("classifier")
 
 regularizer = tf.keras.regularizers.l2(l=0.01)
