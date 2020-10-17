@@ -327,23 +327,27 @@ def get_data_from_certain_ids(certain_fns, m_file="../data/lout40_train_val_data
     :param certain_fns: list of filenames, from train and validation
     :return:
     """
-    mat = scipy.io.loadmat()["DATA"]  # [id, label, features]
+    mat = scipy.io.loadmat(m_file)["DATA"]  # [id, label, features]
     labels = mat[:, 1]
-    
+
     new_mat = np.zeros((mat.shape[0], mat.shape[1] + 1))
     new_mat[:, 0] = np.arange(mat.shape[0])  # tag every sample
     new_mat[:, 1:] = mat
-    
-    certain_mat = np.empty((0, new_mat.shape[1]))
-    for fn in certain_fns:
-        certain = pd.read_csv(fn, header=0).values
-        certain_inds = certain[:, 0].astype(np.int)
-        certain_mat = np.vstack((certain_mat, new_mat[certain_inds]))
-        print(os.path.basename(fn), len(certain_inds), "samples/n")
-    
-    print("certain samples 0: ", len(np.where(certain_mat[:, 2] == 0)[0]), "\ncertain samples 1: ",
-          len(np.where(certain_mat[:, 2] == 1)[0]))
-    return certain_mat[:, 3:], certain_mat[:, 2]
+
+    sub_inds = np.empty((0))
+    for class_id in range(2):
+        sub_inds = np.append(sub_inds, np.where(labels == class_id)[0])
+    sub_inds = sub_inds.astype(np.int32)
+    sub_mat = new_mat[sub_inds]
+
+    # certain_mat = np.empty((0, new_mat.shape[1]))
+    sort_data = pd.read_csv(certain_fns, header=0).values
+    sort_samp_ids = sort_data[:, 0].astype(np.int)
+    sort_rate = sort_data[:, 1].astype(np.float32)
+    picked_ids = sort_samp_ids[-np.int(0.2 * len(sort_data)):]
+    print(os.path.basename(certain_fns), len(picked_ids), "samples\n")
+
+    return sub_mat, new_mat[picked_ids]
 
 
 def two_axis_in_one_plot():
@@ -367,7 +371,7 @@ def two_axis_in_one_plot():
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "100_single_ep_corr_classification_rate"
+plot_name = "certain_tsne_distillation"
 
 
 if plot_name == "indi_rating_with_model":
@@ -713,11 +717,103 @@ elif plot_name == "move_folder":
         if not os.path.isdir(new_dest):
             shutil.copytree(fd, new_dest)
             
-elif plot_name == "certain_tsne":
+elif plot_name == "certain_tsne_distillation":
+    from scipy.io import loadmat as loadmat
+    import scipy.io as io
+    from bhtsne import tsne as TSNE
+    from sklearn.manifold import MDS
+    from scipy.stats import ks_2samp
+
     pattern = "full_summary-*.csv"
     data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-37--Res_ECG_CAM-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train"
+    m_data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
     certain_fns = find_files(data_dir, pattern=pattern)
-    certain_data = get_data_from_certain_ids(certain_fns, m_file="../data/lout40_train_val_data5.mat")
+    whole_data, distill_data = get_data_from_certain_ids(certain_fns[0], m_file=m_data_dir)
+    data_source = data_dir.split("-")[-7]
+
+    ## get the whole tsne projection
+    # tsne_whole = TSNE(whole_data[:, 3:], dimensions=2)
+    # tsne_distill= TSNE(certain_data[:, 3:], dimensions=2)
+    # np.savetxt(os.path.join(data_dir, "whole_data_tsne-2d-{}.csv".format(len(whole_data))), tsne_whole, fmt="%.5f", delimiter=","),
+    # np.savetxt(os.path.join(data_dir, "distill_data_tsne-2d-{}-from-whole.csv".format(len(tsne_distill))), tsne_distill, fmt="%.5f", delimiter=",")
+
+    # MDS_distill = MDS(n_components=2, random_state=199)
+    # mds_emb_distill = MDS_distill.fit_transform(certain_data[:, 3:])
+    # np.savetxt(os.path.join(data_dir, "MDS-distill_data-2d-{}.csv".format(len(mds_emb_distill))), mds_emb_distill, fmt="%.5f", delimiter=",")
+    # MDS_whole = MDS(n_components=2, random_state=199)
+    # mds_emb_whole = MDS_whole.fit_transform(whole_data[:, 3:])
+    # np.savetxt(os.path.join(data_dir, "MDS-whole_data-2d-{}.csv".format(len(whole_data))), mds_emb_whole, fmt="%.5f",
+    #            delimiter=","),
+
+    tsne_whole = pd.read_csv(os.path.join(data_dir, "whole_data_tsne-2d-6598.csv"), header=None).values
+    tsne_distill = pd.read_csv(os.path.join(data_dir, "distill_data_tsne-2d-1646.csv"), header=None).values
+    # tsne_distill = np.empty((0, 2))
+    # for sp in distill_data[:,0]:
+    #     tsne_distill = np.vstack((tsne_distill, tsne_whole[whole_data[:,0] == sp,:]))
+
+    ori_colors = ["c", "violet"]
+    distill_colors = ["darkblue", "crimson"]
+
+    fig = plt.figure(figsize=[8, 6.5])
+    ax = fig.add_subplot(111)
+    for c in range(2):
+        inds = np.where(whole_data[:, 2] == c)[0]
+        im = ax.scatter(tsne_whole[inds, 0], tsne_whole[inds, 1], color=ori_colors[c], alpha=0.5, facecolor=None, label="original class {}".format(c))
+    inds0 = np.where(whole_data[:, 2] == 0)[0]
+    inds1 = np.where(whole_data[:, 2] == 1)[0]
+    _, p_x_whole = ks_2samp(tsne_whole[inds0, 0], tsne_whole[inds1, 0])
+    _, p_y_whole = ks_2samp(tsne_whole[inds0, 1], tsne_whole[inds1, 1])
+    plt.legend(scatterpoints=4)
+    plt.title("TSNE of both classes (whole)")
+    plt.xlabel("dimension #1 (p={:.2E})".format(p_x_whole)),
+    plt.ylabel("dimension #2 (p={:.2E})".format(p_y_whole))
+    plt.savefig(os.path.join(data_dir, "tsne-whole-{}.png".format(data_source))),
+    plt.savefig(os.path.join(data_dir, "tsne-whole-{}.pdf".format(data_source)), format="pdf")
+    plt.close()
+
+    plt.figure(figsize=[8, 6.5])
+    plt.scatter(tsne_whole[:, 0], tsne_whole[:, 1], c=whole_data[:,1], cmap="jet", facecolor=None)
+    plt.colorbar()
+    plt.title("Patients from the whole set (healthy<1000, tumor>1000)")
+    plt.xlabel("dimension #1"),
+    plt.ylabel("dimension #2")
+    plt.savefig(os.path.join(data_dir, "grouped-by-patients-tsne-whole-{}.png".format(data_source))),
+    plt.savefig(os.path.join(data_dir, "grouped-by-patients-tsne-whole-{}.pdf".format(data_source)), format="pdf")
+    plt.close()
+
+    fig = plt.figure(figsize=[8, 6.5])
+    fig = plt.figure()
+    dis_inds0 = np.where(distill_data[:, 2] == 0)[0]
+    dis_inds1 = np.where(distill_data[:, 2] == 1)[0]
+    _, p_x_dis = ks_2samp(tsne_distill[dis_inds0, 0], tsne_distill[dis_inds1, 0])
+    _, p_x_dis = ks_2samp(tsne_distill[dis_inds0, 1], tsne_distill[dis_inds1, 1])
+    ax = fig.add_subplot(111)
+    for c in range(2):
+        inds = np.where(distill_data[:, 2] == c)[0]
+        im = ax.scatter(tsne_distill[inds, 0], tsne_distill[inds, 1], color=distill_colors[c], facecolor=None, label="distill class {}".format(c))
+    plt.legend(scatterpoints=4)
+    plt.title("TSNE of both classes (distilled)")
+    plt.xlabel("dimension #1 (p={:.2E})".format(p_x_dis)),
+    plt.ylabel("dimension #2 (p={:.2E})".format(p_x_dis))
+    plt.savefig(os.path.join(data_dir, "tsne-distill-{}.png".format(data_source)))
+    plt.savefig(os.path.join(data_dir, "tsne-distill-{}.pdf".format(data_source)), format="pdf")
+    plt.savefig(os.path.join(data_dir, "Distilled tumor samples-{}-from-whole.png".format(data_source))),
+    plt.savefig(os.path.join(data_dir, "Distilled tumor samples-{}-from-whole.pdf".format(data_source)), format="pdf")
+    plt.close()
+
+    plt.figure(figsize=[8, 6.5])
+    plt.scatter(tsne_distill[:, 0], tsne_distill[:, 1], c=distill_data[:,1], cmap="jet", facecolor=None)
+    plt.colorbar()
+    plt.title("Patients from the distilled set  (healthy<1000, tumor>1000)")
+    plt.xlabel("dimension #1"),
+    plt.ylabel("dimension #2")
+    plt.savefig(os.path.join(data_dir, "grouped-by-patients-tsne-distill-{}.png".format(data_source))),
+    plt.savefig(os.path.join(data_dir, "grouped-by-patients-tsne-distill-{}.pdf".format(data_source)), format="pdf")
+    plt.close()
+
+
+
+    ## overlay the certain ones' tsne
 
 elif plot_name == "plot_metabolites":
     from scipy.io import loadmat as loadmat

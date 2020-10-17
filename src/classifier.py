@@ -1,13 +1,13 @@
 ## @package classifier
 #  This is the main file of the software.
-#
-#  For more details, try:\n
-#  python3 classifier.py -h\n
-#  python3 classifier.py train -h\n
-#  python3 classifier.py test -h\n
+import matplotlib
+matplotlib.use('Agg')
+import sys
+sys.path.append("..")
 import graph
 import dataio
-import argument
+import utils
+import argparse
 import procedure
 import logging as log
 import tensorflow as tf
@@ -17,6 +17,7 @@ import logging
 from tensorflow.python.client import device_lib
 from dataio import make_output_dir
 tf.compat.v1.disable_v2_behavior()
+
 
 
 def get_available_gpus():
@@ -45,7 +46,7 @@ args = utils.load_all_params(params.exp_config, params.model_config)
 
 # if the job is NOT submitted with cluster.py, only locally, then
 if not args.from_clusterpy:
-    args = utils.generate_output_path(args, time_str='{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now()))
+    args = utils.generate_output_path(args)
     make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
     dataio.save_command_line(args.model_save_dir)
 

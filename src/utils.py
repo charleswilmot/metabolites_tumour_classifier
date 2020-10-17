@@ -3,7 +3,7 @@
 import json
 import os
 import logging
-
+import datetime
 
 
 # class Params():
@@ -66,13 +66,13 @@ class Params():
             dicts = json.load(f)
             self.__dict__.update(dicts)
 
-            if not mode and self.train_or_test == "train" or self.train_or_test == "test":
-                # general_params = dicts["train_or_test"]["general"]
-                # general_params = dicts["general"]
-                exp_params = dicts[self.train_or_test]
-                # self.__dict__.update(general_params)
-                self.__dict__.update(exp_params)
-            else:
+            # if self.train_or_test == "train" or self.train_or_test == "test":
+            #     # general_params = dicts["train_or_test"]["general"]
+            #     # general_params = dicts["general"]
+            #     exp_params = dicts[self.train_or_test]
+            #     # self.__dict__.update(general_params)
+            #     self.__dict__.update(exp_params)
+            if mode is not None:
                 model_params = dicts["model"][mode]
                 self.__dict__.update(model_params)
 
@@ -141,7 +141,7 @@ def load_all_params(exp_json_dir, model_json_dir):
     return args
 
 
-def generate_output_path(args, time_str="2020_10_13"):
+def generate_output_path(args):
     if args.data_mode == "mnist" or args.data_mode == "MNIST":
         args.num_classes = 10
         args.width = 28
@@ -163,6 +163,7 @@ def generate_output_path(args, time_str="2020_10_13"):
     if args.new_folder: #is not None
         args.output_path = os.path.join(args.output_root, args.new_folder+"-{}".format(args.model_name))
     if args.restore_from is None:  # and args.output_path is None:  #cluster.py
+        time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
         args.postfix = "100rns-" + args.train_or_test if args.if_single_runs else args.train_or_test
         args.output_path = os.path.join(args.output_path,
                                         "{}-{}-{}x{}-factor-{}-from-{}-certain{}-theta-{}-s{}-{}".format(
@@ -175,8 +176,9 @@ def generate_output_path(args, time_str="2020_10_13"):
         args.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(args.data_source, "resume_train")
         args.postfix = "-resume_train"
     elif args.restore_from is not None and not args.resume_training:
+        time_str = '{0:%Y%m%dT%H%M%S}'.format(datetime.datetime.now())
         args.train_or_test = "test"
-        args.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(args.data_source, "test")
+        args.output_path = os.path.dirname(args.restore_from) + "-{}-on-{}-{}".format(time_str, args.data_source, "test")
         args.if_from_certain = False
         args.if_save_certain = False
         args.postfix = "-test"

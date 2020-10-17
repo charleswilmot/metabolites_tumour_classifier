@@ -2,7 +2,6 @@ import time
 import os
 import utils
 import json
-import datetime
 from dataio import make_output_dir, save_command_line
 import shutil
 import numpy as np
@@ -68,12 +67,12 @@ def overwrite_params(args, cfg_dirs, **kwargs):
     args.theta_thr = kwargs["theta_thr"] if "theta_thr" in kwargs else None
     args.rand_seed = kwargs["randseed"] if "randseed" in kwargs else 129
     args.if_single_runs = kwargs["if_single_runs"] if "if_single_runs" in kwargs else False
+    args.restore_from = kwargs["restore_from"] if "restore_from" in kwargs else None
     args.certain_dir = kwargs["certain_dir"] if "certain_dir" in kwargs else None
     args.from_clusterpy = kwargs["from_clusterpy"] if "from_clusterpy" in kwargs else False
 
     # GET output_path
-    time_str='{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
-    args = utils.generate_output_path(args, time_str=time_str)
+    args = utils.generate_output_path(args)
 
     assert os.path.isfile(default_exp_json_dir), "No json configuration file found at {}".format(default_exp_json_dir)
     new_exp_json_fn = os.path.join(args.output_path, "network", "exp_parameters.json")
@@ -113,11 +112,12 @@ certain_dirs = [
     # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-30-53--MLP-nonex0-factor-0-from-data7-certainFalse-theta-0-s989-100rns-train"
 ]
 # overwrite part of the parameters given for training with cluster.py
+
+
 config_dirs = []
 seed = np.random.randint(9999)
-if_single_runs = True  #False   #
-
-if if_single_runs:
+mode = "testing"
+if mode == "single_runs":
     ## 100 single-epoch runs
     args.new_folder = "testtesttest"
     for dd in data_source_dirs:
@@ -132,12 +132,12 @@ if if_single_runs:
                                        if_single_runs=True,
                                        from_clusterpy=True
                                        )
-else:
+elif mode == "training":
     for theta in [0.25]: #, 0.1, 0.3, 0.5
         for dd, ct_dir in zip(data_source_dirs, certain_dirs):   #
-            for method in ["both_mean"]:  #, "same_mean", "ops_mean",  #
-                for fold in [3, 5, 9]:  #1,  #
-                    for scale in [0.05, 0.35, 0.5]:  #0.2, ,#
+            for method in ["same_mean"]:  #,"both_mean" , "ops_mean",  #
+                for fold in [1]:  # ,3, 5, 9 #
+                    for scale in [0.2, 0.05, 0.35, 0.5]:  #,#
                         config_dirs = overwrite_params(args, config_dirs,
                                                        input_data=dd,  #data dir
                                                        certain_dir=ct_dir,
@@ -148,5 +148,29 @@ else:
                                                        randseed=seed,
                                                        if_single_runs=False,
                                                        from_clusterpy=True)
+elif mode == "testing":
+    pretrained_dirs = [
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-48--MLP-both_meanx3-factor-0.05-from-data9-certainTrue-theta-0.25-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-49--MLP-both_meanx3-factor-0.35-from-data9-certainTrue-theta-0.25-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-50--MLP-both_meanx3-factor-0.5-from-data9-certainTrue-theta-0.25-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-51--MLP-both_meanx5-factor-0.05-from-data9-certainTrue-theta-0.25-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-52--MLP-both_meanx5-factor-0.35-from-data9-certainTrue-theta-0.25-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-54--MLP-both_meanx5-factor-0.5-from-data9-certainTrue-theta-0.25-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-55--MLP-both_meanx9-factor-0.05-from-data9-certainTrue-theta-0.25-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-56--MLP-both_meanx9-factor-0.35-from-data9-certainTrue-theta-0.25-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-57--MLP-both_meanx9-factor-0.5-from-data9-certainTrue-theta-0.25-s989-train/network"
+    ]
+    src_data = os.path.basename(os.path.dirname(pretrained_dirs[0])).split("-")[-6]
+    data_source_dirs = [
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format(src_data)
+    ]
+    for dd, res_from in zip(data_source_dirs * len(pretrained_dirs), pretrained_dirs):  #
+        config_dirs = overwrite_params(args, config_dirs,
+                                       input_data=dd,  # data dir
+                                       certain_dir=None,
+                                       randseed=seed,
+                                       restore_from=res_from,
+                                       if_single_runs=False,
+                                       from_clusterpy=True)
 
 print("ok")

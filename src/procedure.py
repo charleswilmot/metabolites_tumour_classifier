@@ -118,8 +118,9 @@ def compute(sess, fetches, compute_batches=100, lr=0.0005,
     return results
 
 
-def compute_test_only(sess, fetches, compute_batches=100, lr=0.0005,
-                      if_get_wrong=False, if_get_certain=False):
+def compute_test_only(sess, fetches, compute_batches=100,
+                      if_get_wrong=False, if_get_certain=False,
+                      if_check_cam=False):
     """
     Compute test only results
     :param sess:
@@ -739,7 +740,8 @@ def test_phase(sess, graph, compute_batches=100,
         results, collections = compute_test_only(sess, fetches,
                                                  compute_batches=compute_batches,
                                                  if_get_wrong=True,
-                                                 if_get_certain=True)
+                                                 if_get_certain=True,
+                                                 if_check_cam=if_check_cam)
 
         loss, accuracy = reduce_mean_loss_accuracy(results)
         confusion = sum_confusion(results)
@@ -761,7 +763,8 @@ def test_phase(sess, graph, compute_batches=100,
         results, collections = compute_test_only(sess, fetches,
                                                  compute_batches=compute_batches,
                                                  if_get_wrong=True,
-                                                 if_get_certain=True)
+                                                 if_get_certain=True,
+                                                 if_check_cam=if_check_cam)
 
         loss, accuracy = reduce_mean_loss_accuracy(results)
         confusion = sum_confusion(results)
@@ -771,7 +774,14 @@ def test_phase(sess, graph, compute_batches=100,
         sample_ids = concat_data(results, key="sample_ids")
         logits = concat_data(results, key="logits")
 
-    ret.update({"test_loss": loss, "test_accuracy": accuracy, "test_confusion": confusion,
+        # return_names = ["accuracy", "loss", "confusion",
+        #                 "labels", "ids", "features", "sample_ids", "logits",
+        #                 "wrong_labels", "wrong_sample_ids", "wrong_features",
+        #                 "certain_labels", "certain_logits", "certain_sample_ids"]
+        #
+        # ret = get_returns(results, return_names, train_or_test=train_or_test)
+
+    ret = {"test_loss": loss, "test_accuracy": accuracy, "test_confusion": confusion,
                 "test_labels": labels, "test_ids": ids, "test_features": features,
                 "test_sample_ids": sample_ids,
                 "test_logits": logits,
@@ -781,7 +791,7 @@ def test_phase(sess, graph, compute_batches=100,
                 "test_certain_labels": collections["certain_labels"],
                 "test_certain_logits": collections["certain_logits"],
                 "test_certain_sample_ids": collections["certain_sample_ids"],
-                })
+                }
 
     return ret
 

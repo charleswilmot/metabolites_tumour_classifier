@@ -51,22 +51,41 @@ def _to_arg(flag, v):
 ############################################################################################3
 if __name__ == "__main__":
     config_dirs = gen_dir.config_dirs
+    #config_dirs =  [[exp1_path1, exp1_arg2, exp1_arg3],
+    # [exp2_path1, exp2_arg2, exp2_arg3],
+    # [exp3_path1, exp3_arg2, exp3_arg3], ...]
+
+    # config_dirs = [["exp1_path1", "exp1_arg2", "exp1_arg3"],
+    #                ["exp2_path1", "exp2_arg2", "exp2_arg3"],
+    #                ["exp3_path1", "exp3_arg2", "exp3_arg3"]]
+
 
     # Creating the flags to be passed to classifier.py
-    # cmd_python = ""
-    # cmds_to_sh = []
-    # for config_files in config_dirs:   #three arguments
-    #     for k, v in zip(["output_path", "exp_config", "model_config"], [config_files[0], config_files[1], config_files[2]]):
-    #         # _key_to_flag transforms "something_stupid"   into   "--something-stupid"
-    #         flag = _key_to_flag(k)
-    #         # _to_arg transforms ("--something-stupid", a_value)   into   "--something-stupid a_value"
-    #         arg = _to_arg(flag, v)
-    #         cmd_python += arg
-    #     cmds_to_sh.append(cmd_python + " --output {}/%N_%j.log".format(config_files[0]))
-    #     cmd_python = ""
-    #
-    # os.system("sh ./cluster.sh {}".format(cmds_to_sh))
 
-    for dirs in config_dirs:
-        ClusterQueue(dirs)
+    cmds_to_sh = []
+    for config_files in config_dirs:   #three arguments
+        cmd_python = ""
+        for k, v in zip(["output_path", "exp_config", "model_config"], [config_files[0], config_files[1], config_files[2]]):
+            # _key_to_flag transforms "something_stupid"   into   "--something-stupid"
+            flag = _key_to_flag(k)
+            # _to_arg transforms ("--something-stupid", a_value)   into   "--something-stupid a_value"
+            arg = _to_arg(flag, v)
+            cmd_python += arg
+        cmds_to_sh.append(cmd_python)
+        # cmds_to_sh.append(cmd_python + " --output {}/%N_%j.log".format(config_files[0]))
+        # cmd_python = "" --output {}/%N_%j.log".format(config_files[0])"
+
+    for i in range(len(cmds_to_sh)):
+        print("-----------------------------")
+        print(cmds_to_sh[i])
+        print("-----------------------------")
+        
+    commands = ''
+    for cmds in cmds_to_sh:
+        commands += "\"{}\" ".format(cmds)
+
+    os.system("sbatch --output {}/%N_%j.log cluster.sh {}".format(config_files[0], commands))
+
+    # for dirs in config_dirs:
+    #     ClusterQueue(dirs)
 
