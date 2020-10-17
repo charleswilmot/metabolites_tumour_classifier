@@ -64,15 +64,16 @@ class Params():
         """Loads parameters from json file. if specify a modelkey, only load the params under thta modelkey"""
         with open(json_path) as f:
             dicts = json.load(f)
-            self.__dict__.update(dicts)
 
-            # if self.train_or_test == "train" or self.train_or_test == "test":
-            #     # general_params = dicts["train_or_test"]["general"]
-            #     # general_params = dicts["general"]
-            #     exp_params = dicts[self.train_or_test]
-            #     # self.__dict__.update(general_params)
-            #     self.__dict__.update(exp_params)
-            if mode is not None:
+            if mode == "train_or_test":
+                self.__dict__.update(dicts)
+                self.train_or_test = dicts["train_or_test"]
+                # general_params = dicts["train_or_test"]["general"]
+                # general_params = dicts["general"]
+                exp_params = dicts[self.train_or_test]
+                # self.__dict__.update(general_params)
+                self.__dict__.update(exp_params)
+            else:
                 model_params = dicts["model"][mode]
                 self.__dict__.update(model_params)
 
@@ -132,7 +133,7 @@ def load_all_params(exp_json_dir, model_json_dir):
     ## Load experiment parameters and model parameters
     assert os.path.isfile(exp_json_dir), "No json configuration file found at {}".format(exp_json_dir)
     args = Params()
-    args.update(exp_json_dir)
+    args.update(exp_json_dir, mode="train_or_test")
 
     # load model specific parameters
     assert os.path.isfile(model_json_dir), "No json file found at {}".format(model_json_dir)

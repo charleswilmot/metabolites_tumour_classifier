@@ -116,7 +116,7 @@ certain_dirs = [
 
 config_dirs = []
 seed = np.random.randint(9999)
-mode = "testing"
+mode = "training"
 if mode == "single_runs":
     ## 100 single-epoch runs
     args.new_folder = "testtesttest"
@@ -133,14 +133,15 @@ if mode == "single_runs":
                                        from_clusterpy=True
                                        )
 elif mode == "training":
-    for theta in [0.25]: #, 0.1, 0.3, 0.5
+
+    for theta in [0.25, 0.5]: #, 0.1, 0.3
         for dd, ct_dir in zip(data_source_dirs, certain_dirs):   #
-            for method in ["same_mean"]:  #,"both_mean" , "ops_mean",  #
-                for fold in [1]:  # ,3, 5, 9 #
+            for method in ["same_mean","both_mean"]:  # , "ops_mean",  #
+                for fold in [1,3, 5, 9]:  # , 5, 9 #
                     for scale in [0.2, 0.05, 0.35, 0.5]:  #,#
                         config_dirs = overwrite_params(args, config_dirs,
                                                        input_data=dd,  #data dir
-                                                       certain_dir=ct_dir,
+                                                       certain_dir=None,
                                                        aug_method=method,
                                                        aug_scale=scale,
                                                        aug_folds=fold,
@@ -150,15 +151,26 @@ elif mode == "training":
                                                        from_clusterpy=True)
 elif mode == "testing":
     pretrained_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-48--MLP-both_meanx3-factor-0.05-from-data9-certainTrue-theta-0.25-s989-train/network",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-49--MLP-both_meanx3-factor-0.35-from-data9-certainTrue-theta-0.25-s989-train/network",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-50--MLP-both_meanx3-factor-0.5-from-data9-certainTrue-theta-0.25-s989-train/network",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-51--MLP-both_meanx5-factor-0.05-from-data9-certainTrue-theta-0.25-s989-train/network",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-52--MLP-both_meanx5-factor-0.35-from-data9-certainTrue-theta-0.25-s989-train/network",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-54--MLP-both_meanx5-factor-0.5-from-data9-certainTrue-theta-0.25-s989-train/network",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-55--MLP-both_meanx9-factor-0.05-from-data9-certainTrue-theta-0.25-s989-train/network",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-56--MLP-both_meanx9-factor-0.35-from-data9-certainTrue-theta-0.25-s989-train/network",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP/2020-10-14T21-51-57--MLP-both_meanx9-factor-0.5-from-data9-certainTrue-theta-0.25-s989-train/network"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-13T23-16-17--Res_ECG_CAM-same_meanx1-factor-0.05-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-04-11--Res_ECG_CAM-both_meanx1-factor-0.05-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-33-43--Res_ECG_CAM-same_meanx3-factor-0.2-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-36-37--Res_ECG_CAM-same_meanx3-factor-0.35-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-36-59--Res_ECG_CAM-same_meanx3-factor-0.5-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-38-53--Res_ECG_CAM-same_meanx5-factor-0.2-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-40-20--Res_ECG_CAM-same_meanx5-factor-0.35-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-40-51--Res_ECG_CAM-same_meanx5-factor-0.5-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-44-10--Res_ECG_CAM-same_meanx9-factor-0.2-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-44-15--Res_ECG_CAM-same_meanx9-factor-0.35-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-44-46--Res_ECG_CAM-same_meanx9-factor-0.5-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-48-10--Res_ECG_CAM-ops_meanx3-factor-0.2-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-48-18--Res_ECG_CAM-ops_meanx3-factor-0.35-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-48-46--Res_ECG_CAM-ops_meanx3-factor-0.5-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-52-18--Res_ECG_CAM-ops_meanx5-factor-0.2-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-52-46--Res_ECG_CAM-ops_meanx5-factor-0.35-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-52-51--Res_ECG_CAM-ops_meanx5-factor-0.5-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-56-19--Res_ECG_CAM-ops_meanx9-factor-0.2-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-56-35--Res_ECG_CAM-ops_meanx9-factor-0.35-from-data3-certainFalse-theta-1-s989-train/network",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-14T01-56-59--Res_ECG_CAM-ops_meanx9-factor-0.5-from-data3-certainFalse-theta-1-s989-train/network"
     ]
     src_data = os.path.basename(os.path.dirname(pretrained_dirs[0])).split("-")[-6]
     data_source_dirs = [
