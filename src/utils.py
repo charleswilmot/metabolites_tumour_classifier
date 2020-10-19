@@ -157,10 +157,6 @@ def generate_output_path(args):
         args.data_dim = "1d"
         # TODO, cluster and param.json all give this parameter
 
-    if args.certain_dir is not None:
-        args.if_from_certain = True
-    args.if_save_certain = True if args.if_single_runs else False
-
     if args.new_folder: #is not None
         args.output_path = os.path.join(args.output_root, args.new_folder+"-{}".format(args.model_name))
     if args.restore_from is None:  # and args.output_path is None:  #cluster.py

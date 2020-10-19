@@ -22,8 +22,8 @@
     "if_single_runs": true,
     "from_clusterpy": false,
 
-    "model_name": "Res_ECG_CAM",
-    "new_folder": "randomDA2",
+    "model_name": "MLP",
+    "new_folder": "certain-DA-Res7",
     "optimizer_type": "adam",
     "loss_type": "softmax_ce",
     "learning_rate": 0.0005,

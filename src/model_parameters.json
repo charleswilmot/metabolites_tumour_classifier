@@ -35,7 +35,7 @@
                     "model_name": "Res_ECG_CAM",
                     "out_channels": 16,
                     "num_layers_in_res": 2,
-                    "num_res_blocks": 5,
+                    "num_res_blocks": 7,
                     "pool_size": 2,
                     "stride": 2,
                     "filter_size": 16,

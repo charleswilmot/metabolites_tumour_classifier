@@ -753,8 +753,21 @@ def test_phase(sess, graph, compute_batches=100,
         conv = concat_data(results, key="conv")
         sample_ids = concat_data(results, key="sample_ids")
 
-        ret = {"test_gap_w": results[0]["gap_w"], "test_certain_conv": collections["certain_conv"],
-               "test_conv": collections["conv"]}
+        ret = {"test_gap_w": results[0]["gap_w"],
+               "test_loss": loss, "test_accuracy": accuracy, "test_confusion": confusion,
+               "test_labels": labels, "test_ids": ids, "test_features": features,
+               "test_sample_ids": sample_ids,
+               "test_logits": logits,
+               "test_conv": collections["conv"],
+               "test_wrong_features": collections["wrong_features"],
+               "test_wrong_labels": collections["wrong_labels"],
+               "test_wrong_sample_ids": collections["wrong_sample_ids"],
+               "test_certain_labels": collections["certain_labels"],
+               "test_certain_logits": collections["certain_logits"],
+               "test_certain_sample_ids": collections["certain_sample_ids"],
+               "test_certain_conv": collections["certain_conv"]
+               }
+
     else:
         names = ['loss', 'num_correct', 'confusion',
                  'batch_size', 'labels', 'ids',
@@ -781,17 +794,17 @@ def test_phase(sess, graph, compute_batches=100,
         #
         # ret = get_returns(results, return_names, train_or_test=train_or_test)
 
-    ret = {"test_loss": loss, "test_accuracy": accuracy, "test_confusion": confusion,
-                "test_labels": labels, "test_ids": ids, "test_features": features,
-                "test_sample_ids": sample_ids,
-                "test_logits": logits,
-                "test_wrong_features": collections["wrong_features"],
-                "test_wrong_labels": collections["wrong_labels"],
-                "test_wrong_sample_ids": collections["wrong_sample_ids"],
-                "test_certain_labels": collections["certain_labels"],
-                "test_certain_logits": collections["certain_logits"],
-                "test_certain_sample_ids": collections["certain_sample_ids"],
-                }
+        ret = {"test_loss": loss, "test_accuracy": accuracy, "test_confusion": confusion,
+                    "test_labels": labels, "test_ids": ids, "test_features": features,
+                    "test_sample_ids": sample_ids,
+                    "test_logits": logits,
+                    "test_wrong_features": collections["wrong_features"],
+                    "test_wrong_labels": collections["wrong_labels"],
+                    "test_wrong_sample_ids": collections["wrong_sample_ids"],
+                    "test_certain_labels": collections["certain_labels"],
+                    "test_certain_logits": collections["certain_logits"],
+                    "test_certain_sample_ids": collections["certain_sample_ids"]
+                    }
 
     return ret
 

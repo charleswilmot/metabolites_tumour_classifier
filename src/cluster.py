@@ -61,7 +61,6 @@ if __name__ == "__main__":
 
 
     # Creating the flags to be passed to classifier.py
-
     cmds_to_sh = []
     for config_files in config_dirs:   #three arguments
         cmd_python = ""
@@ -84,7 +83,8 @@ if __name__ == "__main__":
     for cmds in cmds_to_sh:
         commands += "\"{}\" ".format(cmds)
 
-    os.system("sbatch --output {}/%N_%j.log cluster.sh {}".format(config_files[0], commands))
+
+    os.system("sbatch --output {}/%N_%j.log --array 0-{}%5 cluster.sh {}".format(config_files[0], len(config_dirs), commands))
 
     # for dirs in config_dirs:
     #     ClusterQueue(dirs)

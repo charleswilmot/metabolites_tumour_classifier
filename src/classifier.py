@@ -27,15 +27,15 @@ def get_available_gpus():
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    '--output_path', default="/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM/2020-10-13T23-16-17--Res_ECG_CAM-same_meanx1-factor-0.05-from-data5-certainFalse-theta-1-s989-train-20201017T184601-on-data5-test-test-test",
+    '--output_path', default=None,
     help="output dir"
 )
 parser.add_argument(
-    '--exp_config', default="/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-Res_ECG_CAM/2020-10-16T15-57-17--Res_ECG_CAM-same_meanx1-factor-0.2-from-data1-certainTrue-theta-0.25-s989-train/network/exp_parameters.json",
+    '--exp_config', default=None,
     help="Json file path for experiment parameters"
 )
 parser.add_argument(
-    '--model_config', default="/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-Res_ECG_CAM/2020-10-16T15-57-17--Res_ECG_CAM-same_meanx1-factor-0.2-from-data1-certainTrue-theta-0.25-s989-train/network/model_parameters.json",
+    '--model_config', default=None,
     help="Json file path for model parameters"
 )
 
