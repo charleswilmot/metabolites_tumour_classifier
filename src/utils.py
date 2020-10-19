@@ -167,7 +167,7 @@ def generate_output_path(args):
                                             time_str, args.model_name, args.aug_method, args.aug_folds,
                                             args.aug_scale, args.data_source,
                                             args.if_from_certain, args.theta_thr,
-                                            args.randseed, args.postfix))
+                                            args.rand_seed, args.postfix))
     elif args.restore_from is not None and args.resume_training:  # restore a model
         args.train_or_test = "train"
         args.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(args.data_source, "resume_train")

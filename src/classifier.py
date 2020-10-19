@@ -31,17 +31,17 @@ parser.add_argument(
     help="output dir"
 )
 parser.add_argument(
-    '--exp_config', default=None,
+    '--exp_config', default="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/exp_parameters.json",
     help="Json file path for experiment parameters"
 )
 parser.add_argument(
-    '--model_config', default=None,
+    '--model_config', default="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/model_parameters.json",
     help="Json file path for model parameters"
 )
 
 # args = argument.params
 params = parser.parse_args()
-print("Taking in config files: {}\n{}\n{}".format(params.output_path, params.exp_config, params.model_config))
+
 args = utils.load_all_params(params.exp_config, params.model_config)
 
 # if the job is NOT submitted with cluster.py, only locally, then
@@ -50,21 +50,31 @@ if not args.from_clusterpy:
     make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
     dataio.save_command_line(args.model_save_dir)
 
+print("Taking in config files: {}\n{}\n{}".format(params.output_path, params.exp_config, params.model_config))
 logger = log.getLogger("classifier")
 get_available_gpus()
 
-if not args.randseed:
+if not args.rand_seed:
     temp_seed = np.random.randint(0, 9999)
-    args.randseed = temp_seed
+    args.rand_seed = temp_seed
 
-np.random.seed(seed=np.int(args.randseed))
-tf.compat.v1.set_random_seed(np.int(args.randseed))
+np.random.seed(seed=np.int(args.rand_seed))
+tf.compat.v1.set_random_seed(np.int(args.rand_seed))
 
 # Get augmentation of the data
 if args.if_from_certain and args.train_or_test == 'train':
-    certain_files = dataio.find_files(args.certain_dir, pattern="full_summary*.csv")
-    print("certain_files", certain_files)
-    data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files[0])
+    if args.distill_old:
+        certain_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-25_Nonex0_factor_0_from-ep_0_from-lout40_data5-theta_0.9-train/certains"
+        logger.info("______________________________________________")
+        print(certain_dir)
+        logger.info("______________________________________________")
+        certain_files = dataio.find_files(certain_dir, pattern="*_epoch_{}_*.csv".format(args.from_epoch))
+        print("certain_files", certain_files)
+        data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files)
+    else:
+        certain_files = dataio.find_files(args.certain_dir, pattern="full_summary*.csv")
+        print("certain_files", certain_files)
+        data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files[0])
 else:
     if args.data_mode == "mnist" or args.data_mode == "MNIST":
         data_tensors, args = dataio.get_noisy_mnist_data(args)

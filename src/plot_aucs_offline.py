@@ -371,7 +371,7 @@ def two_axis_in_one_plot():
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "test_performance_with_different_data_aug_parameters"
+plot_name = "get_performance_metrices"
 
 
 if plot_name == "indi_rating_with_model":
@@ -501,20 +501,21 @@ elif plot_name == "human_whole_with_model":
     plt.close()
 
 elif plot_name == "all_ROCs":
-    data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/1-20190325-data-trained-models/TEST/Res_CNN_CAM-LOUT40"
+    data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-Res7-updateDataio-Res_ECG_CAM/great"
+
     files = find_files(data_dir, pattern="AUC_curve_step_0.00-auc*.csv")
+    tprs = []
     plt.figure(figsize=[10, 6.8])
     base_fpr = np.linspace(0, 1, 20)
-    tprs = []
     for ind, fn in enumerate(files):
         values = pd.read_csv(fn, header=0).values
         true_lbs = values[:, 0]
         prob_1 = values[:, 1]
         fpr_with_aug, tpr_with_aug, _ = metrics.roc_curve(true_lbs, prob_1)
         score = metrics.roc_auc_score(true_lbs, prob_1)
-        plt.plot(fpr_with_aug, tpr_with_aug, 'royalblue', alpha=0.35, label='cross val {} AUC: {:.3f}'.format(ind, score))
+        plt.plot(fpr_with_aug, tpr_with_aug, 'royalblue', label='cross val {} AUC: {:.3f}'.format(ind, score))
 
-        tpr_temp = interp(base_fpr, fpr_with_aug, tpr_with_aug)
+        tpr_temp = np.interp(base_fpr, fpr_with_aug, tpr_with_aug)
         tprs.append(tpr_temp)
         print("ok")
     mean_model_tpr = np.mean(np.array(tprs), axis=0)
@@ -561,27 +562,30 @@ elif plot_name == "plot_mean_cluster":
 elif plot_name == "test_performance_with_different_data_aug_parameters":
     from_dirs = True
     if from_dirs:
-        data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-MLP"
-        model = "MLP"
-        exp_mode = os.path.basename(data_dir)
+        data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM"
+        model = "Res_ECG_CAM"
+        exp_mode = "randomDA"
 
-        for data_source in ["data5"]:  #, "data7", "data3", "data9"
+        for data_source in ["data5", "data3", "data1"]:  #, "data7", "data3", "data9"
             # data_source = "data7"
             pattern = "*-{}-test-*".format(data_source)
             folders = find_folderes(data_dir, pattern=pattern)
 
             configs = []  # "aug_method": [], "aug_factor": [], "aug_fold": [], "from_epoch":
+            indplus2 = 0 if model == "MLP" else 2
+            # indplus2 = 2
+            aug_name_encode = {"same":0, "ops":1, "both":2}
             for fn in folders:
                 splits = os.path.basename(fn).split("-")
-                aug_name = splits[7]
-                aug_fold = np.int(splits[8].split("x")[-1])
-                aug_factor = np.float(splits[10])
+                aug_name = aug_name_encode[splits[7+indplus2]]
+                aug_fold = np.int(splits[8+indplus2].split("x")[-1])
+                aug_factor = np.float(splits[10+indplus2])
                 test_auc = np.float(splits[-1])
                 print(fn)
                 if "random" in pattern:
                     theta = 1
                 else:
-                    theta = 0.25
+                    theta = 1
                 configs.append((aug_name, aug_fold, aug_factor, theta, test_auc))
 
             # for alpha in [0.05, 0.2, 0.35, 0.5]:
@@ -629,29 +633,30 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             ## plot same_mean aug, auc w.r.t.
             print("ok")
             configs = np.array(configs)
-            aug_same = configs[np.where(configs[:, 0] == "same")[0]]
-            aug_ops = configs[np.where(configs[:, 0] == "ops")[0]]
-            aug_both = configs[np.where(configs[:, 0] == "both")[0]]
+            aug_same = configs[np.where(configs[:, 0] == aug_name_encode["same"])[0]]
+            aug_ops = configs[np.where(configs[:, 0] == aug_name_encode["ops"])[0]]
+            aug_both = configs[np.where(configs[:, 0] == aug_name_encode["both"])[0]]
 
-            factor_style = {"0.05":"-", "0.2":"-.", "0.35":"--", "0.5":":"}
-            meth_color = {"ops":"tab:orange", "same":"tab:blue", "both":"tab:green"}
+            factor_style = {0.05:"-", 0.2:"-.", 0.35:"--", 0.5:":"}
+            meth_color = {"ops":"tab:orange", "same":"tab:blue", "both":"m"}
+            markers = {0.05:"d", 0.2:"*", 0.35:"o", 0.5:"^"}
 
-            plt.figure()
+            plt.figure(figsize=[12, 8])
             for res, method in zip([aug_same, aug_ops, aug_both], ["same", "ops", "both"]):
                 for fold in [1,3,5,9]:
-                    fd_configs = np.array(res[np.where(res[:,1] == np.str(fold))[0]])
+                    fd_configs = np.array(res[np.where(res[:,1] == fold)[0]])
                     if len(fd_configs) > 0:
                         plot_vl = []
-                        for scale in ["0.05", "0.2", "0.35", "0.5"]:
+                        for scale in [0.05, 0.2, 0.35, 0.5]:
                             print("{}, {}, {}".format(method, fold, scale))
-                            if len(np.where(fd_configs[:,2] == scale)[0]) == 1:
-                                plot_vl.append([np.float(scale), np.float(fd_configs[np.where(fd_configs[:,2] == scale)[0],-1])])
+                            if len(np.where(fd_configs[:,2] == scale)[0]) >= 1:
+                                plot_vl.append([np.float(scale), np.mean(fd_configs[np.where(fd_configs[:,2] == scale)[0],-1])])
 
-                        plt.plot(np.array(plot_vl)[:,0], np.array(plot_vl)[:,1], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(plot_vl)[:,1])))
+                        plt.plot(np.array(plot_vl)[:,0], np.array(plot_vl)[:,1], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(plot_vl)[:,1])), marker=markers[scale], color=meth_color[method])
             plt.legend(),
-            plt.title("{} + DA with {} on {}".format(exp_mode, model, data_source))
-            plt.savefig(os.path.join(data_dir, "{}+DA-with-{}-on-{}.png".format(exp_mode, model, data_source)))
-            plt.savefig(os.path.join(data_dir, "{}+DA-with-{}-on-{}.pdf".format(exp_mode, model, data_source)), format="pdf")
+            plt.title("{} with {} on {}".format(exp_mode, model, data_source))
+            plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}.png".format(exp_mode, model, data_source)))
+            plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}.pdf".format(exp_mode, model, data_source)), format="pdf")
             plt.close()
 
 
@@ -695,22 +700,24 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
     #         plt.close()
 
 elif plot_name == "rename_test_folders":
-    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA2-Res_ECG_CAM"
+    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-Res7-updateDataio-Res_ECG_CAM"
     folders = find_folderes(results, pattern="*-test")
     pattern = "accuracy_step_0.0_acc_*"
     for fn in folders:
         print(fn)
         test_result = find_files(fn, pattern=pattern)
-        #
+
         if len(test_result) >= 1:
             splits = os.path.basename(test_result[0]).split("_")
             new_name =  os.path.basename(fn).replace("_", "-")
             auc = splits[-2]
             os.rename(fn, os.path.join(os.path.dirname(fn), new_name+"-{}".format(auc)))
-            # os.rename(fn, os.path.join(os.path.dirname(fn), new_name))
+
+        # new_name = os.path.basename(fn).replace("MLP", "Res_ECG_CAM")
+        # os.rename(fn, os.path.join(os.path.dirname(fn), new_name))
 
 elif plot_name == "get_performance_metrices":
-    data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-MLP"
+    data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-Res7-updateDataio-Res_ECG_CAM/great"
     folders = find_folderes(data_dir, pattern="*data5-test-0.*")
     get_scaler_performance_metrices(folders)
     

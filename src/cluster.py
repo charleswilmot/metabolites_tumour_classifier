@@ -1,6 +1,6 @@
 import time
 import os
-import generate_json_for_cluster as gen_dir
+
 
 
 class ClusterQueue:
@@ -50,14 +50,13 @@ def _to_arg(flag, v):
         return " {} {}".format(flag, v)
 ############################################################################################3
 if __name__ == "__main__":
+    import generate_json_for_cluster as gen_dir
     config_dirs = gen_dir.config_dirs
-    #config_dirs =  [[exp1_path1, exp1_arg2, exp1_arg3],
-    # [exp2_path1, exp2_arg2, exp2_arg3],
-    # [exp3_path1, exp3_arg2, exp3_arg3], ...]
 
-    # config_dirs = [["exp1_path1", "exp1_arg2", "exp1_arg3"],
-    #                ["exp2_path1", "exp2_arg2", "exp2_arg3"],
-    #                ["exp3_path1", "exp3_arg2", "exp3_arg3"]]
+    # root_exp = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/testtesttest-MLP"
+    # config_dirs = [["exp1_path1", "exp1_path1/exp1_config1", "exp1_path1/exp1_config2"],
+    #                ["exp2_path1", "exp1_path2/exp2_config1", "exp1_path2/exp2_config2"],
+    #                ["exp3_path1", "exp1_path3/exp3_config1", "exp1_path3/exp3_config2"]]
 
 
     # Creating the flags to be passed to classifier.py
@@ -69,6 +68,7 @@ if __name__ == "__main__":
             flag = _key_to_flag(k)
             # _to_arg transforms ("--something-stupid", a_value)   into   "--something-stupid a_value"
             arg = _to_arg(flag, v)
+            # arg = _to_arg(flag, os.path.join(root_exp, v))
             cmd_python += arg
         cmds_to_sh.append(cmd_python)
         # cmds_to_sh.append(cmd_python + " --output {}/%N_%j.log".format(config_files[0]))
@@ -83,9 +83,12 @@ if __name__ == "__main__":
     for cmds in cmds_to_sh:
         commands += "\"{}\" ".format(cmds)
 
+    active_num_job = 5
+    # os.system("sbatch --mem {}000 cluster.sh {}".format(2*5, commands))
+    # os.system("sbatch --output {}/%N_%j.log --array 0-{}%5 --mem {}000 cluster.sh {}".format(config_files[0], len(config_dirs), 2*5, commands))
+    # os.system("sbatch cluster.sh {}".format(commands))
+    # os.system("sbatch --mem {}000 cluster.sh {}".format(active_num_job, commands))
 
-    os.system("sbatch --output {}/%N_%j.log --array 0-{}%5 cluster.sh {}".format(config_files[0], len(config_dirs), commands))
-
-    # for dirs in config_dirs:
-    #     ClusterQueue(dirs)
+    for dirs in config_dirs:
+        ClusterQueue(dirs)
 

@@ -57,7 +57,7 @@ def sum_confusion(ret):
 
 
 def compute(sess, fetches, compute_batches=100, lr=0.0005,
-            if_get_wrong=False, if_get_certain=False, theta=0.99,
+            if_get_wrong=False, if_get_certain=False, theta=0.90,
             one_epoch_learning=False):
     """
     Compute the interested tensors and ops
@@ -183,7 +183,7 @@ def compute_test_only(sess, fetches, compute_batches=100,
     return run_all, collections
 
 
-def get_most_cer_uncertain_samples(results, cer_thr=0.999, if_check_cam=True):
+def get_most_cer_uncertain_samples(results, cer_thr=0.9, if_check_cam=True):
     """
     Get num2get wrong examples
     :param results: dict, with keys "wrong_BL", "wrong_EPG"
@@ -447,6 +447,7 @@ def training(sess, args, graph, saver):
 
     # while condition(end, output_data, epoch, args.number_of_epochs):
     for epoch in range(args.number_of_epochs):
+        print("epoch: ", epoch)
         # train phase
         if len(output_data[
                    "test_accuracy"]) > 4:  # if the test_acc keeps dropping for 3 steps, reduce the learning rate
@@ -459,25 +460,15 @@ def training(sess, args, graph, saver):
         ret_train = train_phase(sess, graph, args,
                                 lr=lr, if_get_wrong=False,
                                 if_get_certain=True, train_or_test="train")
-        if len(ret_train["train_certain_sample_ids"]) > 0 and epoch < 10 and args.if_save_certain:
+        if args.if_save_certain and len(ret_train["train_certain_sample_ids"]) > 0 and epoch < 21:
             certain_data = np.concatenate((np.array(ret_train["train_certain_sample_ids"]).reshape(-1, 1),
                                            np.array(ret_train["train_certain_ids"]).reshape(-1, 1),
                                            np.array(ret_train["train_certain_labels"]).reshape(-1, 1),
                                            ret_train["train_certain_logits"]), axis=1)
             np.savetxt(os.path.join(args.output_path, "certains",
-                                    "certain_data_{}_epoch_{}_num_{}_{}_theta_{}_s{}.csv".format("train", epoch, ret_train[
-                                        "train_certain_sample_ids"].size, args.data_source, args.theta_thr, args.randseed)),
+                                    "certain_data_train_epoch_{}_num_{}_{}_theta_{}_s{}.csv".format(epoch, ret_train[
+                                        "train_certain_sample_ids"].size, args.data_source, args.theta_thr, args.rand_seed)),
                        certain_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
-            # one_ep_data = np.concatenate((np.array(ret_train["train_one_ep_sample_ids"]).reshape(-1, 1),
-            #                               np.array(ret_train["train_one_ep_ids"]).reshape(-1, 1),
-            #                             np.array(ret_train["train_one_ep_labels"]).reshape(-1, 1),
-            #                             ret_train["train_one_ep_logits"]), axis=1)
-            # np.savetxt(os.path.join(args.output_path, "certains",
-            #                         "one_ep_data_{}_epoch_{}_num_{}_{}_theta_{}.csv".format("train", epoch, ret_train[
-            #                             "train_one_ep_sample_ids"].size, args.data_source, args.theta_thr)),
-            #            one_ep_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
-
-
 
         if ret_train is not None:
             output_data["train_loss"].append(ret_train["train_loss"])
@@ -493,7 +484,7 @@ def training(sess, args, graph, saver):
                                     compute_batches=graph["test_num_batches"],
                                     train_or_test="test")
 
-        if args.if_save_certain and len(ret_test["test_certain_labels"]) > 0 and epoch < 11:
+        if args.if_save_certain and len(ret_test["test_certain_labels"]) > 0 and epoch < 21:
             certain_data = np.concatenate((ret_test["test_certain_sample_ids"].reshape(-1, 1),
                                            ret_test["test_certain_labels"].reshape(-1, 1),
                                            ret_test["test_certain_logits"]), axis=1)
@@ -585,8 +576,8 @@ def single_epo_runs(sess, args, graph):
     for epoch in range(args.number_of_epochs):
         # single-epoch-learning to get correct clf rate of the whole dataset.
         # train phase, reinitialize the model in each epoch
-        args.randseed = np.random.randint(0, 9999)
-        tf.compat.v1.set_random_seed(np.int(args.randseed))
+        args.rand_seed = np.random.randint(0, 9999)
+        tf.compat.v1.set_random_seed(np.int(args.rand_seed))
         initialize(sess, graph, test_only=False)
         sess.run([tf.compat.v1.global_variables_initializer(), tf.compat.v1.local_variables_initializer()])
         
@@ -609,7 +600,7 @@ def single_epo_runs(sess, args, graph):
                                     ret_train["train_one_ep_logits"]), axis=1)
         np.savetxt(os.path.join(args.output_path, "certains",
                                 "one_ep_data_{}_epoch_{}_num_{}-{}_{}_theta_{}_s{}.csv".format("train", epoch, ret_train[
-                                    "train_one_ep_sample_ids"].size, ret_train["train_one_ep_sample_ids"].max(), args.data_source, args.theta_thr, args.randseed)),
+                                    "train_one_ep_sample_ids"].size, ret_train["train_one_ep_sample_ids"].max(), args.data_source, args.theta_thr, args.rand_seed)),
                    one_ep_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
 
         if ret_train is not None:

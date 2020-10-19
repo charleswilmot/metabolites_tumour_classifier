@@ -72,4 +72,15 @@ srun -p x-men python3 EPG_classification.py
 srun -p sleuths -w jetski --mem=15000 --reservation triesch-shared --gres gpu:rtx2080ti:1  python3 acti_max.py
 
 
+create new conda environment:
+conda create -n env_name
+conda activate env_name
+conda install tensorflow-gpu
+conda install matplotlib
+conda install tqdm
+conda install pandas
+conda install scipy
+pip install ipdb
+pip install sklearn
+
 
