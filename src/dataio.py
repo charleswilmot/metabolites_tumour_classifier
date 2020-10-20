@@ -736,8 +736,12 @@ def get_data_tensors(args, certain_fns=None):
     if certain_fns is None:  # get data from origal array
         train_data, test_data = get_data(args)
     else:  # Get certain AND mix original un-distilled samples
-        train_data, test_data = get_data_from_certain_ids(args,
-                                                          certain_fns=certain_fns)
+        if args.distill_old:
+            train_data, test_data = get_data_from_certain_ids_old(args,
+                                                              certain_fns=certain_fns)
+        else:
+            train_data, test_data = get_data_from_certain_ids(args,
+                                                              certain_fns=certain_fns)
 
     test_spectra, test_labels, test_ids, test_sample_ids = tf.constant(test_data["spectra"]), tf.constant(
         test_data["labels"]), tf.constant(test_data["ids"]), tf.constant(test_data["sample_ids"])

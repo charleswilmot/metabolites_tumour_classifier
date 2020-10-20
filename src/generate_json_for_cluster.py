@@ -63,6 +63,8 @@ def overwrite_params(args, cfg_dirs, **kwargs):
     args.aug_method = kwargs["aug_method"] if "aug_method" in kwargs else "none"
     args.aug_scale = kwargs["aug_scale"] if "aug_scale" in kwargs else 0
     args.aug_folds = kwargs["aug_folds"] if "aug_folds" in kwargs else 0
+    if args.distill_old:  #only exit in the old method
+        args.from_epoch = kwargs["from_epoch"] if "from_epoch" in kwargs else 0
     args.input_data = kwargs["input_data"] if "input_data" in kwargs else None
     args.theta_thr = kwargs["theta_thr"] if "theta_thr" in kwargs else None
     args.rand_seed = kwargs["rand_seed"] if "rand_seed" in kwargs else 129
@@ -102,17 +104,17 @@ args = utils.load_all_params(default_exp_json_dir, default_model_json_dir)
 
 data_source_dirs = [
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat"
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
 ]
 certain_dirs = [
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-37--Res_ECG_CAM-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train",
-    # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-38--Res_ECG_CAM-nonex0-factor-0-from-data3-certainFalse-theta-0-s989-100rns-train",
+    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-22--Res_ECG_CAM-Nonex0-factor-0-from-data5-certainFalse-theta-0.9-s2246-train/certains",
+    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-24--Res_ECG_CAM-Nonex0-factor-0-from-data7-certainFalse-theta-0.9-s2246-train/certains"
     # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-39--Res_ECG_CAM-nonex0-factor-0-from-data1-certainFalse-theta-0-s989-100rns-train"
     # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-30-52--MLP-nonex0-factor-0-from-data9-certainFalse-theta-0-s989-100rns-train",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-30-53--MLP-nonex0-factor-0-from-data7-certainFalse-theta-0-s989-100rns-train"
+    # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-30-53--MLP-nonex0-factor-0-from-data7-certainFalse-theta-0-s989-100rns-train"
 ]
 # overwrite part of the parameters given for training with cluster.py
 
@@ -136,17 +138,17 @@ if mode == "single_runs":
                                        from_clusterpy=True
                                        )
 elif mode == "training":
-    mode = "pure-training"   #"aug-training"
-    if mode == "aug-training":
-        for theta in [0.5]: #, 0.5, 0.1, 0.3
+    mode = "aug_training"   #"aug-training"
+    if mode == "aug_training":
+        for epoch in [5]: #1,3,, 0.5, 0.1, 0.3
             for dd, ct_dir in zip(data_source_dirs, certain_dirs):   #
                 for method in ["same_mean"]:  # "both_mean",, "ops_mean",  #
-                    for fold in [3]:  #1, 3, 5, 9, 11, 3, , 5, 9#
-                        for scale in [0.35]:  #, 0.50.2, 0.05, , ,#
+                    for fold in [1,3]:  #1, 3, 5, 9, 11, 3, , 5, 9#
+                        for scale in [0.05,0.3]:  #, 0.50.2, 0.05, , ,#
                             # ct_dir = None
                             if ct_dir is not None:
-                                theta = theta
-                                args.new_folder = "certain-DA-Res7-updateDataio"
+                                # theta = theta
+                                args.new_folder = "old-distillation-certain-DA-Res7"
                             else:
                                 theta = 1
                                 args.new_folder = "randomDA"
@@ -156,12 +158,13 @@ elif mode == "training":
                                                            certain_dir=ct_dir,
                                                            aug_method=method,
                                                            aug_scale=scale,
+                                                           from_epoch=epoch,
                                                            aug_folds=fold,
                                                            theta_thr=theta,
                                                            rand_seed=seed,
                                                            if_single_runs=False,
                                                            from_clusterpy=True)
-    elif mode == "pure-training":
+    elif mode == "pure_training":
         args.if_save_certain = True
         for theta in [0.9, 0.95, 0.99]:
             for dd in data_source_dirs:   #

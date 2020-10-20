@@ -371,7 +371,7 @@ def two_axis_in_one_plot():
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "get_performance_metrices"
+plot_name = "certain_tsne_distillation"
 
 
 if plot_name == "indi_rating_with_model":
@@ -763,42 +763,51 @@ elif plot_name == "certain_tsne_distillation":
     # np.savetxt(os.path.join(data_dir, "MDS-whole_data-2d-{}.csv".format(len(whole_data))), mds_emb_whole, fmt="%.5f",
     #            delimiter=","),
 
-    tsne_whole = pd.read_csv(os.path.join(data_dir, "whole_data_tsne-2d-6598.csv"), header=None).values
-    tsne_distill = pd.read_csv(os.path.join(data_dir, "distill_data_tsne-2d-1646.csv"), header=None).values
-    # tsne_distill = np.empty((0, 2))
-    # for sp in distill_data[:,0]:
-    #     tsne_distill = np.vstack((tsne_distill, tsne_whole[whole_data[:,0] == sp,:]))
+    # import umap.umap_ as umap
+    # tsne_whole = umap.UMAP(random_state=42).fit_transform(whole_data[:, 3:])
+    # np.savetxt(os.path.join(data_dir, "umap-distill_data-2d-{}.csv".format(len(tsne_whole))), tsne_whole, fmt="%.5f", delimiter=",")
+    # tsne_distill = umap.UMAP(random_state=42).fit_transform(distill_data[:, 3:])
+    # np.savetxt(os.path.join(data_dir, "umap-distill_data-2d-{}.csv".format(len(tsne_distill))), tsne_distill, fmt="%.5f", delimiter=",")
 
-    ori_colors = ["c", "violet"]
-    distill_colors = ["darkblue", "crimson"]
+    reduction_method = "UMAP"
+    tsne_whole = pd.read_csv(os.path.join(data_dir, "umap-distill_data-2d-6598.csv"), header=None).values
+    tsne_distill = pd.read_csv(os.path.join(data_dir, "umap-distill_data-2d-1646.csv"), header=None).values
 
+    # ori_colors = ["c", "violet"]
+    ori_colors = ["c", "m"]
+    # distill_colors = ["darkblue", "crimson"]
+    distill_colors = ["c", "m"]
+
+    # plot the whole set
     fig = plt.figure(figsize=[8, 6.5])
     ax = fig.add_subplot(111)
     for c in range(2):
         inds = np.where(whole_data[:, 2] == c)[0]
-        im = ax.scatter(tsne_whole[inds, 0], tsne_whole[inds, 1], color=ori_colors[c], alpha=0.5, facecolor=None, label="original class {}".format(c))
+        im = ax.scatter(tsne_whole[inds, 0], tsne_whole[inds, 1], color=ori_colors[c], alpha=0.35, markersize=15, facecolor=None, label="original class {}".format(c))
     inds0 = np.where(whole_data[:, 2] == 0)[0]
     inds1 = np.where(whole_data[:, 2] == 1)[0]
     _, p_x_whole = ks_2samp(tsne_whole[inds0, 0], tsne_whole[inds1, 0])
     _, p_y_whole = ks_2samp(tsne_whole[inds0, 1], tsne_whole[inds1, 1])
     plt.legend(scatterpoints=4)
-    plt.title("TSNE of both classes (whole)")
+    plt.title("{} of both classes (whole)".format(reduction_method))
     plt.xlabel("dimension #1 (p={:.2E})".format(p_x_whole)),
     plt.ylabel("dimension #2 (p={:.2E})".format(p_y_whole))
-    plt.savefig(os.path.join(data_dir, "tsne-whole-{}.png".format(data_source))),
-    plt.savefig(os.path.join(data_dir, "tsne-whole-{}.pdf".format(data_source)), format="pdf")
+    plt.savefig(os.path.join(data_dir, "umap_visualization", "{}-whole-{}.png".format(reduction_method, data_source))),
+    plt.savefig(os.path.join(data_dir, "umap_visualization", "{}-whole-{}.pdf".format(reduction_method, data_source)), format="pdf")
     plt.close()
 
+    # plot the whole set w.r.t patients
     plt.figure(figsize=[8, 6.5])
-    plt.scatter(tsne_whole[:, 0], tsne_whole[:, 1], c=whole_data[:,1], cmap="jet", facecolor=None)
+    plt.scatter(tsne_whole[:, 0], tsne_whole[:, 1], c=whole_data[:,1], markersize=15, cmap="jet", facecolor=None)
     plt.colorbar()
     plt.title("Patients from the whole set (healthy<1000, tumor>1000)")
     plt.xlabel("dimension #1"),
     plt.ylabel("dimension #2")
-    plt.savefig(os.path.join(data_dir, "grouped-by-patients-tsne-whole-{}.png".format(data_source))),
-    plt.savefig(os.path.join(data_dir, "grouped-by-patients-tsne-whole-{}.pdf".format(data_source)), format="pdf")
+    plt.savefig(os.path.join(data_dir, "umap_visualization", "grouped-by-patients-{}-whole-{}.png".format(reduction_method, data_source))),
+    plt.savefig(os.path.join(data_dir, "umap_visualization", "grouped-by-patients-{}-whole-{}.pdf".format(reduction_method, data_source)), format="pdf")
     plt.close()
 
+    # plot the same number as in distill from the whole set
     fig = plt.figure(figsize=[8, 6.5])
     fig = plt.figure()
     dis_inds0 = np.where(distill_data[:, 2] == 0)[0]
@@ -808,26 +817,50 @@ elif plot_name == "certain_tsne_distillation":
     ax = fig.add_subplot(111)
     for c in range(2):
         inds = np.where(distill_data[:, 2] == c)[0]
-        im = ax.scatter(tsne_distill[inds, 0], tsne_distill[inds, 1], color=distill_colors[c], facecolor=None, label="distill class {}".format(c))
+        im = ax.scatter(tsne_distill[inds, 0], tsne_distill[inds, 1], color=distill_colors[c], markersize=15, facecolor=None, label="distill class {}".format(c))
     plt.legend(scatterpoints=4)
     plt.title("TSNE of both classes (distilled)")
     plt.xlabel("dimension #1 (p={:.2E})".format(p_x_dis)),
     plt.ylabel("dimension #2 (p={:.2E})".format(p_x_dis))
-    plt.savefig(os.path.join(data_dir, "tsne-distill-{}.png".format(data_source)))
-    plt.savefig(os.path.join(data_dir, "tsne-distill-{}.pdf".format(data_source)), format="pdf")
-    plt.savefig(os.path.join(data_dir, "Distilled tumor samples-{}-from-whole.png".format(data_source))),
-    plt.savefig(os.path.join(data_dir, "Distilled tumor samples-{}-from-whole.pdf".format(data_source)), format="pdf")
+    plt.savefig(os.path.join(data_dir, "umap_visualization", "tsne-distill-{}.png".format(data_source)))
+    plt.savefig(os.path.join(data_dir, "umap_visualization", "tsne-distill-{}.pdf".format(data_source)), format="pdf")
+    plt.savefig(os.path.join(data_dir, "Distilled tumor samples-{}-from-{}.png".format(reduction_method, data_source))),
+    plt.savefig(os.path.join(data_dir, "Distilled tumor samples-{}-from-{}.pdf".format(reduction_method, data_source)), format="pdf")
     plt.close()
 
-    plt.figure(figsize=[8, 6.5])
-    plt.scatter(tsne_distill[:, 0], tsne_distill[:, 1], c=distill_data[:,1], cmap="jet", facecolor=None)
-    plt.colorbar()
-    plt.title("Patients from the distilled set  (healthy<1000, tumor>1000)")
-    plt.xlabel("dimension #1"),
-    plt.ylabel("dimension #2")
-    plt.savefig(os.path.join(data_dir, "grouped-by-patients-tsne-distill-{}.png".format(data_source))),
-    plt.savefig(os.path.join(data_dir, "grouped-by-patients-tsne-distill-{}.pdf".format(data_source)), format="pdf")
+    # plot the same number as in distill from the whole set
+    fig = plt.figure(figsize=[8, 6.5])
+    ax = fig.add_subplot(111)
+    for c in range(2):
+        inds = np.where(whole_data[:, 2] == c)[0]
+        if c == 0:
+            need_number = len(dis_inds0)
+        else:
+            need_number = len(dis_inds1)
+        sub_set = np.random.choice(inds, need_number, replace=False)
+        im = ax.scatter(tsne_whole[sub_set, 0], tsne_whole[sub_set, 1], color=ori_colors[c], alpha=0.5, facecolor=None, markersize=15, label="original class {}".format(c))
+    inds0 = np.where(whole_data[:, 2] == 0)[0]
+    inds1 = np.where(whole_data[:, 2] == 1)[0]
+    _, p_x_whole = ks_2samp(tsne_whole[inds0, 0], tsne_whole[inds1, 0])
+    _, p_y_whole = ks_2samp(tsne_whole[inds0, 1], tsne_whole[inds1, 1])
+    plt.legend(scatterpoints=4)
+    plt.title("{} of both classes (random sampled from the whole)".format(reduction_method))
+    plt.xlabel("dimension #1 (p={:.2E})".format(p_x_whole)),
+    plt.ylabel("dimension #2 (p={:.2E})".format(p_y_whole))
+    plt.savefig(os.path.join(data_dir, "umap_visualization", "{}-subset-the-same-number-as-distill-from-whole-{}.png".format(reduction_method, data_source))),
+    plt.savefig(os.path.join(data_dir, "umap_visualization", "{}-subset-the-same-number-as-distill-from-whole-{}.pdf".format(reduction_method, data_source)),
+                format="pdf")
     plt.close()
+
+    # plt.figure(figsize=[8, 6.5])
+    # plt.scatter(tsne_distill[:, 0], tsne_distill[:, 1], c=distill_data[:,1], cmap="jet", facecolor=None)
+    # plt.colorbar()
+    # plt.title("Patients from the distilled set  (healthy<1000, tumor>1000)")
+    # plt.xlabel("dimension #1"),
+    # plt.ylabel("dimension #2")
+    # plt.savefig(os.path.join(data_dir, "grouped-by-patients-{}-distill-{}.png".format(reduction_method, data_source))),
+    # plt.savefig(os.path.join(data_dir, "grouped-by-patients-{}-distill-{}.pdf".format(reduction_method, data_source)), format="pdf")
+    # plt.close()
 
 
 
@@ -842,23 +875,23 @@ elif plot_name == "plot_metabolites":
 
     ori_data = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325_DATA.mat"
 
-    mat = loadmat(ori_data)["DATA"]
-    labels = mat[:, 1]
-    new_mat = np.zeros((mat.shape[0], mat.shape[1] + 1))
-    new_mat[:, 0] = np.arange(mat.shape[0])  # tag every sample
-    new_mat[:, 1:] = mat
+    original_data = loadmat(ori_data)["DATA"]
+    labels = original_data[:, 1]
+    new_mat = np.zeros((original_data.shape[0], original_data.shape[1] + 1))
+    new_mat[:, 0] = np.arange(original_data.shape[0])  # tag every sample
+    new_mat[:, 1:] = original_data
     train_data = {}
     test_data = {}
-    pat_ids = mat[:, 0].astype(np.int)
+    pat_ids = original_data[:, 0].astype(np.int)
 
     need_inds = np.where(pat_ids == 6)[0]
-    need_spec = mat[need_inds, 2:]
+    need_spec = original_data[need_inds, 2:]
 
-    pre_id = np.int(mat[0, 0])
-    pre_lb = [np.int(mat[0, 1])]
+    pre_id = np.int(original_data[0, 0])
+    pre_lb = [np.int(original_data[0, 1])]
     pat_ids_lb = []  #(pre_id, pre_lb, 0)id, all labels, unique labels
     pat_count = 0
-    for iid, lb in zip(mat[1:, 0], mat[1:, 1]):
+    for iid, lb in zip(original_data[1:, 0], original_data[1:, 1]):
         if iid == pre_id:
             pre_lb.append(np.int(lb))
         else:
@@ -1223,15 +1256,15 @@ elif plot_name == "100_single_ep_patient_wise_rate":
     sort_select_rate = sort_data[:, 2]
     sort_select_corr_rate = sort_data[:, 3]
 
-    mat = loadmat(ori_data)["DATA"]
-    sort_pat_ids = mat[:, 0][sort_inds]
-    labels = mat[:, 1]
-    new_mat = np.zeros((mat.shape[0], mat.shape[1] + 1))
-    new_mat[:, 0] = np.arange(mat.shape[0])  # tag every sample
-    new_mat[:, 1:] = mat
+    original_data = loadmat(ori_data)["DATA"]
+    sort_pat_ids = original_data[:, 0][sort_inds]
+    labels = original_data[:, 1]
+    new_mat = np.zeros((original_data.shape[0], original_data.shape[1] + 1))
+    new_mat[:, 0] = np.arange(original_data.shape[0])  # tag every sample
+    new_mat[:, 1:] = original_data
     train_data = {}
     test_data = {}
-    pat_ids = mat[:, 0].astype(np.int)
+    pat_ids = original_data[:, 0].astype(np.int)
 
     uniq_pat_ids = np.unique(sort_pat_ids)
     pat_summary = []
@@ -1268,6 +1301,75 @@ elif plot_name == "100_single_ep_patient_wise_rate":
     plt.savefig(os.path.dirname(sort_inds_files) + "/100-runs-patient-wise-statistics-sort-by-num-amples.pdf",
                 format="pdf")
     plt.close()
+
+
+elif plot_name == "K_NN_stats_test_for_distillation":
+    from scipy.io import loadmat
+    from sklearn.metrics import pairwise_distances
+    from scipy import stats
+    data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
+    corr_clf_rate_file = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-37--Res_ECG_CAM-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train/full_summary-data5_100_runs_sort_inds_rate_(6592-8229-8231).csv"
+    theta = 0.5
+    num_2class = np.int(os.path.basename(corr_clf_rate_file).split("(")[1].split("-")[0])
+    num_3class = np.int(os.path.basename(corr_clf_rate_file).split(")")[0].split("-")[-1])
+
+    original_data = loadmat(data_dir)["DATA"]
+    labels = original_data[:, 1]
+    whole_set = np.zeros((original_data.shape[0], original_data.shape[1] + 1))
+    whole_set[:, 0] = np.arange(original_data.shape[0])  # tag every sample
+    whole_set[:, 1:] = original_data
+
+    sub_inds = np.empty((0))
+    for class_id in range(2):
+        sub_inds = np.append(sub_inds, np.where(labels == class_id)[0])
+    sub_inds = sub_inds.astype(np.int32)
+    sub_set= whole_set[sub_inds]
+    sub_set_lbs= labels[sub_inds]
+    sub_set_smp_ids= whole_set[sub_inds, 0]
+
+    dd = pd.read_csv(corr_clf_rate_file, header=0).values
+    distill_samp_ids = dd[:,0][-np.int(theta*num_2class):].astype(np.int)
+    distill_set = whole_set[distill_samp_ids,:]
+    distill_lbs = distill_set[:,2]
+
+    ## get pair-wise distance of whole set
+    dist_whole = pairwise_distances(original_data[:, 2:])
+
+    dist_2class_temp = dist_whole[sub_inds,:]
+    dist_2class = dist_2class_temp[:,sub_inds]
+    k_nbs = 11   # the number of neighbors to inspect
+    knn_data_2class = []
+    for ii in range(len(dist_2class)):
+        idx = np.argsort(dist_2class[ii, :])
+        small_k_dists = dist_2class[ii, :][idx[:k_nbs]]
+        knn_data_2class.append([sub_set_smp_ids[ii], sub_set_lbs[ii], sub_set_lbs[idx][:k_nbs], np.float((np.sum(sub_set_lbs[idx][:k_nbs]==sub_set_lbs[ii])-1)/1.0/(k_nbs-1))])
+    knn_data_2class = np.array(knn_data_2class)
+
+    # get percentage of same and ops class in KNN for the whole set
+    temp = dist_whole[distill_samp_ids,:]
+    dist_distill = temp[:,distill_samp_ids]
+    knn_data_distill = []
+    for jj in range(len(dist_distill)):
+        idx = np.argsort(dist_distill[jj, :])
+        small_k_dists = dist_distill[jj, :][idx[:k_nbs]]
+        knn_data_distill.append([distill_samp_ids[jj], distill_lbs[jj], distill_lbs[idx][:k_nbs], np.float((np.sum(distill_lbs[idx][:k_nbs]==distill_lbs[jj])-1)/1.0/(k_nbs-1))])
+    knn_data_distill = np.array(knn_data_distill)
+    print("ok")
+
+    _, p_tt = stats.ttest_ind(knn_data_2class[:,-1], knn_data_distill[:,-1])
+    _, p_rank = stats.ranksums(knn_data_2class[:, -1], knn_data_distill[:, -1])
+    _, p_levene = stats.levene(knn_data_2class[:, -1], knn_data_distill[:, -1])
+
+    plt.hist(knn_data_2class[:,-1], color="c", alpha=0.5, label="original", density=True),
+    plt.hist(knn_data_distill[:,-1], color="m", alpha=0.5, label="distilled", density=True),
+    plt.legend(),
+    plt.xlabel("K nearest neightbors with the same label [%]"),
+    plt.ylabel("count (density)"),
+    plt.title("Hist. of K ({}) nearest points distribution, p={:.2E}".format(k_nbs-1, p_tt))
+    plt.savefig(os.path.join(os.path.dirname(corr_clf_rate_file), "KNN-{}-membership-distribution.png"))
+    plt.savefig(os.path.join(os.path.dirname(corr_clf_rate_file), "KNN-{}-membership-distribution.pdf"), format="pdf")
+    plt.close()
+
 
 
 

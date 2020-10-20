@@ -64,11 +64,11 @@ tf.compat.v1.set_random_seed(np.int(args.rand_seed))
 # Get augmentation of the data
 if args.if_from_certain and args.train_or_test == 'train':
     if args.distill_old:
-        certain_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2020-09-01T21-35-25_Nonex0_factor_0_from-ep_0_from-lout40_data5-theta_0.9-train/certains"
+        # certain_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-22--Res_ECG_CAM-Nonex0-factor-0-from-data5-certainFalse-theta-0.9-s2246-train/certains"
         logger.info("______________________________________________")
-        print(certain_dir)
+        print(args.certain_dir)
         logger.info("______________________________________________")
-        certain_files = dataio.find_files(certain_dir, pattern="*_epoch_{}_*.csv".format(args.from_epoch))
+        certain_files = dataio.find_files(args.certain_dir, pattern="cetain_data*_epoch_{}_*.csv".format(args.from_epoch))
         print("certain_files", certain_files)
         data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files)
     else:

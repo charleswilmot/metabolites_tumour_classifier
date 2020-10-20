@@ -29,7 +29,8 @@
     "learning_rate": 0.0005,
     "postfix": "none",
     "if_from_certain": false,
-    "if_save_certain": true,
+    "if_save_certain": false,
+    "distill_old": true,
     "train": {
             "number_of_epochs": 201,
             "test_freq": 1,
