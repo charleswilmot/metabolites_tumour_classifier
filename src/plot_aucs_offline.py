@@ -200,7 +200,7 @@ def get_auc_as_factor(data_dir, fold=None, epoch=5, factor=0.5, aug_meth=["same"
         # std_auc = np.std(np.array(sum_aucs), axis=0) / np.sqrt(np.array(sum_aucs).size)
         
 
-        plt.plot(base_var, mean_auc, color=colors[ind * 2], marker="o", markersize=8, linewidth=2.5, label=method)
+        plt.plot(base_var, mean_auc, color=colors[ind * 2], marker="o", s=8, linewidth=2.5, label=method)
         plt.errorbar(base_var, mean_auc, yerr=std_auc, capsize=5, color=colors[ind * 2])
         # plt.fill_between(base_var, mean_auc - std_auc, mean_auc + std_auc, color=colors[ind * 2 + 1])
 
@@ -430,15 +430,15 @@ if plot_name == "indi_rating_with_model":
         tpr_temp = interp(base_fpr, indi_model_fpr, indi_model_tpr)
         tpr_model.append(tpr_temp)
 
-        plt.plot(indi_fpr[1], indi_tpr[1], color="r", marker="o", markersize=10, alpha=0.65)
+        plt.plot(indi_fpr[1], indi_tpr[1], color="r", marker="o", s=10, alpha=0.65)
         # plt.plot(indi_model_fpr, indi_model_tpr, color=colors[i], alpha=0.15, label='model {} AUC:  {:.2f}'.format(i+1, indi_model_score))
 
     mean_model_tpr = np.mean(np.array(tpr_model), axis=0)
     std_model_tpr = np.std(np.array(tpr_model), axis=0)
     mean_model_score = metrics.auc(base_fpr, mean_model_tpr)
 
-    plt.plot(indi_fpr[1], indi_tpr[1], alpha=0.65, color="r", marker="o", markersize=10, label="individual radiologists")
-    plt.plot(np.mean(np.array(mean_fpr)[:, 1]), np.mean(np.array(mean_tpr)[:, 1]), color="r", marker="d", markersize=16, label='human average AUC: {:.2f}'.format(np.mean(np.array(mean_score))))
+    plt.plot(indi_fpr[1], indi_tpr[1], alpha=0.65, color="r", marker="o", s=10, label="individual radiologists")
+    plt.plot(np.mean(np.array(mean_fpr)[:, 1]), np.mean(np.array(mean_tpr)[:, 1]), color="r", marker="d", s=16, label='human average AUC: {:.2f}'.format(np.mean(np.array(mean_score))))
     plt.plot(model_fpr, model_tpr, color="royalblue", linewidth=3.0, label='model AUC:  {:.2f}'.format(mean_model_score))
 
     plt.title("Receiver Operating Characteristic")
@@ -479,7 +479,7 @@ elif plot_name == "human_whole_with_model":
 
     # PLot human average rating
     plt.figure(figsize=[10, 7])
-    plt.plot(hum_fpr[1], hum_tpr[1], 'purple', marker="*", markersize=10, label='human AUC: {:.2f}'.format(hum_score))
+    plt.plot(hum_fpr[1], hum_tpr[1], 'purple', marker="*", s=10, label='human AUC: {:.2f}'.format(hum_score))
 
     # Plot trained model prediction
     fpr_with_aug, tpr_with_aug, _ = metrics.roc_curve(label_with_aug, pred_logits_with_aug)
@@ -738,8 +738,6 @@ elif plot_name == "move_folder":
 elif plot_name == "certain_tsne_distillation":
     from scipy.io import loadmat as loadmat
     import scipy.io as io
-    from bhtsne import tsne as TSNE
-    from sklearn.manifold import MDS
     from scipy.stats import ks_2samp
 
     pattern = "full_summary-*.csv"
@@ -748,30 +746,48 @@ elif plot_name == "certain_tsne_distillation":
     certain_fns = find_files(data_dir, pattern=pattern)
     whole_data, distill_data = get_data_from_certain_ids(certain_fns[0], m_file=m_data_dir)
     data_source = data_dir.split("-")[-7]
+    reduction_method = "tsne"
+    if_save_data = False
 
     ## get the whole tsne projection
-    # tsne_whole = TSNE(whole_data[:, 3:], dimensions=2)
-    # tsne_distill= TSNE(certain_data[:, 3:], dimensions=2)
-    # np.savetxt(os.path.join(data_dir, "whole_data_tsne-2d-{}.csv".format(len(whole_data))), tsne_whole, fmt="%.5f", delimiter=","),
-    # np.savetxt(os.path.join(data_dir, "distill_data_tsne-2d-{}-from-whole.csv".format(len(tsne_distill))), tsne_distill, fmt="%.5f", delimiter=",")
-
-    # MDS_distill = MDS(n_components=2, random_state=199)
-    # mds_emb_distill = MDS_distill.fit_transform(certain_data[:, 3:])
-    # np.savetxt(os.path.join(data_dir, "MDS-distill_data-2d-{}.csv".format(len(mds_emb_distill))), mds_emb_distill, fmt="%.5f", delimiter=",")
-    # MDS_whole = MDS(n_components=2, random_state=199)
-    # mds_emb_whole = MDS_whole.fit_transform(whole_data[:, 3:])
-    # np.savetxt(os.path.join(data_dir, "MDS-whole_data-2d-{}.csv".format(len(whole_data))), mds_emb_whole, fmt="%.5f",
-    #            delimiter=","),
-
-    # import umap.umap_ as umap
-    # tsne_whole = umap.UMAP(random_state=42).fit_transform(whole_data[:, 3:])
-    # np.savetxt(os.path.join(data_dir, "umap-distill_data-2d-{}.csv".format(len(tsne_whole))), tsne_whole, fmt="%.5f", delimiter=",")
-    # tsne_distill = umap.UMAP(random_state=42).fit_transform(distill_data[:, 3:])
-    # np.savetxt(os.path.join(data_dir, "umap-distill_data-2d-{}.csv".format(len(tsne_distill))), tsne_distill, fmt="%.5f", delimiter=",")
-
-    reduction_method = "UMAP"
-    tsne_whole = pd.read_csv(os.path.join(data_dir, "umap-distill_data-2d-6598.csv"), header=None).values
-    tsne_distill = pd.read_csv(os.path.join(data_dir, "umap-distill_data-2d-1646.csv"), header=None).values
+    if reduction_method == "tsne":
+        if if_save_data:
+            from bhtsne import tsne as TSNE
+            reduced_proj_whole = TSNE(whole_data[:, 3:], dimensions=2)
+            reduced_proj_distill= TSNE(distill_data[:, 3:], dimensions=2)
+            np.savetxt(os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
+            np.savetxt(os.path.join(data_dir, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
+        else:
+            filename_whole = os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method))
+            filename_distill = os.path.join(data_dir, "distill_data_tsne-2d-from-whole-tsne.csv.csv".format(reduction_method))
+            reduced_proj_whole = pd.read_csv(filename_whole, header=None).values
+            reduced_proj_distill = pd.read_csv(filename_distill, header=None).values
+    elif reduction_method == "UMAP":
+        if if_save_data:
+            import umap.umap_ as umap
+            reduced_proj_whole = umap.UMAP(random_state=42).fit_transform(whole_data[:, 3:])
+            reduced_proj_distill = umap.UMAP(random_state=42).fit_transform(distill_data[:, 3:])
+            np.savetxt(os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
+            np.savetxt(os.path.join(data_dir, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
+        else:
+            filename_whole = os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method))
+            filename_distill = os.path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method))
+            reduced_proj_whole = pd.read_csv(filename_whole, header=None).values
+            reduced_proj_distill = pd.read_csv(filename_distill, header=None).values
+    elif reduction_method == "MDS":
+        if if_save_data:
+            from sklearn.manifold import MDS
+            MDS_whole = MDS(n_components=2, random_state=199)
+            MDS_distill = MDS(n_components=2, random_state=199)
+            reduced_proj_whole = MDS_whole.fit_transform(whole_data[:, 3:])
+            reduced_proj_distill = MDS_distill.fit_transform(distill_data[:, 3:])
+            np.savetxt(os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
+            np.savetxt(os.path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
+        else:
+            filename_whole = os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method))
+            filename_distill = os.path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method))
+            reduced_proj_whole = pd.read_csv(filename_whole, header=None).values
+            reduced_proj_distill = pd.read_csv(filename_distill, header=None).values
 
     # ori_colors = ["c", "violet"]
     ori_colors = ["c", "m"]
@@ -783,12 +799,12 @@ elif plot_name == "certain_tsne_distillation":
     ax = fig.add_subplot(111)
     for c in range(2):
         inds = np.where(whole_data[:, 2] == c)[0]
-        im = ax.scatter(tsne_whole[inds, 0], tsne_whole[inds, 1], color=ori_colors[c], alpha=0.35, markersize=15, facecolor=None, label="original class {}".format(c))
+        im = ax.scatter(reduced_proj_whole[inds, 0], reduced_proj_whole[inds, 1], color=ori_colors[c], alpha=0.35, s=15, facecolor=None, label="original class {}".format(c))
     inds0 = np.where(whole_data[:, 2] == 0)[0]
     inds1 = np.where(whole_data[:, 2] == 1)[0]
-    _, p_x_whole = ks_2samp(tsne_whole[inds0, 0], tsne_whole[inds1, 0])
-    _, p_y_whole = ks_2samp(tsne_whole[inds0, 1], tsne_whole[inds1, 1])
-    plt.legend(scatterpoints=4)
+    _, p_x_whole = ks_2samp(reduced_proj_whole[inds0, 0], reduced_proj_whole[inds1, 0])
+    _, p_y_whole = ks_2samp(reduced_proj_whole[inds0, 1], reduced_proj_whole[inds1, 1])
+    plt.legend(scatterpoints=4, loc=3)
     plt.title("{} of both classes (whole)".format(reduction_method))
     plt.xlabel("dimension #1 (p={:.2E})".format(p_x_whole)),
     plt.ylabel("dimension #2 (p={:.2E})".format(p_y_whole))
@@ -798,7 +814,7 @@ elif plot_name == "certain_tsne_distillation":
 
     # plot the whole set w.r.t patients
     plt.figure(figsize=[8, 6.5])
-    plt.scatter(tsne_whole[:, 0], tsne_whole[:, 1], c=whole_data[:,1], markersize=15, cmap="jet", facecolor=None)
+    plt.scatter(reduced_proj_whole[:, 0], reduced_proj_whole[:, 1], c=whole_data[:, 1], s=15, cmap="jet", facecolor=None)
     plt.colorbar()
     plt.title("Patients from the whole set (healthy<1000, tumor>1000)")
     plt.xlabel("dimension #1"),
@@ -807,18 +823,17 @@ elif plot_name == "certain_tsne_distillation":
     plt.savefig(os.path.join(data_dir, "umap_visualization", "grouped-by-patients-{}-whole-{}.pdf".format(reduction_method, data_source)), format="pdf")
     plt.close()
 
-    # plot the same number as in distill from the whole set
+    # plot the distill
     fig = plt.figure(figsize=[8, 6.5])
-    fig = plt.figure()
     dis_inds0 = np.where(distill_data[:, 2] == 0)[0]
     dis_inds1 = np.where(distill_data[:, 2] == 1)[0]
-    _, p_x_dis = ks_2samp(tsne_distill[dis_inds0, 0], tsne_distill[dis_inds1, 0])
-    _, p_x_dis = ks_2samp(tsne_distill[dis_inds0, 1], tsne_distill[dis_inds1, 1])
+    _, p_x_dis = ks_2samp(reduced_proj_distill[dis_inds0, 0], reduced_proj_distill[dis_inds1, 0])
+    _, p_x_dis = ks_2samp(reduced_proj_distill[dis_inds0, 1], reduced_proj_distill[dis_inds1, 1])
     ax = fig.add_subplot(111)
     for c in range(2):
         inds = np.where(distill_data[:, 2] == c)[0]
-        im = ax.scatter(tsne_distill[inds, 0], tsne_distill[inds, 1], color=distill_colors[c], markersize=15, facecolor=None, label="distill class {}".format(c))
-    plt.legend(scatterpoints=4)
+        im = ax.scatter(reduced_proj_distill[inds, 0], reduced_proj_distill[inds, 1], color=distill_colors[c], alpha=0.35, s=15, facecolor=None, label="distill class {}".format(c))
+    plt.legend(scatterpoints=4, loc=3)
     plt.title("TSNE of both classes (distilled)")
     plt.xlabel("dimension #1 (p={:.2E})".format(p_x_dis)),
     plt.ylabel("dimension #2 (p={:.2E})".format(p_x_dis))
@@ -838,12 +853,12 @@ elif plot_name == "certain_tsne_distillation":
         else:
             need_number = len(dis_inds1)
         sub_set = np.random.choice(inds, need_number, replace=False)
-        im = ax.scatter(tsne_whole[sub_set, 0], tsne_whole[sub_set, 1], color=ori_colors[c], alpha=0.5, facecolor=None, markersize=15, label="original class {}".format(c))
+        im = ax.scatter(reduced_proj_whole[sub_set, 0], reduced_proj_whole[sub_set, 1], color=ori_colors[c], alpha=0.35, facecolor=None, s=15, label="original class {}".format(c))
     inds0 = np.where(whole_data[:, 2] == 0)[0]
     inds1 = np.where(whole_data[:, 2] == 1)[0]
-    _, p_x_whole = ks_2samp(tsne_whole[inds0, 0], tsne_whole[inds1, 0])
-    _, p_y_whole = ks_2samp(tsne_whole[inds0, 1], tsne_whole[inds1, 1])
-    plt.legend(scatterpoints=4)
+    _, p_x_whole = ks_2samp(reduced_proj_whole[inds0, 0], reduced_proj_whole[inds1, 0])
+    _, p_y_whole = ks_2samp(reduced_proj_whole[inds0, 1], reduced_proj_whole[inds1, 1])
+    plt.legend(scatterpoints=4, loc=3)
     plt.title("{} of both classes (random sampled from the whole)".format(reduction_method))
     plt.xlabel("dimension #1 (p={:.2E})".format(p_x_whole)),
     plt.ylabel("dimension #2 (p={:.2E})".format(p_y_whole))
@@ -865,6 +880,7 @@ elif plot_name == "certain_tsne_distillation":
 
 
     ## overlay the certain ones' tsne
+
 
 elif plot_name == "plot_metabolites":
     from scipy.io import loadmat as loadmat
@@ -1307,7 +1323,7 @@ elif plot_name == "K_NN_stats_test_for_distillation":
     from scipy.io import loadmat
     from sklearn.metrics import pairwise_distances
     from scipy import stats
-    data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
+    data_dir = "../data/20190325/20190325-3class_lout40_train_test_data5.mat"
     corr_clf_rate_file = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-37--Res_ECG_CAM-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train/full_summary-data5_100_runs_sort_inds_rate_(6592-8229-8231).csv"
     theta = 0.5
     num_2class = np.int(os.path.basename(corr_clf_rate_file).split("(")[1].split("-")[0])
@@ -1344,6 +1360,7 @@ elif plot_name == "K_NN_stats_test_for_distillation":
         small_k_dists = dist_2class[ii, :][idx[:k_nbs]]
         knn_data_2class.append([sub_set_smp_ids[ii], sub_set_lbs[ii], sub_set_lbs[idx][:k_nbs], np.float((np.sum(sub_set_lbs[idx][:k_nbs]==sub_set_lbs[ii])-1)/1.0/(k_nbs-1))])
     knn_data_2class = np.array(knn_data_2class)
+    print("whole set median: ", np.mean(knn_data_2class[:, -1]))
 
     # get percentage of same and ops class in KNN for the whole set
     temp = dist_whole[distill_samp_ids,:]
@@ -1354,7 +1371,7 @@ elif plot_name == "K_NN_stats_test_for_distillation":
         small_k_dists = dist_distill[jj, :][idx[:k_nbs]]
         knn_data_distill.append([distill_samp_ids[jj], distill_lbs[jj], distill_lbs[idx][:k_nbs], np.float((np.sum(distill_lbs[idx][:k_nbs]==distill_lbs[jj])-1)/1.0/(k_nbs-1))])
     knn_data_distill = np.array(knn_data_distill)
-    print("ok")
+    print("distill mean: ", np.median(knn_data_distill[:, -1]))
 
     _, p_tt = stats.ttest_ind(knn_data_2class[:,-1], knn_data_distill[:,-1])
     _, p_rank = stats.ranksums(knn_data_2class[:, -1], knn_data_distill[:, -1])
@@ -1365,9 +1382,9 @@ elif plot_name == "K_NN_stats_test_for_distillation":
     plt.legend(),
     plt.xlabel("K nearest neightbors with the same label [%]"),
     plt.ylabel("count (density)"),
-    plt.title("Hist. of K ({}) nearest points distribution, p={:.2E}".format(k_nbs-1, p_tt))
-    plt.savefig(os.path.join(os.path.dirname(corr_clf_rate_file), "KNN-{}-membership-distribution.png"))
-    plt.savefig(os.path.join(os.path.dirname(corr_clf_rate_file), "KNN-{}-membership-distribution.pdf"), format="pdf")
+    plt.title("Hist. of K ({}) nearest points distribution, p={:.2E}".format(k_nbs-1, p_rank))
+    plt.savefig(os.path.join(os.path.dirname(corr_clf_rate_file), "KNN-{}-membership-distribution-p{:.2E}.png".format(k_nbs-1, p_rank)))
+    plt.savefig(os.path.join(os.path.dirname(corr_clf_rate_file), "KNN-{}-membership-distribution-p{:.2E}.pdf".format(k_nbs-1, p_rank)), format="pdf")
     plt.close()
 
 

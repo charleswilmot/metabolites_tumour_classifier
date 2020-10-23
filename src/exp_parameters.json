@@ -1,7 +1,7 @@
 {
     "train_or_test": "train",
-    "exp_config": "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/exp_parameters.json",
-    "model_config": "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/model_parameters.json",
+    "exp_config": "./exp_parameters.json",
+    "model_config": "./model_parameters.json",
     "num_classes": 2,
     "batch_size": 32,
     "test_bs": 128,
@@ -9,12 +9,13 @@
     "aug_method": "same-mean",
     "aug_scale": 0,
     "aug_folds": 0,
+    "from_epoch": 5,
     "theta_thr": 0.9,
     "output_path": null,
-    "certain_dir": null,
+    "certain_dir": "C:\\Users\\LDY\\Desktop\\metabolites-0301\\metabolites_tumour_classifier\\results\\2020-09-01T21-35-28-None-meanx0-factor-0-from-ep-0-from-lout40-data5-theta-0.95-train\\certains",
     "resume_training": false,
     "output_root": "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review",
-    "input_data": "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
+    "input_data": "../data/20190325/20190325-3class_lout40_train_test_data5.mat",
     "model_save_dir": null,
     "data_source": null,
     "data_mode": "metabolites",
@@ -28,7 +29,7 @@
     "loss_type": "softmax_ce",
     "learning_rate": 0.0005,
     "postfix": "none",
-    "if_from_certain": false,
+    "if_from_certain": true,
     "if_save_certain": false,
     "distill_old": true,
     "train": {
@@ -40,7 +41,7 @@
             "num_train": null
     },
     "test": {
-        "test_ratio": 100
+        "test_ratio": 1
     }
 
 }

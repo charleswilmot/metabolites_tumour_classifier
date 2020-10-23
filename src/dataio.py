@@ -505,16 +505,16 @@ def get_data_from_certain_ids_old(args, certain_fns=["f1", "f2"]):
     print("certain samples 0: ", len(np.where(certain_mat[:, 2] == 0)[0]),
           "\ncertain samples 1: ", len(np.where(certain_mat[:, 2] == 1)[0]))
 
-    if args.test_or_train == 'train':
+    if args.train_or_test == 'train':
         temp_rand = np.arange(len(certain_mat))
         np.random.shuffle(temp_rand)
         certain_shuffle = certain_mat[temp_rand]
-    elif args.test_or_train == 'test':  # In test, don't shuffle
+    elif args.train_or_test == 'test':  # In test, don't shuffle
         certain_shuffle = certain_mat
         print("data labels: ", certain_shuffle[:, 2])
 
     X_train, X_test, Y_train, Y_test = train_test_split(certain_shuffle, certain_shuffle[:, 2],
-                                                        test_size=args.test_ratio / 100.)
+                                                        test_size=args.test_ratio)
 
     test_data["spectra"] = zscore(X_test[:, 3:], axis=1).astype(np.float32)
     test_data["labels"] = Y_test.astype(np.int32)
@@ -534,7 +534,7 @@ def get_data_from_certain_ids_old(args, certain_fns=["f1", "f2"]):
                delimiter=',')
 
     ## oversample the minority samples ONLY in training data
-    if args.test_or_train == 'train':
+    if args.train_or_test == 'train':
         # augment the training data
         if args.aug_folds != 0:
             train_data = augment_data(whol_set, X_train, args)

@@ -31,11 +31,11 @@ parser.add_argument(
     help="output dir"
 )
 parser.add_argument(
-    '--exp_config', default="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/exp_parameters.json",
+    '--exp_config', default="./exp_parameters.json",
     help="Json file path for experiment parameters"
 )
 parser.add_argument(
-    '--model_config', default="/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/model_parameters.json",
+    '--model_config', default="./model_parameters.json",
     help="Json file path for model parameters"
 )
 
@@ -68,7 +68,7 @@ if args.if_from_certain and args.train_or_test == 'train':
         logger.info("______________________________________________")
         print(args.certain_dir)
         logger.info("______________________________________________")
-        certain_files = dataio.find_files(args.certain_dir, pattern="cetain_data*_epoch_{}_*.csv".format(args.from_epoch))
+        certain_files = dataio.find_files(args.certain_dir, pattern="certain_data*_epoch_{}_*.csv".format(args.from_epoch))
         print("certain_files", certain_files)
         data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files)
     else:
