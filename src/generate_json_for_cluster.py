@@ -75,6 +75,8 @@ def overwrite_params(args, cfg_dirs, **kwargs):
     args.from_clusterpy = kwargs["from_clusterpy"] if "from_clusterpy" in kwargs else False
     if args.certain_dir is not None:
         args.if_from_certain = True
+    else:
+        args.if_from_certain = False
 
     # GET output_path
     args = utils.generate_output_path(args)
@@ -103,11 +105,15 @@ default_model_json_dir = os.path.join(default_json_dir, "model_parameters.json")
 args = utils.load_all_params(default_exp_json_dir, default_model_json_dir)
 
 data_source_dirs = [
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat"
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data8.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat"
 ]
 certain_dirs = [
     # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-22--Res_ECG_CAM-Nonex0-factor-0-from-data5-certainFalse-theta-0.9-s2246-train/certains",
@@ -125,10 +131,10 @@ certain_dirs = [
 
 config_dirs = []
 seed = np.random.randint(9999)
-mode = "testing"
+mode = "single_runs"
 if mode == "single_runs":
     ## 100 single-epoch runs
-    args.new_folder = "testtesttest"
+    args.new_folder = "100-single-epoch-runs"
     for dd in data_source_dirs:
         config_dirs = overwrite_params(args, config_dirs,
                                        input_data=dd,  # data dir
@@ -137,7 +143,7 @@ if mode == "single_runs":
                                        aug_scale=0,
                                        aug_folds=0,
                                        theta_thr=0,
-                                       rand_seed=988,
+                                       rand_seed=789,
                                        if_single_runs=True,
                                        from_clusterpy=True
                                        )

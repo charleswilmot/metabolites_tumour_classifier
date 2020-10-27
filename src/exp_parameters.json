@@ -23,13 +23,13 @@
     "if_single_runs": false,
     "from_clusterpy": false,
 
-    "model_name": "Res_ECG_CAM",
-    "new_folder": "old-distillation",
+    "model_name": "RNN",
+    "new_folder": "100-single-epoch-runs",
     "optimizer_type": "adam",
     "loss_type": "softmax_ce",
     "learning_rate": 0.0005,
     "postfix": "none",
-    "if_from_certain": true,
+    "if_from_certain": false,
     "if_save_certain": false,
     "distill_old": true,
     "train": {

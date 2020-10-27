@@ -79,10 +79,11 @@ default_par_arrays= {
     "rnn": [1e-3, 128, 64, 32, 32, 4]
                      }
 results_root = "../results/Hyperparameter_Optimize"
+MODEL_NAME = "rnn"
 
 
 def log_dir_name(**kwargs):
-    configs = "RNN-"
+    configs = "{}-".format(MODEL_NAME)
     for k in kwargs:
         configs += "{}_{}-".format(k, kwargs[k])
         
@@ -312,6 +313,10 @@ def create_cam_model(num_cnn1, num_cnn2, num_cnn3, activation, kernel_size):
     # Again, we only want to optimize the activation-function here.
     model.add(Conv2D(kernel_size=(kernel_size, 1), strides=(1, 1), filters=num_cnn3, padding='same', activation=activation,
                      name='layer_conv3'))
+    # Global average pooling
+    model.add(Lambda(global_average_pooling,
+                     output_shape=global_average_pooling_shape))
+    model.add(Dense(num_classes, activation='softmax', kernel_initializer='random_uniform'))
     
     model.summary()
     
@@ -332,6 +337,7 @@ def create_rnn_model(fc_b4rcc1, fc_b4rcc2, lstm1, lstm2, inputsize=[288,]):
     model.add(Reshape(( fc_b4rcc2, 1)))
     model.add(LSTM(lstm1, dropout=0.2, recurrent_dropout=0.1))
     
+    model.add(Dense(num_classes, activation='softmax', kernel_initializer='random_uniform'))
     model.summary()
     return model
     
@@ -341,6 +347,14 @@ def create_rnn_model(fc_b4rcc1, fc_b4rcc2, lstm1, lstm2, inputsize=[288,]):
 @use_named_args(dimensions=hyparameters_space["rnn"])
 def fitness(learning_rate, dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, dim_patience):
     # Print the hyper-parameters.
+    config_space = [["learning_rate", learning_rate],
+                    ["dim_fnn1", dim_fnn1],
+                    ["dim_fnn2", dim_fnn2],
+                    ["dim_rnn1", dim_rnn1],
+                    ["dim_rnn2", dim_rnn2],
+                    ["dim_patience", dim_patience]
+                    ]
+
     print('learning rate: {0:.1e}'.format(learning_rate))
     print('dim_num_fnn1:', dim_fnn1)
     print('dim_num_fnn2:', dim_fnn2)
@@ -349,18 +363,16 @@ def fitness(learning_rate, dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, dim_patience)
     print('dim_patience:', dim_patience)
     
     # Create the neural network with these hyper-parameters.
-    # model = create_cam_model(
-    #                          num_cnn1=num_cnn1,
-    #                          num_cnn2=num_cnn2,
-    #                          num_cnn3=num_cnn3,
-    #                          activation=activation,
-    #                          kernel_size=kernel_size)
-
-    model = create_rnn_model(dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, inputsize=[288, ])
-    # Global average pooling
-    # model.add(Lambda(global_average_pooling,
-    #                  output_shape=global_average_pooling_shape))
-    model.add(Dense(num_classes, activation='softmax', kernel_initializer='random_uniform'))
+    if MODEL_NAME == "cam":
+        model = create_cam_model(
+                                 num_cnn1=num_cnn1,
+                                 num_cnn2=num_cnn2,
+                                 num_cnn3=num_cnn3,
+                                 activation=activation,
+                                 kernel_size=kernel_size)
+    elif MODEL_NAME == "rnn":
+        model = create_rnn_model(dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, inputsize=[288, ])
+    
 
     # Use the Adam method for training the network.
     # We want to find the best learning-rate for the Adam method.
@@ -379,7 +391,7 @@ def fitness(learning_rate, dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, dim_patience)
     # Use Keras to train the model.
     history = model.fit(x=train_data["spectra"],
                        y=train_data["labels"],
-                       epochs=3,
+                       epochs=50,
                        batch_size=32,
                        validation_data=validation_data,
                        callbacks=[early_stop])
@@ -418,6 +430,7 @@ def fitness(learning_rate, dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, dim_patience)
         results_dir = os.path.join(results_root, time_str + '-{:0.4f}'.format(accuracy))
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
+        np.savetxt(os.path.join(results_dir, '{}_rnn_convergence_plot.txt'.format(time_str)), np.array(config_space), fmt="%s", delimiter=",")
         #
         # target_file_name = [os.path.join(results_dir, 'Hpopt.py')]
         # src_file_name = ['Hpopt.py']  # copy the model
@@ -503,16 +516,19 @@ if __name__ == "__main__":
         num_channels = 1
 
     # fitness(x=default_par_arrays["rnn"])
+    time_str = '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now())
     search_result = gp_minimize(func=fitness,
                                 dimensions=hyparameters_space["rnn"],
                                 acq_func='EI',  # Expected Improvement.
-                                n_calls=11,
+                                n_calls=500,
                                 x0=default_par_arrays["rnn"])
     
     plot_convergence(search_result)
-    plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.png'.format('{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now()))), format='png')
-    plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.pdf'.format('{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now()))), format='pdf')
+    plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.png'.format(time_str)), format='png')
+    plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.pdf'.format(time_str)), format='pdf')
     plt.close()
     results = sorted(zip(search_result.func_vals, search_result.x_iters))
     print(results)
+    np.savetxt(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.txt'.format(time_str)), results, fmt="%s", delimiter=",")
+    
     

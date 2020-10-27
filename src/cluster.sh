@@ -10,7 +10,7 @@
 ##SBATCH --cpus-per-task 1
 #SBATCH --mem 9GB
 #SBATCH --mincpus 2
-#SBATCH --job-name metab
+#SBATCH --job-name rnn
 #SBATCH --gres gpu:1
 
 #j=$((SLURM_ARRAY_TASK_ID))

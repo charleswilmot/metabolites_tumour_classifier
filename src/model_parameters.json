@@ -75,8 +75,8 @@
                 "RNN": {
                     "model_name": "RNN",
                     "bn": true,
-                    "rnn_dims": [64, 64],
-                    "fc_dim": [512, 128, 64],
+                    "fc_dim": [256, 128],
+                    "rnn_dims": [64, 128],
                     "drop_rnn": 0.5,
                     "drop_rnn_ln": 0.5,
                     "drop_fc": 0.5

@@ -38,6 +38,7 @@ parser.add_argument(
     '--model_config', default="./model_parameters.json",
     help="Json file path for model parameters"
 )
+logger = log.getLogger("classifier")
 
 # args = argument.params
 params = parser.parse_args()
@@ -50,8 +51,7 @@ if not args.from_clusterpy:
     make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
     dataio.save_command_line(args.model_save_dir)
 
-print("Taking in config files: {}\n{}\n{}".format(params.output_path, params.exp_config, params.model_config))
-logger = log.getLogger("classifier")
+logger.info("Taking in config files: {}\n{}\n{}".format(params.output_path, params.exp_config, params.model_config))
 get_available_gpus()
 
 if not args.rand_seed:
@@ -83,12 +83,9 @@ else:
     else:
         data_tensors, args = dataio.get_data_tensors(args)
 
-print("------------Successfully get data tensors")
+logger.info("------------Successfully get data tensors----------------------")
 
 graph = graph.get_graph(args, data_tensors)
 
 with tf.compat.v1.Session() as sess:
     output_data = procedure.main_train(sess, args, graph)
-
-if args.if_from_certain:
-    print("certain_files", certain_files)

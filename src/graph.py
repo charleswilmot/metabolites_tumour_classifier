@@ -373,6 +373,74 @@ class CNN_CAM:
         return out
 
 
+class Res_FNN:
+    ## Construct residual fully-connected networks
+    def __init__(self, args):
+        logger.info("constructing Res_FNN")
+
+    def __call__(self, features, training=False):
+        ret = {}
+        net = features
+        out = self.make_res_fnn_block(net, training=training)
+
+        ret["conv"] = self.construct_res_blocks_ecg(out, training=training)
+        # GAP layer - global average pooling
+        with tf.compat.v1.variable_scope('GAP', reuse=tf.compat.v1.AUTO_REUSE) as scope:
+            net_gap = tf.squeeze(tf.reduce_mean(ret["conv"], (1)),
+                                 axis=1)  # get the mean of axis 1 and 2 resulting in shape [batch_size, filters]
+
+            print("gap shape", net_gap.get_shape().as_list())
+
+            gap_w = tf.compat.v1.get_variable('W_gap', shape=[net_gap.get_shape().as_list()[-1], self.num_classes],
+                                              initializer=tf.random_normal_initializer(0., 0.01))
+            logits = tf.nn.softmax(tf.matmul(net_gap, gap_w))
+
+        ##### track all variables
+        all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
+        ret["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
+        print("Res_ECG_CAM total_trainables", ret["total_trainables"])
+
+        ret["logits"] = logits
+        ret["gap_w"] = gap_w
+        return ret
+
+    def make_res_fnn_block(self, inp, layer_id=0, training=True):
+        """
+        Construct the whole cnn layers
+        :param inp:
+        :param training:
+        :return:
+        """
+        out = inp
+        with tf.compat.v1.variable_scope("res_fnn_block" + str(layer_id), reuse=tf.compat.v1.AUTO_REUSE):
+            for j in range(self.num_layers_in_res):  # there are two conv layers in one block
+
+                out = tf.compat.v1.layers.batch_normalization(out, training=training)
+                out = tf.nn.relu(out)
+                if not (layer_id == 0 and j == 0):
+                    drop = self.drop_cnn if j > 0 else 0
+                    out = tf.compat.v1.layers.dropout(out, drop, training=training)
+
+                out = tf.compat.v1.layers.conv2d(
+                    inputs=out,
+                    filters=out_channel,
+                    kernel_size=[self.kernel_size, 1],
+                    padding='SAME',
+                    strides=[stride, 1] if j == 0 else [1, 1],
+                    kernel_initializer=initializer,
+                    # kernel_regularizer=regularizer,
+                    activation=None
+                )
+
+            shortcut = tf.compat.v1.layers.max_pooling2d(x, pool_size=[self.pool_size, 1], strides=[stride, 1],
+                                                         padding='same')
+            output = tf.nn.relu(shortcut + out)
+            print("ResiBlock{}-output pooling shape".format(layer_id), out.shape.as_list())
+            return output
+        return out
+
+
+
 class Res_ECG_CAM:
     ## Constructor
     # construct a CNN: cnn 8*3*1-pool2*1-cnn 16*3*1-pool2*1-cnn 32 3*1-pool2*1-fnn--softmax(class)
