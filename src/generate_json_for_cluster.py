@@ -105,13 +105,13 @@ default_model_json_dir = os.path.join(default_json_dir, "model_parameters.json")
 args = utils.load_all_params(default_exp_json_dir, default_model_json_dir)
 
 data_source_dirs = [
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat"
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data8.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat"
 ]
@@ -122,16 +122,16 @@ certain_dirs = [
     # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-25--Res_ECG_CAM-Nonex0-factor-0-from-data5-certainFalse-theta-0.95-s2246-train/certains",
     # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-26--Res_ECG_CAM-Nonex0-factor-0-from-data3-certainFalse-theta-0.95-s2246-train/certains",
     # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-28--Res_ECG_CAM-Nonex0-factor-0-from-data7-certainFalse-theta-0.95-s2246-train/certains",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-29--Res_ECG_CAM-Nonex0-factor-0-from-data5-certainFalse-theta-0.99-s2246-train/certains",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-30--Res_ECG_CAM-Nonex0-factor-0-from-data3-certainFalse-theta-0.99-s2246-train/certains",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-31--Res_ECG_CAM-Nonex0-factor-0-from-data7-certainFalse-theta-0.99-s2246-train/certains"
+    # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-29--Res_ECG_CAM-Nonex0-factor-0-from-data5-certainFalse-theta-0.99-s2246-train/certains",
+    # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-30--Res_ECG_CAM-Nonex0-factor-0-from-data3-certainFalse-theta-0.99-s2246-train/certains",
+    # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-31--Res_ECG_CAM-Nonex0-factor-0-from-data7-certainFalse-theta-0.99-s2246-train/certains"
 ]
 # overwrite part of the parameters given for training with cluster.py
 
 
 config_dirs = []
 seed = np.random.randint(9999)
-mode = "single_runs"
+mode = "training"
 if mode == "single_runs":
     ## 100 single-epoch runs
     args.new_folder = "100-single-epoch-runs"
@@ -151,17 +151,17 @@ elif mode == "training":
     mode = "aug_training"   #"aug-training"
     if mode == "aug_training":
         for epoch in [5]: #1,3,, 0.5, 0.1, 0.3
-            for dd, ct_dir in zip(data_source_dirs, certain_dirs):   #
-                for method in ["same_mean"]:  # "both_mean",, "ops_mean",  #
-                    for fold in [1,3]:  #1, 3, 5, 9, 11, 3, , 5, 9#
-                        for scale in [0.05,0.3]:  #, 0.50.2, 0.05, , ,#
-                            # ct_dir = None
+            for dd in data_source_dirs:   #, certain_dirs)
+                for method in ["both_mean", "same_mean"]:  # , "ops_mean",  #
+                    for fold in [1, 3, 5, 9]:  # #
+                        for scale in [0.05, 0.2, 0.3, 0.5]:  # #
+                            ct_dir = None
                             if ct_dir is not None:
                                 theta = 0.9
                                 args.new_folder = "old-distillation-certain-DA-Res7"
                             else:
                                 theta = 1
-                                args.new_folder = "randomDA"
+                                args.new_folder = "2-randomDA"
 
                             config_dirs = overwrite_params(args, config_dirs,
                                                            input_data=dd,  #data dir
@@ -174,20 +174,19 @@ elif mode == "training":
                                                            rand_seed=seed,
                                                            if_single_runs=False,
                                                            from_clusterpy=True)
-    elif mode == "pure_training":
-        args.if_save_certain = True
-        for theta in [0.9, 0.95, 0.99]:
-            for dd in data_source_dirs:   #
-                config_dirs = overwrite_params(args, config_dirs,
-                                               input_data=dd,  #data dir
-                                               certain_dir=None,
-                                               aug_method=None,
-                                               aug_scale=0,
-                                               aug_folds=0,
-                                               theta_thr=theta,
-                                               rand_seed=seed,
-                                               if_single_runs=False,
-                                               from_clusterpy=True)
+    elif mode == "pure_training":  # without DA, without distillation
+        args.if_save_certain = False
+        for dd in data_source_dirs:   #
+            config_dirs = overwrite_params(args, config_dirs,
+                                           input_data=dd,  #data dir
+                                           certain_dir=None,
+                                           aug_method=None,
+                                           aug_scale=0,
+                                           aug_folds=0,
+                                           theta_thr=1,
+                                           rand_seed=seed,
+                                           if_single_runs=False,
+                                           from_clusterpy=True)
 elif mode == "testing":
     pretrained_dirs = [
        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-certain-DA-Res7-Res_ECG_CAM/2020-10-20T23-22-44--Res_ECG_CAM-same_meanx3-factor-0.3-from-data5-certainTrue-theta-0.9-s374-train/network",

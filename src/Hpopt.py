@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import InputLayer, Input
-from tensorflow.keras.layers import Reshape, MaxPooling2D, BatchNormalization
+from tensorflow.keras.layers import Reshape, MaxPooling2D, BatchNormalization, Dropout
 from tensorflow.keras.layers import Conv2D, Dense, Flatten, LSTM
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping
 from tensorflow.keras.optimizers import Adam
@@ -32,54 +32,63 @@ from skopt.plots import plot_convergence
 # from skopt.plots import plot_objective, plot_evaluations
 # from skopt.plots import plot_histogram, plot_objective_2D
 from skopt.utils import use_named_args
-
 from sklearn.model_selection import train_test_split
 
 np.random.seed(2594)
-## dim for MLP structure
-# dim_learning_rate = Real(low=1e-6, high=1e-2, prior='log-uniform',
-#                              name='learning_rate')
-# dim_num_dense_layers = Integer(low=1, high=4, name='num_dense_layers')
-# dim_num_dense_nodes = Integer(low=5, high=512, name='num_dense_nodes')
-# dim_activation = Categorical(categories=['relu', 'sigmoid'],
-#                              name='activation')
-# dim_kernel_size = Integer(low=2, high=256, name='kernel_size')
-#
-# dimensions = [dim_learning_rate,
-#               dim_num_dense_layers,
-#               dim_num_dense_nodes,
-#               dim_activation,
-#               dim_kernel_size]
 
-# Dim for CNN_CAM
-dim_learning_rate = Real(low=1e-6, high=1e-2, prior='log-uniform',
+def get_hyparams_of_models(model_name="MLP"):
+    """
+    Given the name of a model to get the hyper-space of parameters
+    :param model_name:
+    :return:
+    """
+    dim_learning_rate = Real(low=1e-6, high=1e-2, prior='log-uniform',
                              name='learning_rate')
-num_cnn1 = Integer(low=8, high=128, name='num_cnn1')
-num_cnn2 = Integer(low=8, high=128, name='num_cnn2')
-num_cnn3 = Integer(low=8, high=256, name='num_cnn3')
-num_dense_layers = Integer(low=1, high=4, name='num_dense_layers')
-num_dense_nodes = Integer(low=32, high=512, name='num_dense_nodes')
-dim_fnn1 = Integer(low=16, high=512, name='dim_fnn1')
-dim_fnn2 = Integer(low=16, high=512, name='dim_fnn2')
-dim_fnn3 = Integer(low=16, high=512, name='dim_fnn3')
-dim_fnn4 = Integer(low=16, high=512, name='dim_fnn4')
-dim_rnn1 = Integer(low=8, high=256, name='dim_rnn1')
-dim_rnn2 = Integer(low=8, high=256, name='dim_rnn2')
-dim_activation = Categorical(categories=['relu', 'sigmoid'],
-                             name='activation')
-dim_patience = Integer(low=1, high=25, name='dim_patience')
+    if model_name == "MLP":
+        dim_fnn1 = Integer(low=16, high=512, name='dim_fnn1')
+        dim_fnn2 = Integer(low=16, high=512, name='dim_fnn2')
+        dim_fnn3 = Integer(low=16, high=512, name='dim_fnn3')
+        dim_fnn4 = Integer(low=16, high=512, name='dim_fnn4')
+        dim_kernel_size = Integer(low=10, high=256, name='kernel_size')
 
-dim_kernel_size = Integer(low=10, high=256, name='kernel_size')
+        parameter_space = [
+            dim_learning_rate,
+            dim_fnn1,
+            dim_fnn2,
+            dim_fnn3,
+            dim_fnn4,
+        ]
+        default_parameters = [1e-3, 8, 16, 32, 100, 4]
+    elif model_name == "RNN" or model_name == "rnn":
+        dim_fnn1 = Integer(low=16, high=512, name='dim_fnn1')
+        dim_fnn2 = Integer(low=16, high=512, name='dim_fnn2')
+        dim_rnn1 = Integer(low=16, high=128, name='dim_rnn1')
+        dim_rnn2 = Integer(low=16, high=128, name='dim_rnn2')
+        dim_patience = Integer(low=1, high=25, name='dim_patience')
 
-hyparameters_space = {"rnn": [dim_learning_rate, dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, dim_patience],
-           "CAM": [dim_learning_rate, num_cnn1, num_cnn2, num_cnn3, dim_activation, dim_kernel_size, dim_patience]
-                      }
-default_par_arrays= {
-    "CAM": [1e-3, 8, 16, 32, 'relu', 100, 4],
-    "rnn": [1e-3, 128, 64, 32, 32, 4]
-                     }
+        parameter_space = [
+            dim_learning_rate,
+            dim_fnn1,
+            dim_fnn2,
+            dim_rnn1,
+            dim_rnn2,
+            dim_patience
+        ]
+        default_parameters = [1e-3, 256, 128, 64, 32, 6]
+
+    return default_parameters, parameter_space
+
+# hyparameters_space = {"rnn": [dim_learning_rate, dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, dim_patience],
+#            "CAM": [dim_learning_rate, num_cnn1, num_cnn2, num_cnn3, dim_activation, dim_kernel_size, dim_patience]
+#                       }
+# default_par_arrays= {
+#     "CAM": [1e-3, 8, 16, 32, 'relu', 100, 4],
+#     "rnn": [1e-3, 128, 64, 32, 32, 4]
+#                      }
 results_root = "../results/Hyperparameter_Optimize"
 MODEL_NAME = "rnn"
+
+default_params, params_space = get_hyparams_of_models(model_name=MODEL_NAME)
 
 
 def log_dir_name(**kwargs):
@@ -299,19 +308,19 @@ def create_cam_model(num_cnn1, num_cnn2, num_cnn3, activation, kernel_size):
     # 1st convolutional layer.
     # There are many hyper-parameters in this layer, but we only
     # want to optimize the activation-function in this example.
-    model.add(Conv2D(kernel_size=(kernel_size, 1), strides=(1, 1), filters=num_cnn1, padding='same', activation=activation,
+    model.add(Conv2D(kernel_size=(kernel_size, 1), strides=(1, 1), filters=num_cnn1, padding='same', activation="relu",
                      name='layer_conv1'))
     model.add(MaxPooling2D(pool_size=(2, 1), strides=(2, 1)))
     
     # 2nd convolutional layer.
     # Again, we only want to optimize the activation-function here.
-    model.add(Conv2D(kernel_size=(kernel_size, 1), strides=(1, 1), filters=num_cnn2, padding='same', activation=activation,
+    model.add(Conv2D(kernel_size=(kernel_size, 1), strides=(1, 1), filters=num_cnn2, padding='same', activation="relu",
                      name='layer_conv2'))
     model.add(MaxPooling2D(pool_size=(2, 1), strides=(2, 1)))
 
     # 3rd convolutional layer.
     # Again, we only want to optimize the activation-function here.
-    model.add(Conv2D(kernel_size=(kernel_size, 1), strides=(1, 1), filters=num_cnn3, padding='same', activation=activation,
+    model.add(Conv2D(kernel_size=(kernel_size, 1), strides=(1, 1), filters=num_cnn3, padding='same', activation="relu",
                      name='layer_conv3'))
     # Global average pooling
     model.add(Lambda(global_average_pooling,
@@ -331,12 +340,14 @@ def create_rnn_model(fc_b4rcc1, fc_b4rcc2, lstm1, lstm2, inputsize=[288,]):
     
     model.add(Dense(fc_b4rcc1, activation="relu"))
     model.add(BatchNormalization())
+    model.add(Dropout(0.5))
     model.add(Dense(fc_b4rcc2, activation="relu"))
     model.add(BatchNormalization())
-    
+    model.add(Dropout(0.5))
+
     model.add(Reshape(( fc_b4rcc2, 1)))
-    model.add(LSTM(lstm1, dropout=0.2, recurrent_dropout=0.1))
-    
+    model.add(LSTM(lstm1))
+
     model.add(Dense(num_classes, activation='softmax', kernel_initializer='random_uniform'))
     model.summary()
     return model
@@ -344,39 +355,47 @@ def create_rnn_model(fc_b4rcc1, fc_b4rcc2, lstm1, lstm2, inputsize=[288,]):
 
 
 
-@use_named_args(dimensions=hyparameters_space["rnn"])
-def fitness(learning_rate, dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, dim_patience):
+@use_named_args(dimensions=params_space)
+def fitness(**params):
     # Print the hyper-parameters.
-    config_space = [["learning_rate", learning_rate],
-                    ["dim_fnn1", dim_fnn1],
-                    ["dim_fnn2", dim_fnn2],
-                    ["dim_rnn1", dim_rnn1],
-                    ["dim_rnn2", dim_rnn2],
-                    ["dim_patience", dim_patience]
-                    ]
-
-    print('learning rate: {0:.1e}'.format(learning_rate))
-    print('dim_num_fnn1:', dim_fnn1)
-    print('dim_num_fnn2:', dim_fnn2)
-    print('dim_num_rnn1:', dim_rnn1)
-    print('dim_num_rnn2:', dim_rnn2)
-    print('dim_patience:', dim_patience)
+    config_space = []
+    conf_str = "{}-".format(MODEL_NAME)
+    for k in params:
+        config_space.append([k, params[k]])
+        print("{}: {}".format(k, params[k]))
+        conf_str += "{}_{}-".format(k, params[k])
+# def fitness(learning_rate, dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, dim_patience):
+#     # Print the hyper-parameters.
+#     config_space = [["learning_rate", learning_rate],
+#                     ["dim_fnn1", dim_fnn1],
+#                     ["dim_fnn2", dim_fnn2],
+#                     ["dim_rnn1", dim_rnn1],
+#                     ["dim_rnn2", dim_rnn2],
+#                     ["dim_patience", dim_patience]
+#                     ]
+#
+#     print('learning rate: {0:.1e}'.format(learning_rate))
+#     print('dim_num_fnn1:', dim_fnn1)
+#     print('dim_num_fnn2:', dim_fnn2)
+#     print('dim_num_rnn1:', dim_rnn1)
+#     print('dim_num_rnn2:', dim_rnn2)
+#     print('dim_patience:', dim_patience)
     
     # Create the neural network with these hyper-parameters.
     if MODEL_NAME == "cam":
         model = create_cam_model(
-                                 num_cnn1=num_cnn1,
-                                 num_cnn2=num_cnn2,
-                                 num_cnn3=num_cnn3,
-                                 activation=activation,
-                                 kernel_size=kernel_size)
+                                 num_cnn1=params["dim_cnn1"],
+                                 num_cnn2=params["dim_cnn2"],
+                                 num_cnn3=params["dim_cnn3"],
+                                 kernel_size=params["kernel_size"])
     elif MODEL_NAME == "rnn":
-        model = create_rnn_model(dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, inputsize=[288, ])
-    
+        model = create_rnn_model(params["dim_fnn1"], params["dim_fnn2"],
+                                 params["dim_rnn1"], params["dim_rnn2"], inputsize=[288, ])
+
 
     # Use the Adam method for training the network.
     # We want to find the best learning-rate for the Adam method.
-    optimizer = Adam(lr=learning_rate)
+    optimizer = Adam(lr=params["learning_rate"])
 
     # In Keras we need to compile the model so it can be trained.
     model.compile(optimizer=optimizer,
@@ -384,10 +403,10 @@ def fitness(learning_rate, dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, dim_patience)
                   metrics=['accuracy'])
 
     # Dir-name for the TensorBoard log-files.
-    configs = log_dir_name(lr=learning_rate, dim_fnn1=dim_fnn1, dim_fnn2=dim_fnn2, dim_rnn1=dim_rnn1, dim_rnn2=dim_rnn2)
+    # configs = log_dir_name(lr=learning_rate, dim_fnn1=dim_fnn1, dim_fnn2=dim_fnn2, dim_rnn1=dim_rnn1, dim_rnn2=dim_rnn2)
     
-    early_stop = EarlyStopping(monitor='val_accuracy', patience=dim_patience, verbose=1)
-    
+    early_stop = EarlyStopping(monitor='val_accuracy', patience=params["dim_patience"], verbose=1)
+
     # Use Keras to train the model.
     history = model.fit(x=train_data["spectra"],
                        y=train_data["labels"],
@@ -515,20 +534,20 @@ if __name__ == "__main__":
         # Number of colour channels for the images: 1 channel for gray-scale.
         num_channels = 1
 
-    # fitness(x=default_par_arrays["rnn"])
-    time_str = '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now())
-    search_result = gp_minimize(func=fitness,
-                                dimensions=hyparameters_space["rnn"],
-                                acq_func='EI',  # Expected Improvement.
-                                n_calls=500,
-                                x0=default_par_arrays["rnn"])
-    
-    plot_convergence(search_result)
-    plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.png'.format(time_str)), format='png')
-    plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.pdf'.format(time_str)), format='pdf')
-    plt.close()
-    results = sorted(zip(search_result.func_vals, search_result.x_iters))
-    print(results)
-    np.savetxt(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.txt'.format(time_str)), results, fmt="%s", delimiter=",")
+    fitness(x=default_params)
+    # time_str = '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now())
+    # search_result = gp_minimize(func=fitness,
+    #                             dimensions=params_space,
+    #                             acq_func='EI',  # Expected Improvement.
+    #                             n_calls=500,
+    #                             x0=default_params)
+    #
+    # plot_convergence(search_result)
+    # plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.png'.format(time_str)), format='png')
+    # plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.pdf'.format(time_str)), format='pdf')
+    # plt.close()
+    # results = sorted(zip(search_result.func_vals, search_result.x_iters))
+    # print(results)
+    # np.savetxt(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.txt'.format(time_str)), results, fmt="%s", delimiter=",")
     
     

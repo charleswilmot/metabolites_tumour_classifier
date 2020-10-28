@@ -16,6 +16,7 @@ regularizer = tf.keras.regularizers.l2(l=0.01)
 initializer = tf.compat.v1.keras.initializers.he_normal()
 
 
+
 def convert_activation(acti_names):
     acti_funcs = []
     for act in acti_names:
@@ -66,7 +67,7 @@ class MLP:
         ##### track all variables
         all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
         out["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
-        print("MLP total_trainables", out["total_trainables"])
+        print("MLP total_trainables {} during training={}".format(out["total_trainables"], training))
         
         out["logits"] = logits
         out["activity"] = activity
@@ -135,8 +136,7 @@ class CNN:
         ##### track all variables
         all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
         out["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
-        print("CNN total_trainables", out["total_trainables"])
-        
+        print("CNN total_trainables {} during training={}".format(out["total_trainables"], training))
         out["logits"] = net
         return out
 
@@ -266,7 +266,7 @@ class CNN_CAM:
         ##### track all variables
         all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
         out["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
-        print("CNN_CAM total_trainables", out["total_trainables"])
+        print("CNN_CAM total_trainables {} during training={}".format(out["total_trainables"], training))
         
         out["logits"] = logits
         out["gap_w"] = gap_w
@@ -398,13 +398,13 @@ class Res_FNN:
         ##### track all variables
         all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
         ret["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
-        print("Res_ECG_CAM total_trainables", ret["total_trainables"])
+        print("Res_ECG_CAM total_trainables {} during training={}".format(out["total_trainables"], training))
 
         ret["logits"] = logits
         ret["gap_w"] = gap_w
         return ret
 
-    def make_res_fnn_block(self, inp, layer_id=0, training=True):
+    def make_res_fnn_block(self, inp, unit, layer_id=0, training=True):
         """
         Construct the whole cnn layers
         :param inp:
@@ -418,22 +418,12 @@ class Res_FNN:
                 out = tf.compat.v1.layers.batch_normalization(out, training=training)
                 out = tf.nn.relu(out)
                 if not (layer_id == 0 and j == 0):
-                    drop = self.drop_cnn if j > 0 else 0
+                    drop = self.drop_fnn if j > 0 else 0
                     out = tf.compat.v1.layers.dropout(out, drop, training=training)
 
-                out = tf.compat.v1.layers.conv2d(
-                    inputs=out,
-                    filters=out_channel,
-                    kernel_size=[self.kernel_size, 1],
-                    padding='SAME',
-                    strides=[stride, 1] if j == 0 else [1, 1],
-                    kernel_initializer=initializer,
-                    # kernel_regularizer=regularizer,
-                    activation=None
-                )
+                out = tf.compat.v1.layers.dense(out, unit, kernel_initializer=initializer, activation=None)
 
-            shortcut = tf.compat.v1.layers.max_pooling2d(x, pool_size=[self.pool_size, 1], strides=[stride, 1],
-                                                         padding='same')
+            shortcut = inp
             output = tf.nn.relu(shortcut + out)
             print("ResiBlock{}-output pooling shape".format(layer_id), out.shape.as_list())
             return output
@@ -485,7 +475,7 @@ class Res_ECG_CAM:
         ##### track all variables
         all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
         ret["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
-        print("Res_ECG_CAM total_trainables", ret["total_trainables"])
+        print("Res_ECG_CAM total_trainables {} during training={}".format(out["total_trainables"], training))
         
         ret["logits"] = logits
         ret["gap_w"] = gap_w
@@ -796,6 +786,7 @@ class Inception:
         print("layer {} out_size {}".format(pool1.name, pool1.get_shape().as_list()))
         ## values = original / 4
         factor = 4
+
         inception2a = self.inception_layer(pool1, conv_1_size=64 // factor,
                                            conv_3_reduce_size=96 // factor, conv_3_size=128 // factor,
                                            conv_5_reduce_size=16 // factor, conv_5_size=32 // factor,
@@ -840,8 +831,7 @@ class Inception:
         ##### track all variables
         all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
         ret["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
-        print("Inception total_trainables", ret["total_trainables"])
-        
+        print("Inception total_trainables {} during training={}".format(ret["total_trainables"], training))
         ret["logits"] = logits
         return ret
 
@@ -859,14 +849,18 @@ class RNN(object):
         self.height = args.height
         self.width = args.width
         self.num_classes = args.num_classes
+        self.initializer = tf.compat.v1.keras.initializers.glorot_uniform()
 
-    def build_rnn(self, inp, units):
-        inputs = tf.unstack(tf.expand_dims(inp, axis=2), axis=1)
+    def build_rnn(self, inp, units, layer_id=0):
+        print("-------Building network-----------")
 
-        self.rnn_cell = tf.keras.layers.LSTMCell(units, recurrent_dropout=self.drop_rnn, dropout=self.drop_rnn_ln,
-                                                 kernel_regularizer=regularizer)
-        rnn_outputs, rnn_state = tf.compat.v1.nn.static_rnn(self.rnn_cell, inputs, dtype=tf.float32)
-        # enc_ouputs = tf.stack(rnn_outputs, axis=0)
+        with tf.compat.v1.variable_scope("RNN_{}".format(layer_id), reuse=tf.compat.v1.AUTO_REUSE):
+            inputs = tf.unstack(tf.expand_dims(inp, axis=2), axis=1)
+            self.rnn_cell = tf.keras.layers.LSTMCell(units, recurrent_dropout=self.drop_rnn, dropout=self.drop_rnn_ln,
+                                                     kernel_regularizer=self.initializer)
+            rnn_outputs, rnn_state = tf.compat.v1.nn.static_rnn(self.rnn_cell, inputs, dtype=tf.float32)
+            # enc_ouputs = tf.stack(rnn_outputs, axis=0)
+            print("RNN_{}: rnn_outputs shape: {}".format(layer_id, rnn_outputs[-1].get_shape().as_list()))
 
         return rnn_outputs[-1]
 
@@ -875,29 +869,45 @@ class RNN(object):
         net = tf.reshape(features, [-1, self.height])  # make sure each sample is one time serie dat
 
         with tf.compat.v1.variable_scope("FCb4RNN", reuse=tf.compat.v1.AUTO_REUSE):
-            for unit in self.fc_dim:
+            for ii, unit in enumerate(self.fc_dim):
+                print("-------Building network-----------")
                 net = tf.compat.v1.layers.dense(net, unit,
-                                                kernel_initializer=initializer,
+                                                kernel_initializer=self.initializer,
                                                 activation=None)
-                net = tf.compat.v1.layers.batch_normalization(net)
+                net = tf.compat.v1.layers.batch_normalization(net, training=training)
                 net = tf.nn.relu(net)
-                net = tf.compat.v1.layers.dropout(net, rate=self.drop_fc)
+                net = tf.compat.v1.layers.dropout(net, rate=self.drop_fc, training=training)
+                print("FCb4RNN_{}: output shape: {}".format(ii, net.get_shape().as_list()))
 
-        with tf.compat.v1.variable_scope("RNN", reuse=tf.compat.v1.AUTO_REUSE):
-            for layer_id, rnn_dim in enumerate(self.rnn_dims):
-                net = self.build_rnn(net, rnn_dim)
+
+            for ii, unit in enumerate(self.rnn_dims):
+                print("-------Building network-----------")
+                with tf.compat.v1.variable_scope("RNN{}".format(ii), reuse=tf.compat.v1.AUTO_REUSE):
+                    net = tf.unstack(tf.expand_dims(net, axis=2), axis=1)
+                    rnn_cell = tf.compat.v1.nn.rnn_cell.LSTMCell(unit)
+                    # self.rnn_cell = tf.keras.layers.LSTMCell(unit, recurrent_dropout=self.drop_rnn,
+                    #                                          dropout=self.drop_rnn_ln,
+                    #                                          kernel_regularizer=self.initializer)
+                    rnn_outputs, rnn_state = tf.compat.v1.nn.static_rnn(rnn_cell, net, dtype=tf.float32)
+                    # enc_ouputs = tf.stack(rnn_outputs, axis=0)
+                    net = rnn_outputs[-1]
+                    net = tf.compat.v1.layers.dropout(net, rate=self.drop_rnn, training=training)
+                    print("RNN_{}: rnn_outputs shape: {}".format(ii, net.get_shape().as_list()))
+            #
+        # for layer_id, rnn_dim in enumerate(self.rnn_dims):
+        #     net = self.build_rnn(net, rnn_dim, layer_id=layer_id)
 
         ret["rnn_state"] = net
 
         with tf.compat.v1.variable_scope("FC", reuse=tf.compat.v1.AUTO_REUSE):
             logits = tf.compat.v1.layers.dense(net, self.num_classes,
-                                               kernel_initializer=initializer,
+                                               kernel_initializer=self.initializer,
                                                activation=tf.nn.softmax)
 
         ##### track all variables
         all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
         ret["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
-        print("RNN total_trainables", ret["total_trainables"])
+        print("RNN total_trainables {} during training={}".format(ret["total_trainables"], training))
         
         ret["logits"] = logits
         return ret

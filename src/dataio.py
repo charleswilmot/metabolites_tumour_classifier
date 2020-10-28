@@ -889,9 +889,14 @@ def load_mnist_with_noise(args):
     :return:
     """
     from tensorflow.keras.datasets import mnist
+    from tensorflow.keras.datasets import fashion_mnist as fashion_mnist
 
+    if "fashion" in args.data_mode:
+        (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+    else:
+        (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    x_train, x_test = x_train / 255.0, x_test / 255.0
     args.num_classes = 10
-    (X_train, Y_train), (X_test, Y_test) = mnist.load_data()
 
     whole_set = np.concatenate((np.append(Y_train, Y_test).reshape(-1, 1), np.vstack(
         (X_train.reshape(X_train.shape[0], -1), X_test.reshape(X_test.shape[0], -1)))), axis=1)
