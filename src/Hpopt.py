@@ -49,7 +49,6 @@ def get_hyparams_of_models(model_name="MLP"):
         dim_fnn2 = Integer(low=16, high=512, name='dim_fnn2')
         dim_fnn3 = Integer(low=16, high=512, name='dim_fnn3')
         dim_fnn4 = Integer(low=16, high=512, name='dim_fnn4')
-        dim_kernel_size = Integer(low=10, high=256, name='kernel_size')
 
         parameter_space = [
             dim_learning_rate,
@@ -58,7 +57,7 @@ def get_hyparams_of_models(model_name="MLP"):
             dim_fnn3,
             dim_fnn4,
         ]
-        default_parameters = [1e-3, 8, 16, 32, 100, 4]
+        default_parameters = [1e-3, 32, 32, 32, 32]
     elif model_name == "RNN" or model_name == "rnn":
         dim_fnn1 = Integer(low=16, high=512, name='dim_fnn1')
         dim_fnn2 = Integer(low=16, high=512, name='dim_fnn2')
@@ -86,7 +85,7 @@ def get_hyparams_of_models(model_name="MLP"):
 #     "rnn": [1e-3, 128, 64, 32, 32, 4]
 #                      }
 results_root = "../results/Hyperparameter_Optimize"
-MODEL_NAME = "rnn"
+MODEL_NAME = "MLP"
 
 default_params, params_space = get_hyparams_of_models(model_name=MODEL_NAME)
 
@@ -284,7 +283,6 @@ def create_model(learning_rate, num_dense_layers,
     
     return model
 
-
 def create_cam_model(num_cnn1, num_cnn2, num_cnn3, activation, kernel_size):
     """
     Hyper-parameters:
@@ -332,7 +330,6 @@ def create_cam_model(num_cnn1, num_cnn2, num_cnn3, activation, kernel_size):
     return model
 
 
-
 def create_rnn_model(fc_b4rcc1, fc_b4rcc2, lstm1, lstm2, inputsize=[288,]):
     model = Sequential()
     # Note that the input-shape must be a tuple containing the image-size.
@@ -351,10 +348,126 @@ def create_rnn_model(fc_b4rcc1, fc_b4rcc2, lstm1, lstm2, inputsize=[288,]):
     model.add(Dense(num_classes, activation='softmax', kernel_initializer='random_uniform'))
     model.summary()
     return model
+
+
+def create_MLP_model(fnn1, fnn2, fnn3, fnn4, inputsize=[288,]):
+    model = Sequential()
+    # Note that the input-shape must be a tuple containing the image-size.
+    model.add(InputLayer(input_shape=inputsize))
+
+    model.add(Dense(fnn1, activation="relu"))
+    model.add(BatchNormalization())
+    model.add(Dropout(0.5))
+    model.add(Dense(fnn2, activation="relu"))
+    model.add(BatchNormalization())
+    model.add(Dropout(0.5))
+    model.add(Dense(fnn3, activation="relu"))
+    model.add(BatchNormalization())
+    model.add(Dropout(0.5))
+    model.add(Dense(fnn4, activation="relu"))
+    model.add(BatchNormalization())
+    model.add(Dropout(0.5))
+
+    model.add(Dense(num_classes, activation='softmax', kernel_initializer='random_uniform'))
+    model.summary()
+    return model
     
 
+def create_inception_model():
+    inp = tf.reshape(features, [-1, height, width, 1])
+
+    # Build the whole graph
+
+    conv1 = conv_layer(inp, filter_height=5, filter_width=1, num_filters=64, stride=1, name='conv1')
+    print("layer {} out_size {}".format(conv1.name, conv1.get_shape().as_list()))
+    pool1 = tf.compat.v1.layers.max_pooling2d(conv1, pool_size=[pool_size, 1],
+                                              strides=[stride, 1], padding="SAME",
+                                              name="pool1")
+    print("layer {} out_size {}".format(pool1.name, pool1.get_shape().as_list()))
+    ## values = original / 4
+    factor = 4
+
+    inception2a = inception_layer(pool1, conv_1_size=64 // factor,
+                                       conv_3_reduce_size=96 // factor, conv_3_size=128 // factor,
+                                       conv_5_reduce_size=16 // factor, conv_5_size=32 // factor,
+                                       pool_proj_size=32, name="inception1a")
+    print("layer inception1a out_size {}".format(inception2a.get_shape().as_list()))
+
+    inception2b = inception_layer(inception2a, conv_1_size=128 // factor,
+                                       conv_3_reduce_size=128 // factor, conv_3_size=192 // factor,
+                                       conv_5_reduce_size=32 // factor, conv_5_size=96 // factor,
+                                       pool_proj_size=64 // factor, name="inception1b")
+    print("layer inception1b out_size {}".format(inception2b.get_shape().as_list()))
+
+    pool2 = tf.compat.v1.layers.max_pooling2d(inception2b, pool_size=[pool_size, 1],
+                                              strides=[stride, 1], padding="SAME",
+                                              name="pool2")
+    print("layer pool2 out_size {}".format(pool2.get_shape().as_list()))
+
+    inception3a = inception_layer(pool2, conv_1_size=192 // factor,
+                                       conv_3_reduce_size=96 // factor, conv_3_size=208 // factor,
+                                       conv_5_reduce_size=16 // factor, conv_5_size=48 // factor,
+                                       pool_proj_size=64, name="inception3a")
+    print("layer inception3a out_size {}".format(inception3a.get_shape().as_list()))
+
+    inception3b = inception_layer(inception3a, conv_1_size=160 // factor,
+                                       conv_3_reduce_size=112 // factor, conv_3_size=224 // factor,
+                                       conv_5_reduce_size=24 // factor, conv_5_size=64 // factor,
+                                       pool_proj_size=64 // factor, name="inception3b")
+    print("layer inception3b out_size {}".format(inception3b.get_shape().as_list()))
+
+    with tf.compat.v1.variable_scope("GAP", reuse=tf.compat.v1.AUTO_REUSE):
+        gap = tf.reduce_mean(inception3b, (1))
+        print("layer gap out_size {}".format(gap.get_shape().as_list()))
+        gap_dropout = tf.compat.v1.layers.dropout(gap, rate=drop_cnn,
+                                                  training=training) if drop_cnn != 0 else gap
+        flatten = tf.compat.v1.layers.flatten(gap_dropout)
+
+    with tf.compat.v1.variable_scope("logits", reuse=tf.compat.v1.AUTO_REUSE):
+        logits = tf.compat.v1.layers.dense(flatten, num_classes,
+                                           kernel_initializer=initializer,
+                                           activation=activations[-1])
 
 
+def inception_layer(self, x,
+                    conv_1_size=64,
+                    conv_3_reduce_size=64, conv_3_size=64,
+                    conv_5_reduce_size=128, conv_5_size=128,
+                    pool_proj_size=2,
+                    name='inception'):
+    """
+    Create an Inception Layer
+    https://mohitjain.me/2018/06/09/googlenet/
+    :param x: input
+    :param conv_1_size: number of filters in 1x1 branch
+    :param conv_3_reduce_size: No. of filters in 1x1 conv layer before 3x3 conv to reduce computation,
+    :param conv_3_size: No. of filters in 3x3 conv
+    :param conv_5_reduce_size: No. of filters in 1x1 conv layer before 3x3 conv to reduce computation
+    :param conv_5_size: No. of filters in 5x5 conv
+    :param pool_proj_size: No. of filters following 3x3 max pooling
+    :param name:
+    :return:
+    """
+
+    with tf.compat.v1.variable_scope(name, reuse=tf.compat.v1.AUTO_REUSE) as scope:
+        conv_1 = self.conv_layer(x, filter_height=1, filter_width=1,
+                                 num_filters=conv_1_size, name='{}_1x1'.format(name))
+
+        conv_3_reduce = self.conv_layer(x, filter_height=1, filter_width=1,
+                                        num_filters=conv_3_reduce_size, name='{}_3x3_reduce'.format(name))
+
+        conv_3 = self.conv_layer(conv_3_reduce, filter_height=3, filter_width=1,
+                                 num_filters=conv_3_size, name='{}_3x3'.format(name))
+
+        conv_5_reduce = self.conv_layer(x, filter_height=1, filter_width=1,
+                                        num_filters=conv_5_reduce_size, name='{}_5x5_reduce'.format(name))
+
+        conv_5 = self.conv_layer(conv_5_reduce, filter_height=5, filter_width=1,
+                                 num_filters=conv_5_size, name='{}_5x5'.format(name))
+
+        pool = tf.compat.v1.layers.max_pooling2d(x, pool_size=[self.pool_size, 1], strides=[1, 1], padding="SAME")
+        pool_proj = self.conv_layer(pool, filter_height=1, filter_width=1, num_filters=pool_proj_size,
+                                    name='{}_pool_proj'.format(name))
 @use_named_args(dimensions=params_space)
 def fitness(**params):
     # Print the hyper-parameters.
@@ -388,8 +501,11 @@ def fitness(**params):
                                  num_cnn2=params["dim_cnn2"],
                                  num_cnn3=params["dim_cnn3"],
                                  kernel_size=params["kernel_size"])
-    elif MODEL_NAME == "rnn":
+    elif MODEL_NAME == "rnn" or MODEL_NAME == "RNN":
         model = create_rnn_model(params["dim_fnn1"], params["dim_fnn2"],
+                                 params["dim_rnn1"], params["dim_rnn2"], inputsize=[288, ])
+    elif MODEL_NAME == "MLP" or MODEL_NAME == "mlp":
+        model = create_MLP_model(params["dim_fnn1"], params["dim_fnn2"],
                                  params["dim_rnn1"], params["dim_rnn2"], inputsize=[288, ])
 
 
@@ -549,5 +665,5 @@ if __name__ == "__main__":
     # results = sorted(zip(search_result.func_vals, search_result.x_iters))
     # print(results)
     # np.savetxt(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.txt'.format(time_str)), results, fmt="%s", delimiter=",")
-    
+    #
     
