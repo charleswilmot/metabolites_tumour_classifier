@@ -44,6 +44,7 @@ def get_hyparams_of_models(model_name="MLP"):
     """
     dim_learning_rate = Real(low=1e-6, high=1e-2, prior='log-uniform',
                              name='learning_rate')
+    dim_patience = Integer(low=1, high=25, name='dim_patience')
     if model_name == "MLP":
         dim_fnn1 = Integer(low=16, high=512, name='dim_fnn1')
         dim_fnn2 = Integer(low=16, high=512, name='dim_fnn2')
@@ -56,14 +57,14 @@ def get_hyparams_of_models(model_name="MLP"):
             dim_fnn2,
             dim_fnn3,
             dim_fnn4,
+            dim_patience
         ]
-        default_parameters = [1e-3, 32, 32, 32, 32]
+        default_parameters = [1e-3, 32, 32, 32, 32, 4]
     elif model_name == "RNN" or model_name == "rnn":
         dim_fnn1 = Integer(low=16, high=512, name='dim_fnn1')
         dim_fnn2 = Integer(low=16, high=512, name='dim_fnn2')
         dim_rnn1 = Integer(low=16, high=128, name='dim_rnn1')
         dim_rnn2 = Integer(low=16, high=128, name='dim_rnn2')
-        dim_patience = Integer(low=1, high=25, name='dim_patience')
 
         parameter_space = [
             dim_learning_rate,
@@ -74,6 +75,26 @@ def get_hyparams_of_models(model_name="MLP"):
             dim_patience
         ]
         default_parameters = [1e-3, 256, 128, 64, 32, 6]
+    
+    elif model_name == "inception" or model_name == "Inception":
+        num_moduleA = Integer(low=1, high=3, name='num_moduleA')
+        num_moduleB = Integer(low=1, high=4, name='num_moduleB')
+        ks_small = Integer(low=3, high=7, name='ks_small')
+        ks_big = Integer(low=7, high=11, name='ks_big')
+        ks_bbig = Integer(low=11, high=16, name='ks_bbig')
+        reduceX = Integer(low=1, high=6, name='reduceX')
+
+        parameter_space = [
+            dim_learning_rate,
+            num_moduleA,
+            num_moduleB,
+            ks_small,
+            ks_big,
+            ks_bbig,
+            reduceX,
+            dim_patience
+        ]
+        default_parameters = [1e-3, 2, 2, 3, 7, 11, 2, 6]
 
     return default_parameters, parameter_space
 
@@ -85,7 +106,7 @@ def get_hyparams_of_models(model_name="MLP"):
 #     "rnn": [1e-3, 128, 64, 32, 32, 4]
 #                      }
 results_root = "../results/Hyperparameter_Optimize"
-MODEL_NAME = "MLP"
+MODEL_NAME = "inception"
 
 default_params, params_space = get_hyparams_of_models(model_name=MODEL_NAME)
 
@@ -371,103 +392,185 @@ def create_MLP_model(fnn1, fnn2, fnn3, fnn4, inputsize=[288,]):
     model.add(Dense(num_classes, activation='softmax', kernel_initializer='random_uniform'))
     model.summary()
     return model
+
+
+def conv2d_bn(x, filters, num_row, num_col, padding='same',
+            strides=(1, 1), name=None):
+    if name is not None:
+        bn_name = name + '_bn'
+        conv_name = name + '_conv'
+    else:
+        bn_name = None
+        conv_name = None
     
-
-def create_inception_model():
-    inp = tf.reshape(features, [-1, height, width, 1])
-
-    # Build the whole graph
-
-    conv1 = conv_layer(inp, filter_height=5, filter_width=1, num_filters=64, stride=1, name='conv1')
-    print("layer {} out_size {}".format(conv1.name, conv1.get_shape().as_list()))
-    pool1 = tf.compat.v1.layers.max_pooling2d(conv1, pool_size=[pool_size, 1],
-                                              strides=[stride, 1], padding="SAME",
-                                              name="pool1")
-    print("layer {} out_size {}".format(pool1.name, pool1.get_shape().as_list()))
-    ## values = original / 4
-    factor = 4
-
-    inception2a = inception_layer(pool1, conv_1_size=64 // factor,
-                                       conv_3_reduce_size=96 // factor, conv_3_size=128 // factor,
-                                       conv_5_reduce_size=16 // factor, conv_5_size=32 // factor,
-                                       pool_proj_size=32, name="inception1a")
-    print("layer inception1a out_size {}".format(inception2a.get_shape().as_list()))
-
-    inception2b = inception_layer(inception2a, conv_1_size=128 // factor,
-                                       conv_3_reduce_size=128 // factor, conv_3_size=192 // factor,
-                                       conv_5_reduce_size=32 // factor, conv_5_size=96 // factor,
-                                       pool_proj_size=64 // factor, name="inception1b")
-    print("layer inception1b out_size {}".format(inception2b.get_shape().as_list()))
-
-    pool2 = tf.compat.v1.layers.max_pooling2d(inception2b, pool_size=[pool_size, 1],
-                                              strides=[stride, 1], padding="SAME",
-                                              name="pool2")
-    print("layer pool2 out_size {}".format(pool2.get_shape().as_list()))
-
-    inception3a = inception_layer(pool2, conv_1_size=192 // factor,
-                                       conv_3_reduce_size=96 // factor, conv_3_size=208 // factor,
-                                       conv_5_reduce_size=16 // factor, conv_5_size=48 // factor,
-                                       pool_proj_size=64, name="inception3a")
-    print("layer inception3a out_size {}".format(inception3a.get_shape().as_list()))
-
-    inception3b = inception_layer(inception3a, conv_1_size=160 // factor,
-                                       conv_3_reduce_size=112 // factor, conv_3_size=224 // factor,
-                                       conv_5_reduce_size=24 // factor, conv_5_size=64 // factor,
-                                       pool_proj_size=64 // factor, name="inception3b")
-    print("layer inception3b out_size {}".format(inception3b.get_shape().as_list()))
-
-    with tf.compat.v1.variable_scope("GAP", reuse=tf.compat.v1.AUTO_REUSE):
-        gap = tf.reduce_mean(inception3b, (1))
-        print("layer gap out_size {}".format(gap.get_shape().as_list()))
-        gap_dropout = tf.compat.v1.layers.dropout(gap, rate=drop_cnn,
-                                                  training=training) if drop_cnn != 0 else gap
-        flatten = tf.compat.v1.layers.flatten(gap_dropout)
-
-    with tf.compat.v1.variable_scope("logits", reuse=tf.compat.v1.AUTO_REUSE):
-        logits = tf.compat.v1.layers.dense(flatten, num_classes,
-                                           kernel_initializer=initializer,
-                                           activation=activations[-1])
-
-
-def inception_layer(self, x,
-                    conv_1_size=64,
-                    conv_3_reduce_size=64, conv_3_size=64,
-                    conv_5_reduce_size=128, conv_5_size=128,
-                    pool_proj_size=2,
-                    name='inception'):
+    if tf.keras.backend.image_data_format() == 'channels_first':
+        bn_axis = 1
+    else:
+        bn_axis = 3
+    x = tf.keras.layers.Conv2D(
+          filters, (num_row, num_col),
+          strides=strides,
+          padding=padding,
+          use_bias=False,
+          name=conv_name)(x)
+    x = tf.keras.layers.BatchNormalization(axis=bn_axis, scale=False, name=bn_name)(x)
+    x = tf.keras.layers.Activation('relu', name=name)(x)
+    
+    return x
+        
+def create_inception_model(num_moduleA, num_moduleB, ks_small, ks_big, ks_bbig, factor, inputsize=[288,]):
     """
-    Create an Inception Layer
-    https://mohitjain.me/2018/06/09/googlenet/
-    :param x: input
-    :param conv_1_size: number of filters in 1x1 branch
-    :param conv_3_reduce_size: No. of filters in 1x1 conv layer before 3x3 conv to reduce computation,
-    :param conv_3_size: No. of filters in 3x3 conv
-    :param conv_5_reduce_size: No. of filters in 1x1 conv layer before 3x3 conv to reduce computation
-    :param conv_5_size: No. of filters in 5x5 conv
-    :param pool_proj_size: No. of filters following 3x3 max pooling
+    architecture of inceptionV3
+    https://sh-tsang.medium.com/review-inception-v3-1st-runner-up-image-classification-in-ilsvrc-2015-17915421f77c
+    :param num_moduleA:
+    :param num_moduleB:
+    :param ks_small:
+    :param ks_big:
+    :param ks_bbig:
+    :param factor: the factor to reduced the number of filters used
+    :return:
+    """
+    # Build the whole graph
+    img_input = tf.keras.layers.Input(shape=inputsize)
+    channel_axis = 3
+    include_top = True
+    pooling = None
+    classifier_activation = 'softmax'
+  
+    x = conv2d_bn(img_input, 32, ks_small, 1, strides=(2, 1), padding='valid')
+    x = conv2d_bn(x, 32, ks_small, 1, padding='valid')
+    x = conv2d_bn(x, 64, ks_small, 1)
+    x = tf.keras.layers.MaxPooling2D((3, 1), strides=(2, 1))(x)
+  
+    x = conv2d_bn(x, 80, 1, 1, padding='valid')
+    x = conv2d_bn(x, 192, ks_small, 1, padding='valid')
+    x = tf.keras.layers.MaxPooling2D((ks_small, 1), strides=(2, 1))(x)
+  
+    # mixed 0: 35 x 35 x 256
+    module_count = 0
+    for ii in range(num_moduleA):
+        x = incepModuleA(x, ks_small, ks_big, factor=factor, channel_axis=3, name="mixed{}".format(module_count))
+        module_count += 1
+
+
+    # mixed 3: 17 x 17 x 768
+    branch3x3 = conv2d_bn(x, 384//factor, ks_small, 1, strides=(2, 1), padding='valid')
+  
+    branch3x3dbl = conv2d_bn(x, 64//factor, 1, 1)
+    branch3x3dbl = conv2d_bn(branch3x3dbl, 96//factor, ks_small, 1)
+    branch3x3dbl = conv2d_bn(
+        branch3x3dbl, 96//factor, ks_small, 1, strides=(2, 1), padding='valid')
+  
+    branch_pool = tf.keras.layers.MaxPooling2D((ks_small, 1), strides=(2, 1))(x)
+    x = tf.keras.layers.concatenate([branch3x3, branch3x3dbl, branch_pool],
+                           axis=channel_axis,
+                           name='mixed{}'.format(module_count))
+    module_count += 1
+  
+    # mixed 4: 17 x 17 x 768
+    for jj in range(module_count, module_count+num_moduleB):
+        x = incepModuleB(x, ks_small, ks_bbig, factor=factor, channel_axis=3, name="mixed{}".format(jj))
+        module_count += 1
+
+    # mixed 8: 8 x 8 x 1280
+    branch3x3 = conv2d_bn(x, 192//factor, 1, 1)
+    branch3x3 = conv2d_bn(branch3x3, 320//factor, ks_small, 1, strides=(2, 1), padding='valid')
+  
+    branch7x7x3 = conv2d_bn(x, 192//factor, 1, 1)
+    # branch7x7x3 = conv2d_bn(branch7x7x3, 192, 1, 7)
+    branch7x7x3 = conv2d_bn(branch7x7x3, 192//factor, ks_bbig, 1)
+    branch7x7x3 = conv2d_bn(
+        branch7x7x3, 192//factor, ks_small, 1, strides=(2, 1), padding='valid')
+  
+    branch_pool = tf.keras.layers.MaxPooling2D((ks_small, 1), strides=(2,1))(x)
+    x = tf.keras.layers.concatenate([branch3x3, branch7x7x3, branch_pool],
+                           axis=channel_axis,
+                           name='mixed{}'.format(module_count))
+    module_count += 1
+    
+    if include_top:
+        # Classification block
+        x = tf.keras.layers.GlobalAveragePooling2D(name='avg_pool')(x)
+        
+        x = tf.keras.layers.Dense(2, activation=classifier_activation,
+                       name='predictions')(x)
+    else:
+        if pooling == 'avg':
+            x = tf.keras.layers.GlobalAveragePooling2D()(x)
+        elif pooling == 'max':
+            x = tf.keras.layers.GlobalMaxPooling2D()(x)
+  
+    # Ensure that the model takes into account
+    # any potential predecessors of `input_tensor`.
+    inputs = img_input
+    # Create model.
+    model = tf.keras.models.Model(inputs, x, name='inception_v3')
+    
+    model.summary()
+    
+    return model
+
+
+def incepModuleB(x, ks_small, ks_bbig, factor=1, channel_axis=3, name="mixed5"):
+    """
+    Build inception module B, omit 1xN conv
+    :param x:
+    :param channel_axis:
     :param name:
     :return:
     """
+    branch1x1 = conv2d_bn(x, 192//factor, 1, 1)
+    
+    branch7x7 = conv2d_bn(x, 128//factor, 1, 1)
+    # branch7x7 = conv2d_bn(branch7x7, 128, 1, 7)
+    branch7x7 = conv2d_bn(branch7x7, 192//factor, ks_bbig, 1)
+    
+    branch7x7dbl = conv2d_bn(x, 128//factor, 1, 1)
+    branch7x7dbl = conv2d_bn(branch7x7dbl, 128//factor, ks_bbig, 1)
+    # branch7x7dbl = conv2d_bn(branch7x7dbl, 128, 1, 7)
+    branch7x7dbl = conv2d_bn(branch7x7dbl, 128//factor, ks_bbig, 1)
+    
+    # branch7x7dbl = conv2d_bn(branch7x7dbl, 192, 1, 7)
+    branch_pool = tf.keras.layers.AveragePooling2D(
+        (ks_small, 1), strides=(1, 1), padding='same')(x)
+    branch_pool = conv2d_bn(branch_pool, 192//factor, 1, 1)
+    x = tf.keras.layers.concatenate(
+        [branch1x1, branch7x7, branch7x7dbl, branch_pool],
+        axis=channel_axis,
+        name=name)
+    return x
 
-    with tf.compat.v1.variable_scope(name, reuse=tf.compat.v1.AUTO_REUSE) as scope:
-        conv_1 = self.conv_layer(x, filter_height=1, filter_width=1,
-                                 num_filters=conv_1_size, name='{}_1x1'.format(name))
 
-        conv_3_reduce = self.conv_layer(x, filter_height=1, filter_width=1,
-                                        num_filters=conv_3_reduce_size, name='{}_3x3_reduce'.format(name))
+def incepModuleA(x, ks_small, ks_big, factor=1, channel_axis=3, name="mixed0"):
+    """
+    build the inception module A
+    https://sh-tsang.medium.com/review-inception-v3-1st-runner-up-image-classification-in-ilsvrc-2015-17915421f77c
+    :param channel_axis:
+    :param x:
+    :param ks_small
+    :param ks_big:
+    :param factor: the factor to reduce the number of filters
+    :return:
+    """
+    branch1x1 = conv2d_bn(x, 64//factor, 1, 1)
+    
+    branch5x5 = conv2d_bn(x, 48//factor, 1, 1)
+    branch5x5 = conv2d_bn(branch5x5, 64//factor, ks_big, 1)
+    
+    branch3x3dbl = conv2d_bn(x, 64//factor, 1, 1)
+    branch3x3dbl = conv2d_bn(branch3x3dbl, 96//factor, ks_small, 1)
+    branch3x3dbl = conv2d_bn(branch3x3dbl, 96//factor, ks_small, 1)
+    
+    branch_pool = tf.keras.layers.AveragePooling2D((ks_small, 1), strides=(1, 1),
+                                                   padding='same')(x)
+    branch_pool = conv2d_bn(branch_pool, 64//factor, 1, 1)
+    x = tf.keras.layers.concatenate(
+        [branch1x1, branch5x5, branch3x3dbl, branch_pool],
+        axis=channel_axis,
+        name=name)
+    return x
 
-        conv_3 = self.conv_layer(conv_3_reduce, filter_height=3, filter_width=1,
-                                 num_filters=conv_3_size, name='{}_3x3'.format(name))
 
-        conv_5_reduce = self.conv_layer(x, filter_height=1, filter_width=1,
-                                        num_filters=conv_5_reduce_size, name='{}_5x5_reduce'.format(name))
-
-        conv_5 = self.conv_layer(conv_5_reduce, filter_height=5, filter_width=1,
-                                 num_filters=conv_5_size, name='{}_5x5'.format(name))
-
-        pool = tf.compat.v1.layers.max_pooling2d(x, pool_size=[self.pool_size, 1], strides=[1, 1], padding="SAME")
-        pool_proj = self.conv_layer(pool, filter_height=1, filter_width=1, num_filters=pool_proj_size,
-                                    name='{}_pool_proj'.format(name))
 @use_named_args(dimensions=params_space)
 def fitness(**params):
     # Print the hyper-parameters.
@@ -477,22 +580,6 @@ def fitness(**params):
         config_space.append([k, params[k]])
         print("{}: {}".format(k, params[k]))
         conf_str += "{}_{}-".format(k, params[k])
-# def fitness(learning_rate, dim_fnn1, dim_fnn2, dim_rnn1, dim_rnn2, dim_patience):
-#     # Print the hyper-parameters.
-#     config_space = [["learning_rate", learning_rate],
-#                     ["dim_fnn1", dim_fnn1],
-#                     ["dim_fnn2", dim_fnn2],
-#                     ["dim_rnn1", dim_rnn1],
-#                     ["dim_rnn2", dim_rnn2],
-#                     ["dim_patience", dim_patience]
-#                     ]
-#
-#     print('learning rate: {0:.1e}'.format(learning_rate))
-#     print('dim_num_fnn1:', dim_fnn1)
-#     print('dim_num_fnn2:', dim_fnn2)
-#     print('dim_num_rnn1:', dim_rnn1)
-#     print('dim_num_rnn2:', dim_rnn2)
-#     print('dim_patience:', dim_patience)
     
     # Create the neural network with these hyper-parameters.
     if MODEL_NAME == "cam":
@@ -506,7 +593,12 @@ def fitness(**params):
                                  params["dim_rnn1"], params["dim_rnn2"], inputsize=[288, ])
     elif MODEL_NAME == "MLP" or MODEL_NAME == "mlp":
         model = create_MLP_model(params["dim_fnn1"], params["dim_fnn2"],
-                                 params["dim_rnn1"], params["dim_rnn2"], inputsize=[288, ])
+                                 params["dim_fnn3"], params["dim_fnn4"], inputsize=[288, ])
+    elif MODEL_NAME == "inception" or MODEL_NAME == "Inception":
+        model = create_inception_model(params["num_moduleA"], params["num_moduleA"],
+                                       params["ks_small"], params["ks_big"],
+                                       params["ks_bbig"], params["reduceX"],
+                                       inputsize=[288, 1, 1])
 
 
     # Use the Adam method for training the network.
@@ -562,10 +654,10 @@ def fitness(**params):
     # If the classification accuracy of the saved model is improved ...
     if accuracy > best_accuracy or accuracy > 0.80:
         time_str = '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now())
-        results_dir = os.path.join(results_root, time_str + '-{:0.4f}'.format(accuracy))
+        results_dir = os.path.join(results_root,  '{}_{}_{:0.4f}'.format(time_str, MODEL_NAME, accuracy))
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
-        np.savetxt(os.path.join(results_dir, '{}_rnn_convergence_plot.txt'.format(time_str)), np.array(config_space), fmt="%s", delimiter=",")
+        np.savetxt(os.path.join(results_dir, '{}_{}_convergence_plot_{:0.4f}.txt'.format(time_str, MODEL_NAME, accuracy)), np.array(config_space), fmt="%s", delimiter=",")
         #
         # target_file_name = [os.path.join(results_dir, 'Hpopt.py')]
         # src_file_name = ['Hpopt.py']  # copy the model
@@ -616,15 +708,10 @@ if __name__ == "__main__":
         num_classes = 2
     
         train_data, test_data = get_data()
+        if MODEL_NAME in ["inception", "cam"]:
+            train_data["spectra"] = train_data["spectra"].reshape(-1, 288, 1, 1)
+            test_data["spectra"] = test_data["spectra"].reshape(-1, 288, 1, 1)
         
-        # train_val_data_dir = "../data/20190325/20190325-3class_lout40_train_test_data5.mat"
-        # test_data_dir = "../data/20190325/20190325-3class_lout40_val_data5.mat"
-        # train_val_data = get_metabolite_data(train_val_data_dir, num_classes=2)
-        # test_data = get_metabolite_data(test_data_dir, num_classes=2)
-        # X_train, X_val, Y_train, Y_val = train_test_split(train_val_data, train_val_data[:, 2], test_size=0.25)
-        # print("Size of:")
-        # print("- Training-set:\t\t{}".format(len(Y_train)))
-        # print("- Test-set:\t\t{}".format(len(Y_val)))
         validation_data = (test_data["spectra"], test_data["labels"])
     
     elif data_source == "mnist":
@@ -650,20 +737,20 @@ if __name__ == "__main__":
         # Number of colour channels for the images: 1 channel for gray-scale.
         num_channels = 1
 
-    fitness(x=default_params)
-    # time_str = '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now())
-    # search_result = gp_minimize(func=fitness,
-    #                             dimensions=params_space,
-    #                             acq_func='EI',  # Expected Improvement.
-    #                             n_calls=500,
-    #                             x0=default_params)
-    #
-    # plot_convergence(search_result)
-    # plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.png'.format(time_str)), format='png')
-    # plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.pdf'.format(time_str)), format='pdf')
-    # plt.close()
-    # results = sorted(zip(search_result.func_vals, search_result.x_iters))
-    # print(results)
-    # np.savetxt(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.txt'.format(time_str)), results, fmt="%s", delimiter=",")
+    # fitness(x=default_params)
+    time_str = '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now())
+    search_result = gp_minimize(func=fitness,
+                                dimensions=params_space,
+                                acq_func='EI',  # Expected Improvement.
+                                n_calls=500,
+                                x0=default_params)
+
+    plot_convergence(search_result)
+    plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_{}_convergence_plot.png'.format(time_str, MODEL_NAME)), format='png')
+    plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_{}_convergence_plot.pdf'.format(time_str, MODEL_NAME)), format='pdf')
+    plt.close()
+    results = sorted(zip(search_result.func_vals, search_result.x_iters))
+    print(results)
+    np.savetxt(os.path.join("../results/Hyperparameter_Optimize", '{}_{}_convergence_plot.txt'.format(time_str, MODEL_NAME)), results, fmt="%s", delimiter=",")
     #
     

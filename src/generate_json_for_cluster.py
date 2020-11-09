@@ -96,7 +96,8 @@ def overwrite_params(args, cfg_dirs, **kwargs):
     return cfg_dirs
 
 ######################################################################################################################
-default_json_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src"
+default_json_dir = "./"
+# default_json_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src"
 default_train_or_test = "train"
 ## Load experiment parameters and model parameters
 default_exp_json_dir = os.path.join(default_json_dir, "exp_parameters.json")
@@ -106,12 +107,12 @@ args = utils.load_all_params(default_exp_json_dir, default_model_json_dir)
 
 data_source_dirs = [
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat"
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat"
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data8.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat"
 ]
@@ -126,7 +127,7 @@ certain_dirs = [
 
 config_dirs = []
 seed = np.random.randint(9999)
-mode = "testing"
+mode = "training"
 if mode == "single_runs":
     ## 100 single-epoch runs
     args.new_folder = "100-single-epoch-runs"
@@ -145,30 +146,20 @@ if mode == "single_runs":
 elif mode == "training":
     mode = "aug_training"   #"aug-training"
     if mode == "aug_training":
-        for epoch in [5]: #1,3,, 0.5, 0.1, 0.3
-            for dd in data_source_dirs:   #, certain_dirs)
-                for method in ["both_mean", "same_mean"]:  # , "ops_mean",  #
-                    for fold in [1, 3, 5, 9]:  # #
-                        for scale in [0.05, 0.2, 0.3, 0.5]:  # #
-                            ct_dir = None
-                            if ct_dir is not None:
-                                theta = 0.9
-                                args.new_folder = "old-distillation-certain-DA-Res7"
-                            else:
-                                theta = 1
-                                args.new_folder = "2-randomDA"
-
-                            config_dirs = overwrite_params(args, config_dirs,
-                                                           input_data=dd,  #data dir
-                                                           certain_dir=ct_dir,
-                                                           aug_method=method,
-                                                           aug_scale=scale,
-                                                           from_epoch=epoch,
-                                                           aug_folds=fold,
-                                                           theta_thr=theta,
-                                                           rand_seed=seed,
-                                                           if_single_runs=False,
-                                                           from_clusterpy=True)
+        for dd in data_source_dirs:   #, certain_dirs)
+            for method in ["both_mean", "same_mean"]:  # , "ops_mean",  #
+                for fold in [1, 3, 5, 9]:  # #
+                    for scale in [0.05, 0.2, 0.3, 0.5]:  # #
+                        config_dirs = overwrite_params(args, config_dirs,
+                                                       input_data=dd,  #data dir
+                                                       certain_dir=None,
+                                                       aug_method=method,
+                                                       aug_scale=scale,
+                                                       aug_folds=fold,
+                                                       theta_thr=1,
+                                                       rand_seed=seed,
+                                                       if_single_runs=False,
+                                                       from_clusterpy=True)
     elif mode == "pure_training":  # without DA, without distillation
         args.if_save_certain = False
         for dd in data_source_dirs:   #
@@ -184,31 +175,20 @@ elif mode == "training":
                                            from_clusterpy=True)
 elif mode == "testing":
     pretrained_dirs = [
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-RNN/2020-10-28T19-41-27--RNN-Nonex0-factor-0-from-data5-certainFalse-theta-1-s4434-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-RNN/2020-10-28T19-41-28--RNN-Nonex0-factor-0-from-data1-certainFalse-theta-1-s4434-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-RNN/2020-10-28T19-41-29--RNN-Nonex0-factor-0-from-data2-certainFalse-theta-1-s4434-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-RNN/2020-10-28T19-41-30--RNN-Nonex0-factor-0-from-data3-certainFalse-theta-1-s4434-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-RNN/2020-10-28T19-41-32--RNN-Nonex0-factor-0-from-data4-certainFalse-theta-1-s4434-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-RNN/2020-10-28T19-41-33--RNN-Nonex0-factor-0-from-data6-certainFalse-theta-1-s4434-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-RNN/2020-10-28T19-41-34--RNN-Nonex0-factor-0-from-data7-certainFalse-theta-1-s4434-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-RNN/2020-10-28T19-42-40--RNN-Nonex0-factor-0-from-data8-certainFalse-theta-1-s5972-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-RNN/2020-10-28T19-42-42--RNN-Nonex0-factor-0-from-data9-certainFalse-theta-1-s5972-train/network",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-49--MLP-Nonex0-factor-0-from-data5-certainFalse-theta-1-s1847-train/network",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-50--MLP-Nonex0-factor-0-from-data1-certainFalse-theta-1-s1847-train/network",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-52--MLP-Nonex0-factor-0-from-data2-certainFalse-theta-1-s1847-train/network",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-53--MLP-Nonex0-factor-0-from-data3-certainFalse-theta-1-s1847-train/network",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-55--MLP-Nonex0-factor-0-from-data4-certainFalse-theta-1-s1847-train/network",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-56--MLP-Nonex0-factor-0-from-data6-certainFalse-theta-1-s1847-train/network",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-57--MLP-Nonex0-factor-0-from-data7-certainFalse-theta-1-s1847-train/network",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-58--MLP-Nonex0-factor-0-from-data8-certainFalse-theta-1-s1847-train/network",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-59--MLP-Nonex0-factor-0-from-data9-certainFalse-theta-1-s1847-train/network"
     ]
-    # src_data = os.path.basename(os.path.dirname(pretrained_dirs[0])).split("-")[-6]
-    # data_source_dirs = [
-    #     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format(src_data)
-    # ]
+    src_data = [os.path.basename(os.path.dirname(pre_train)).split("-")[-6] for pre_train in pretrained_dirs]
     data_source_dirs = [
-        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format("data5"),
-        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format("data1"),
-        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format("data2"),
-        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format("data3"),
-        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format("data4"),
-        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format("data6"),
-        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format("data7"),
-        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format("data8"),
-        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format("data9")
-    ]
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format(src_dir) for src_dir in src_data]
+
     for dd, res_from in zip(data_source_dirs, pretrained_dirs):  #
         config_dirs = overwrite_params(args, config_dirs,
                                        input_data=dd,  # data dir

@@ -371,7 +371,7 @@ def two_axis_in_one_plot():
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "100_single_ep_corr_classification_rate"
+plot_name = "distill_valid_labels"
 
 
 if plot_name == "indi_rating_with_model":
@@ -1390,9 +1390,49 @@ elif plot_name == "K_NN_stats_test_for_distillation":
     plt.close()
 
 
+elif plot_name == "distill_valid_labels":
+    from scipy import stats
+    # Nenad validated the labels of these samples
+    m_file = "C:/Users/LDY/Desktop/20190325-certain-Validate.mat"
+    mat = scipy.io.loadmat(m_file)["Validate"]  # [id, label, features]
+    samp_ids = mat[:, 0]
+    pat_ids = mat[:, 1]
+    labels = mat[:, 2]
+    corr_or_wrong = mat[:, 3]
+    
+    wrong_inds = np.where(corr_or_wrong == 0)[0]
+    wrong_labels = labels[wrong_inds]
+    np.sum(wrong_labels==1), np.sum(wrong_labels==0)
+    
+    ccr_summary = "C:/Users/LDY/Desktop/full_summary-data5_100_runs_sort_inds_rate_(6592-8229-8231).csv"
+    summary = pd.read_csv(ccr_summary, header=0).values
+    ccr_samp_ids = summary[:, 0]
+    ccr_samp_ccr = summary[:, 1]
+    
+    valid_ccr = []
+    for sp_id, pat, lb, r_or_w in zip(samp_ids, pat_ids, labels, corr_or_wrong):
+        ccr = ccr_samp_ccr[np.int(np.where(ccr_samp_ids == sp_id)[0])]
+        valid_ccr.append([sp_id, pat, lb, r_or_w, ccr])
+        
+    valid_ccr = np.array(valid_ccr)
+    
+    correct_ccr = valid_ccr[np.where(valid_ccr[:,3] == 1)[0]]
+    wrong_ccr = valid_ccr[np.where(valid_ccr[:,3] == 0)[0]]
+    print("ok")
+    _, p_rank = stats.ranksums(correct_ccr[:, -1], wrong_ccr[:, -1])
+    
 
-
-
+    plt.hist(np.array(correct_ccr[:, -1]), alpha=0.5, density=True, label="correct"),
+    plt.hist(np.array(wrong_ccr[:, -1]), density=True, alpha=0.5, label="wrong")
+    plt.legend()
+    plt.title("Validated labels with CCR distribution p{:.2E}".format(p_rank))
+    plt.xlabel("correct classification rate")
+    plt.ylabel("frequency (density)")
+    plt.savefig(os.path.join("C:/Users/LDY/Desktop", "CCR-distribution-of-NP-validated-samples-p{:.2E}.png".format(p_rank)))
+    plt.savefig(os.path.join("C:/Users/LDY/Desktop", "CCR-distribution-of-NP-validated-samples-p{:.2E}.pdf".format(p_rank)), format="pdf")
+    plt.close()
+    print("ok")
+    
 
 
 

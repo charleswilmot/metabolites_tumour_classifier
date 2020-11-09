@@ -159,6 +159,7 @@ def generate_output_path(args):
 
     if args.new_folder: #is not None
         args.output_path = os.path.join(args.output_root, args.new_folder+"-{}".format(args.model_name))
+        
     if args.restore_from is None:  # and args.output_path is None:  #cluster.py
         time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
         args.postfix = "100rns-" + args.train_or_test if args.if_single_runs else args.train_or_test
