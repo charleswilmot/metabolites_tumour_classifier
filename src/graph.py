@@ -773,39 +773,36 @@ class Inception:
         # branch1x1 = conv2d_bn(x, 192//factor, 1, 1)
         branch1x1 = self.conv_layer(x, filter_height=1, filter_width=1,
                                     num_filters=192//factor, stride=1,
-                                    name=name+"branch1x1", padding='valid')
+                                    name=name+"branch1x1", padding='same')
         
         # branch7x7 = conv2d_bn(x, 128//factor, 1, 1)
-        branch7x7 = self.conv_layer(x, filter_height=1, filter_width=1,
+        branch7x7 = self.conv_layer(x, filter_height=1, filter_width=1, name=name+"771l",
                                             num_filters=128//factor, stride=1,
-                                    padding='valid')
+                                    padding='same')
         # branch7x7 = conv2d_bn(branch7x7, 192//factor, ks_bbig, 1)
         branch7x7 = self.conv_layer(branch7x7, filter_height=ks_bbig, filter_width=1,
                                                     num_filters=192//factor, stride=1,
-                                                    name=name+"branch7x7", padding='valid')
+                                                    name=name+"7771", padding='same')
         
         # branch7x7dbl = conv2d_bn(x, 128//factor, 1, 1)
         branch7x7dbl = self.conv_layer(branch7x7, filter_height=1, filter_width=1,
-                                       num_filters=128//factor,
-                                       stride=1, padding='valid')
+                                       num_filters=128//factor, name=name+"77db1l",
+                                       stride=1, padding='same')
         # branch7x7dbl = conv2d_bn(branch7x7dbl, 128//factor, ks_bbig, 1)
         branch7x7dbl = self.conv_layer(branch7x7dbl, filter_height=ks_bbig, filter_width=1,
-                                               num_filters=128//factor,
-                                               stride=1, padding='valid')
+                                               num_filters=128//factor, name=name+"77db71_0",
+                                               stride=1, padding='same')
         # branch7x7dbl = conv2d_bn(branch7x7dbl, 128//factor, ks_bbig, 1)
         branch7x7dbl = self.conv_layer(branch7x7dbl, filter_height=ks_bbig, filter_width=1,
-                                                       num_filters=128//factor,
-                                                       stride=1, padding='valid')
+                                                       num_filters=128//factor, name=name+"77db71_1",
+                                                       stride=1, padding='same')
 
         # branch_pool = tf.keras.layers.AveragePooling2D(
         #     (ks_small, 1), strides=(1, 1), padding='same')(x)
-        branch_pool = tf.compat.v1.layers.max_pooling2d(x, pool_size=[self.ks_small, 1],
-                                                                  strides=[1, 1], padding="SAME")
+        branch_pool = tf.compat.v1.layers.max_pooling2d(x, pool_size=[self.ks_small, 1], strides=[1, 1], name=name+"pool", padding="SAME")
         
         # branch_pool = conv2d_bn(branch_pool, 192//factor, 1, 1)
-        branch_pool = self.conv_layer(branch_pool, filter_height=1, filter_width=1,
-                                                               num_filters=192//factor,
-                                                               stride=1, padding='valid')
+        branch_pool = self.conv_layer(branch_pool, filter_height=1, filter_width=1, name=name+"pool_11", num_filters=192//factor, stride=1, padding='same')
         # x = tf.keras.layers.concatenate(
         #     [branch1x1, branch7x7, branch7x7dbl, branch_pool],
         #     axis=channel_axis,
@@ -827,42 +824,45 @@ class Inception:
         """
         # branch1x1 = conv2d_bn(x, 64//factor, 1, 1)
         branch1x1 = self.conv_layer(x, filter_height=1, filter_width=1,
-                                    num_filters=64//factor,
-                                    stride=1, padding='valid')
+                                    num_filters=64//factor, name=name+"1x1",
+                                    stride=1, padding='same')
         
         # branch5x5 = conv2d_bn(x, 48//factor, 1, 1)
         branch5x5 = self.conv_layer(x, filter_height=1, filter_width=1,
-                                            num_filters=48//factor,
-                                            stride=1, padding='valid')
+                                            num_filters=48//factor, name=name+"5511",
+                                            stride=1, padding='same')
         # branch5x5 = conv2d_bn(branch5x5, 64//factor, ks_big, 1)
         branch5x5 = self.conv_layer(branch5x5, filter_height=ks_big, filter_width=1,
-                                            num_filters=64//factor,
-                                            stride=1, padding='valid')
+                                            num_filters=64//factor, name=name+"5551",
+                                            stride=1, padding='same')
         
         # branch3x3dbl = conv2d_bn(x, 64//factor, 1, 1)
         branch3x3dbl = self.conv_layer(x, filter_height=1, filter_width=1,
-                                            num_filters=64//factor,
-                                            stride=1, padding='valid')
+                                            num_filters=64//factor, name=name+"33db11",
+                                            stride=1, padding='same')
         # branch3x3dbl = conv2d_bn(branch3x3dbl, 96//factor, ks_small, 1)
         branch3x3dbl = self.conv_layer(branch3x3dbl, filter_height=ks_small, filter_width=1,
-                                            num_filters=96//factor,
-                                            stride=1, padding='valid')
+                                            num_filters=96//factor, name=name+"33db31",
+                                            stride=1, padding='same')
         # branch3x3dbl = conv2d_bn(branch3x3dbl, 96//factor, ks_small, 1)
         branch3x3dbl = self.conv_layer(branch3x3dbl, filter_height=ks_small, filter_width=1,
-                                            num_filters=96//factor,
-                                            stride=1, padding='valid')
+                                            num_filters=96//factor, name=name+"33db31_2",
+                                            stride=1, padding='same')
         # branch_pool = tf.keras.layers.AveragePooling2D((ks_small, 1), strides=(1, 1),
         #                                                padding='same')(x)
         branch_pool = tf.compat.v1.layers.max_pooling2d(x, pool_size=[self.ks_small, 1],
+                                                        name=name+"pool",
                                                           strides=[1, 1], padding="SAME")
         # branch_pool = conv2d_bn(branch_pool, 64//factor, 1, 1)
         branch_pool = self.conv_layer(branch_pool, filter_height=1, filter_width=1,
-                                            num_filters=64//factor,
-                                            stride=1, padding='valid')
+                                            num_filters=64//factor, name=name+"pool_11",
+                                            stride=1, padding='same')
+
         # x = tf.keras.layers.concatenate(
         #     [branch1x1, branch5x5, branch3x3dbl, branch_pool],
         #     axis=channel_axis,
         #     name=name)
+        #  [?,67,1,16], [?,57,1,16], [?,59,1,24], [?,67,1,16],
         x = tf.concat([branch1x1, branch5x5, branch3x3dbl, branch_pool], axis=3, name='{}_concat'.format(name))
         return x
     
@@ -873,17 +873,17 @@ class Inception:
         conv = tf.reshape(features, [-1, self.height, self.width, 1])
 
         # Build the whole graph
-        # x = conv2d_bn(img_input, 32, self.ks_small, 1, strides=(2, 1), padding='valid')
+        # x = conv2d_bn(img_input, 32, self.ks_small, 1, strides=(2, 1), padding='same')
         conv = self.conv_layer(conv, filter_height=self.ks_small, filter_width=1,
-                               num_filters=32, stride=1, name='conv1', padding="valid")
+                               num_filters=32, stride=1, name='conv1', padding="same")
         print("layer {} out_size {}".format(conv.name, conv.get_shape().as_list()))
-        # x = conv2d_bn(x, 32, ks_small, 1, padding='valid')
+        # x = conv2d_bn(x, 32, ks_small, 1, padding='same')
         conv = self.conv_layer(conv, filter_height=self.ks_small, filter_width=1,
-                               num_filters=32, stride=1, name='conv2', padding='valid')
+                               num_filters=32, stride=1, name='conv2', padding='same')
         print("layer {} out_size {}".format(conv.name, conv.get_shape().as_list()))
         # x = conv2d_bn(x, 64, ks_small, 1)
         conv = self.conv_layer(conv, filter_height=self.ks_small, filter_width=1,
-                               num_filters=64, stride=1, name='conv3', padding='valid')
+                               num_filters=64, stride=1, name='conv3', padding='same')
         print("layer {} out_size {}".format(conv.name, conv.get_shape().as_list()))
         # x = tf.keras.layers.MaxPooling2D((3, 1), strides=(2, 1))(x)
         conv = tf.compat.v1.layers.max_pooling2d(conv, pool_size=[self.ks_small, 1],
@@ -891,13 +891,13 @@ class Inception:
                                                           name="pool1")
         print("layer {} out_size {}".format(conv.name, conv.get_shape().as_list()))
       
-        # x = conv2d_bn(x, 80, 1, 1, padding='valid')
+        # x = conv2d_bn(x, 80, 1, 1, padding='same')
         conv = self.conv_layer(conv, filter_height=1, filter_width=1, num_filters=80,
-                               stride=1, name='conv4', padding='valid')
+                               stride=1, name='conv4', padding='same')
         print("layer {} out_size {}".format(conv.name, conv.get_shape().as_list()))
-        # x = conv2d_bn(x, 192, ks_small, 1, padding='valid')
+        # x = conv2d_bn(x, 192, ks_small, 1, padding='same')
         conv = self.conv_layer(conv, filter_height=self.ks_small, filter_width=1,
-                               num_filters=192, stride=1, name='conv5', padding='valid')
+                               num_filters=192, stride=1, name='conv5', padding='same')
         print("layer {} out_size {}".format(conv.name, conv.get_shape().as_list()))
         # x = tf.keras.layers.MaxPooling2D((self.ks_small, 1), strides=(2, 1))(x)
         conv = tf.compat.v1.layers.max_pooling2d(conv, pool_size=[self.ks_small, 1],
@@ -914,20 +914,20 @@ class Inception:
     
     
         # mixed 3: 17 x 17 x 768
-        # branch3x3 = conv2d_bn(x, 384//factor, ks_small, 1, strides=(2, 1), padding='valid')
+        # branch3x3 = conv2d_bn(x, 384//factor, ks_small, 1, strides=(2, 1), padding='same')
         branch3x3 = self.conv_layer(conv, filter_height=self.ks_small, filter_width=1,
-                                       num_filters=384//factor, stride=1, name='conv6', padding='valid')
+                                       num_filters=384//factor, stride=2, name='conv6', padding='same')
       
         # branch3x3dbl = conv2d_bn(x, 64//factor, 1, 1)
         branch3x3dbl = self.conv_layer(conv, filter_height=1, filter_width=1,
-                                       num_filters=64//factor, stride=1, name='conv7', padding='valid')
+                                       num_filters=64//factor, stride=1, name='conv7', padding='same')
         # branch3x3dbl = conv2d_bn(branch3x3dbl, 96//factor, ks_small, 1)
         branch3x3dbl = self.conv_layer(branch3x3dbl, filter_height=self.ks_small, filter_width=1,
-                                       num_filters=96//factor, stride=1, name='conv8', padding='valid')
+                                       num_filters=96//factor, stride=1, name='conv8', padding='same')
         # branch3x3dbl = conv2d_bn(
-        #     branch3x3dbl, 96//factor, ks_small, 1, strides=(2, 1), padding='valid')
+        #     branch3x3dbl, 96//factor, ks_small, 1, strides=(2, 1), padding='same')
         branch3x3dbl = self.conv_layer(branch3x3dbl, filter_height=self.ks_small, filter_width=1,
-                                       num_filters=96//factor, stride=1, name='conv9', padding='valid')
+                                       num_filters=96//factor, stride=2, name='conv9', padding='same')
       
         # branch_pool = tf.keras.layers.MaxPooling2D((self.ks_small, 1), strides=(2, 1))(x)
         branch_pool = tf.compat.v1.layers.max_pooling2d(conv, pool_size=[self.ks_small, 1],
@@ -947,31 +947,31 @@ class Inception:
         # branch3x3 = conv2d_bn(x, 192//factor, 1, 1)
         branch3x3 = self.conv_layer(conv, filter_height=1, filter_width=1,
                                     num_filters=192//factor, stride=1,
-                                    name='conv10', padding='valid')
+                                    name='conv10', padding='same')
         
-        # branch3x3 = conv2d_bn(branch3x3, 320//factor, ks_small, 1, strides=(2, 1), padding='valid')
+        # branch3x3 = conv2d_bn(branch3x3, 320//factor, ks_small, 1, strides=(2, 1), padding='same')
         branch3x3 = self.conv_layer(branch3x3, filter_height=self.ks_small, filter_width=1,
                                             num_filters=320//factor, stride=2,
-                                            name='conv11', padding='valid')
+                                            name='conv11', padding='same')
       
         # branch7x7x3 = conv2d_bn(x, 192//factor, 1, 1)
         branch7x7x3 = self.conv_layer(conv, filter_height=1, filter_width=1,
                                             num_filters=192//factor, stride=1,
-                                            name='conv12', padding='valid')
+                                            name='conv12', padding='same')
         # branch7x7x3 = conv2d_bn(branch7x7x3, 192//factor, ks_bbig, 1)
         branch7x7x3 = self.conv_layer(branch7x7x3, filter_height=self.ks_bbig, filter_width=1,
                                             num_filters=192//factor, stride=1,
-                                            name='conv10', padding='valid')
+                                            name='conv13', padding='same')
         # branch7x7x3 = conv2d_bn(
-        #     branch7x7x3, 192//factor, ks_small, 1, strides=(2, 1), padding='valid')
+        #     branch7x7x3, 192//factor, ks_small, 1, strides=(2, 1), padding='same')
         branch7x7x3 = self.conv_layer(branch7x7x3, filter_height=self.ks_small, filter_width=1,
                                             num_filters=192//factor, stride=2,
-                                            name='conv10', padding='valid')
+                                            name='conv14', padding='same')
       
         # branch_pool = tf.keras.layers.MaxPooling2D((ks_small, 1), strides=(2,1))(x)
         branch_pool = tf.compat.v1.layers.max_pooling2d(conv,
                                                         pool_size=[self.ks_small, 1],
-                                                        strides=[2, 1], padding="SAME",
+                                                        strides=[2, 1], padding="same",
                                                         name="pool4")
         # conv = tf.keras.layers.concatenate([branch3x3, branch3x3dbl, branch_pool],
         #                       axis=3, name='mixed{}'.format(module_count))

@@ -642,12 +642,12 @@ def augment_with_batch_mean(args, aug_target, augs):
             inds = np.where(augs[:, 2] == class_id)[0]
         elif args.aug_method == "both-mean" or args.aug_method == "both_mean":
             inds = np.arange(len(augs[:, 2]))  # use all labels to augment
-
+        inds_curren_class = np.where(aug_target[:, 2] == class_id)[0]
         # randomly select 100 groups of 100 samples each and get mean
-        aug_inds = np.random.choice(inds, args.aug_folds * len(np.where(aug_target[:, 2] == class_id)[0]) * num2average,
+        aug_inds = np.random.choice(inds, args.aug_folds * len(inds_curren_class) * num2average,
                                     replace=True).reshape(-1, num2average)
-        target_inds = np.random.choice(np.where(aug_target[:, 2] == class_id)[0], args.aug_folds * len(
-            np.where(aug_target[:, 2] == class_id)[0]) * num2average).reshape(-1, num2average)
+        target_inds = np.random.choice(inds_curren_class, args.aug_folds * len(
+            inds_curren_class) * num2average).reshape(-1, num2average)
         mean_batch = np.mean(augs[:, 3:][aug_inds], axis=1)  # get a batch of spectra to get the mean
         noise_aug_scale = np.random.uniform(args.aug_scale-0.05, args.aug_scale+0.05, size=[len(mean_batch), 1])
 
@@ -656,11 +656,12 @@ def augment_with_batch_mean(args, aug_target, augs):
                                   aug_target[:, 1][target_inds].reshape(-1, 1),
                                   aug_target[:, 2][target_inds].reshape(-1, 1), aug_zspec), axis=1)
         X_train_aug = np.vstack((X_train_aug, combine))
-
+        
         Plot.plot_train_samples(aug_zspec, aug_target[:, 2][target_inds], args, postfix="samples", data_dim=args.data_dim)
 
     print("original spec total shape", class_id, aug_target[:, 3:].shape, "augment spec shape: ",
           X_train_aug[:, 3:].shape)
+    np.random.shuffle(X_train_aug)
     return X_train_aug
 
 
@@ -764,7 +765,7 @@ def get_data_tensors(args, certain_fns=None):
         train_spectra, train_labels, train_ids, train_sample_ids = tf.constant(train_data["spectra"]), tf.constant(
             train_data["labels"]), tf.constant(train_data["ids"]), tf.constant(train_data["sample_ids"])
         train_ds = tf.compat.v1.data.Dataset.from_tensor_slices(
-            (train_spectra, train_labels, train_ids, train_sample_ids)).shuffle(buffer_size=8000).repeat().batch(
+            (train_spectra, train_labels, train_ids, train_sample_ids)).shuffle(buffer_size=20000).repeat().batch(
             args.batch_size)
         iter_train = train_ds.make_initializable_iterator()
         batch_train = iter_train.get_next()

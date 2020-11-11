@@ -97,6 +97,7 @@ def overwrite_params(args, cfg_dirs, **kwargs):
 
 ######################################################################################################################
 default_json_dir = "./"
+default_output_root= "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
 # default_json_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src"
 default_train_or_test = "train"
 ## Load experiment parameters and model parameters
@@ -107,8 +108,8 @@ args = utils.load_all_params(default_exp_json_dir, default_model_json_dir)
 
 data_source_dirs = [
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat"
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
     # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
@@ -147,8 +148,8 @@ elif mode == "training":
     mode = "aug_training"   #"aug-training"
     if mode == "aug_training":
         for dd in data_source_dirs:   #, certain_dirs)
-            for method in ["both_mean", "same_mean"]:  # , "ops_mean",  #
-                for fold in [1, 3, 5, 9]:  # #
+            for method in ["both_mean", "same_mean", "ops_mean"]:  # ,  #
+                for fold in [3, 5, 9]:  #1,  #
                     for scale in [0.05, 0.2, 0.3, 0.5]:  # #
                         config_dirs = overwrite_params(args, config_dirs,
                                                        input_data=dd,  #data dir

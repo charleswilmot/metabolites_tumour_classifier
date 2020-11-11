@@ -366,6 +366,21 @@ def two_axis_in_one_plot():
     ax2.tick_params(axis='y', labelcolor=color)
     ax2.legend(loc="upper right")
     print("ok")
+    
+
+def Find_Optimal_Cutoff(target, predicted):
+    fpr, tpr, threshold = metrics.roc_curve(target, predicted)
+    i = np.arange(len(tpr))
+    
+    roc = pd.DataFrame({'fpr' : pd.Series(fpr, index=i),
+                        'tpr' : pd.Series(tpr, index = i),
+                        '1-fpr' : pd.Series(1-fpr, index = i),
+                        'tf' : pd.Series(tpr - (1-fpr), index = i),
+                        'threshold' : pd.Series(threshold, index = i)})
+
+    roc_t = roc.iloc[(roc.tf-0).abs().argsort()[:1]]
+
+    return roc_t, list(roc_t['threshold'])
 # ------------------------------------------------
 
 
@@ -1393,7 +1408,7 @@ elif plot_name == "K_NN_stats_test_for_distillation":
 elif plot_name == "distill_valid_labels":
     from scipy import stats
     # Nenad validated the labels of these samples
-    m_file = "C:/Users/LDY/Desktop/20190325-certain-Validate.mat"
+    m_file = "C:/Users/LDY/Desktop/all-experiment-results/metabolites/20190325-certain-Validate.mat"
     mat = scipy.io.loadmat(m_file)["Validate"]  # [id, label, features]
     samp_ids = mat[:, 0]
     pat_ids = mat[:, 1]
@@ -1404,7 +1419,7 @@ elif plot_name == "distill_valid_labels":
     wrong_labels = labels[wrong_inds]
     np.sum(wrong_labels==1), np.sum(wrong_labels==0)
     
-    ccr_summary = "C:/Users/LDY/Desktop/full_summary-data5_100_runs_sort_inds_rate_(6592-8229-8231).csv"
+    ccr_summary = "C:/Users/LDY/Desktop/all-experiment-results/metabolites/full_summary-data5_100_runs_sort_inds_rate_(6592-8229-8231).csv"
     summary = pd.read_csv(ccr_summary, header=0).values
     ccr_samp_ids = summary[:, 0]
     ccr_samp_ccr = summary[:, 1]
@@ -1416,12 +1431,46 @@ elif plot_name == "distill_valid_labels":
         
     valid_ccr = np.array(valid_ccr)
     
+    # compute what would be optimal ccr such that
+    fpr, tpr, thrs = metrics.roc_curve(valid_ccr[:,-2], valid_ccr[:,-1])
+    auc = metrics.roc_auc_score(valid_ccr[:,-2], valid_ccr[:,-1])
+    rocDF, threshold = Find_Optimal_Cutoff(valid_ccr[:,-2], valid_ccr[:,-1])
+    """
+        fpr       tpr  1-fpr        tf    thresholds
+        0.38  0.639309   0.62  0.019309     0.49254
+    """
+    
+    
+    plt.figure(figsize=[7,7]),
+    plt.plot(np.arange(len(tpr))/len(tpr), tpr, label="TPR"),
+    plt.plot(np.arange(len(fpr))/len(fpr), 1-fpr, color = 'r', label="1-FPR"),
+    plt.xlabel("1-FPR"),
+    plt.ylabel("TPR"),
+    plt.scatter(rocDF["1-fpr"].values, rocDF["tpr"].values, marker="o")
+    plt.text(rocDF["1-fpr"], rocDF["tpr"], "ccr:{}".format(rocDF["threshold"].values))
+    plt.xlim([0,1.01]),
+    plt.ylim([0,1.01]),
+    
+    plt.figure(figsize=[7,7]),
+    plt.plot(fpr, tpr),
+    plt.title("Optimal CCR={} to set theta={:.1f}%".format(threshold, scipy.stats.percentileofscore(ccr_samp_ccr, threshold))),
+    plt.plot([0, 1], [1, 0]),
+    plt.xlabel("FPR"),
+    plt.ylabel("TPR"),
+    plt.xlim([0,1.01]),
+    plt.ylim([0,1.01]),
+    plt.text(rocDF["fpr"], rocDF["tpr"], "ccr:{}".format(rocDF["threshold"].values[0])),
+    plt.scatter(rocDF["fpr"].values, rocDF["tpr"].values, marker="o")
+    plt.savefig(os.path.join(os.path.dirname(ccr_summary), "optimal-theta-with-validated-labels-ccr-{:.4f}-theta{:.2f}.png".format(rocDF["threshold"].values[0], scipy.stats.percentileofscore(ccr_samp_ccr, threshold))))
+    plt.savefig(os.path.join(os.path.dirname(ccr_summary), "optimal-theta-with-validated-labels-ccr-{}-theta{:.2f}.pdf".format(rocDF["threshold"].values[0], scipy.stats.percentileofscore(ccr_samp_ccr, threshold))),  format="pdf")
+    plt.close()
+    
     correct_ccr = valid_ccr[np.where(valid_ccr[:,3] == 1)[0]]
     wrong_ccr = valid_ccr[np.where(valid_ccr[:,3] == 0)[0]]
     print("ok")
     _, p_rank = stats.ranksums(correct_ccr[:, -1], wrong_ccr[:, -1])
-    
 
+    
     plt.hist(np.array(correct_ccr[:, -1]), alpha=0.5, density=True, label="correct"),
     plt.hist(np.array(wrong_ccr[:, -1]), density=True, alpha=0.5, label="wrong")
     plt.legend()

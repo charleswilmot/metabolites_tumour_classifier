@@ -2,7 +2,7 @@
 
 #SBATCH --partition sleuths
 #SBATCH --reservation triesch-shared
-##SBATCH --nodelist jetski
+#SBATCH --nodelist jetski
 ##SBATCH --nodelist speedboat
 ##SBATCH --nodes 1
 ##SBATCH -n 10
@@ -11,7 +11,7 @@
 #SBATCH --mem 6GB
 #SBATCH --mincpus 2
 #SBATCH --job-name rnn
-##SBATCH --gres gpu:1
+#SBATCH --gres gpu:1
 
 #j=$((SLURM_ARRAY_TASK_ID))
 
