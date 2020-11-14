@@ -23,7 +23,7 @@
     "if_single_runs": false,
     "from_clusterpy": false,
 
-    "model_name": "Inception",
+    "model_name": "RNN",
     "new_folder": "2-randomDA",
     "optimizer_type": "adam",
     "loss_type": "softmax_ce",

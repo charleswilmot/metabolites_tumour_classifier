@@ -3,8 +3,12 @@
 #SBATCH --job-name metab
 #SBATCH --reservation triesch-shared
 ##SBATCH --nodelist speedboat
+#SBATCH --nodelist jetski
 #SBATCH --mincpus 2
-#SBATCH --gres gpu:1
+#SBATCH --mem 6GB
+#SBATCH --job-name metab
+##SBATCH --gres gpu:1
+
 
 # parse the output folder from a set of arguments
 # i.e. --output_path exp1_path1 --exp_config exp1_path1/exp1_config1 --model_config exp1_path1/exp1_config2

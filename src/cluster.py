@@ -84,11 +84,11 @@ if __name__ == "__main__":
         commands += "\"{}\" ".format(cmds)
 
     active_num_job = 5
-    # os.system("sbatch --mem {}000 cluster.sh {}".format(2*5, commands))
-    # os.system("sbatch --output {}/%N_%j.log --array 0-{}%5 --mem {}000 cluster.sh {}".format(config_files[0], len(config_dirs), 2*5, commands))
-    # os.system("sbatch cluster.sh {}".format(commands))
-    # os.system("sbatch --mem {}000 cluster.sh {}".format(active_num_job, commands))
-
-    for dirs in config_dirs:
-        ClusterQueue(dirs)
+    submit_array = False
+    
+    if submit_array:
+        os.system("sbatch --output {}/%N_%j.log --array 0-{}%5 cluster_test.sh {}".format(config_files[0], len(config_dirs), commands))
+    else:
+        for dirs in config_dirs:
+            ClusterQueue(dirs)
 

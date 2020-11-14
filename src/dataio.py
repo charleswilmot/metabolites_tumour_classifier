@@ -658,10 +658,13 @@ def augment_with_batch_mean(args, aug_target, augs):
         X_train_aug = np.vstack((X_train_aug, combine))
         
         Plot.plot_train_samples(aug_zspec, aug_target[:, 2][target_inds], args, postfix="samples", data_dim=args.data_dim)
-
+        
+    args.total_num_after_aug = len(X_train_aug)
     print("original spec total shape", class_id, aug_target[:, 3:].shape, "augment spec shape: ",
           X_train_aug[:, 3:].shape)
     np.random.shuffle(X_train_aug)
+    np.random.shuffle(X_train_aug)
+    np.savetxt(os.path.join(args.output_path, "augmented_labels_check_shuffle.csv"), X_train_aug[:, 2], fmt="%d", delimiter=",")
     return X_train_aug
 
 
@@ -765,7 +768,7 @@ def get_data_tensors(args, certain_fns=None):
         train_spectra, train_labels, train_ids, train_sample_ids = tf.constant(train_data["spectra"]), tf.constant(
             train_data["labels"]), tf.constant(train_data["ids"]), tf.constant(train_data["sample_ids"])
         train_ds = tf.compat.v1.data.Dataset.from_tensor_slices(
-            (train_spectra, train_labels, train_ids, train_sample_ids)).shuffle(buffer_size=20000).repeat().batch(
+            (train_spectra, train_labels, train_ids, train_sample_ids)).shuffle(buffer_size=args.total_num_after_aug).repeat().batch(
             args.batch_size)
         iter_train = train_ds.make_initializable_iterator()
         batch_train = iter_train.get_next()
