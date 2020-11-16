@@ -84,7 +84,7 @@ if __name__ == "__main__":
         commands += "\"{}\" ".format(cmds)
 
     active_num_job = 5
-    submit_array = False
+    submit_array = False   #True   #
     
     if submit_array:
         os.system("sbatch --output {}/%N_%j.log --array 0-{}%5 cluster_test.sh {}".format(config_files[0], len(config_dirs), commands))

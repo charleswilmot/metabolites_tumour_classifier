@@ -23,8 +23,8 @@
     "if_single_runs": false,
     "from_clusterpy": false,
 
-    "model_name": "RNN",
-    "new_folder": "2-randomDA",
+    "model_name": "Res_ECG_CAM",
+    "new_folder": "1-Pure",
     "optimizer_type": "adam",
     "loss_type": "softmax_ce",
     "learning_rate": 0.0002,

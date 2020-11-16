@@ -110,12 +110,12 @@ data_source_dirs = [
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data8.mat",
-    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat"
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data8.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat"
 ]
 certain_dirs = [
     "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-RNN/2020-10-28T19-41-27--RNN-Nonex0-factor-0-from-data5-certainFalse-theta-1-s4434-train",
@@ -128,7 +128,7 @@ certain_dirs = [
 
 config_dirs = []
 seed = np.random.randint(9999)
-mode = "training"
+mode = "pure_training"
 if mode == "single_runs":
     ## 100 single-epoch runs
     args.new_folder = "100-single-epoch-runs"
@@ -144,47 +144,37 @@ if mode == "single_runs":
                                        if_single_runs=True,
                                        from_clusterpy=True
                                        )
-elif mode == "training":
-    mode = "aug_training"   #"aug-training"
-    if mode == "aug_training":
-        for dd in data_source_dirs:   #, certain_dirs)
-            for method in ["both_mean", "same_mean"]:  #, "ops_mean" ,  #
-                for fold in [3, 5, 9]:  #1,, 5  #
-                    for scale in [0.05, 0.2, 0.3, 0.5]:  # #
-                        config_dirs = overwrite_params(args, config_dirs,
-                                                       input_data=dd,  #data dir
-                                                       certain_dir=None,
-                                                       aug_method=method,
-                                                       aug_scale=scale,
-                                                       aug_folds=fold,
-                                                       theta_thr=1,
-                                                       rand_seed=seed,
-                                                       if_single_runs=False,
-                                                       from_clusterpy=True)
-    elif mode == "pure_training":  # without DA, without distillation
-        args.if_save_certain = False
-        for dd in data_source_dirs:   #
-            config_dirs = overwrite_params(args, config_dirs,
-                                           input_data=dd,  #data dir
-                                           certain_dir=None,
-                                           aug_method=None,
-                                           aug_scale=0,
-                                           aug_folds=0,
-                                           theta_thr=1,
-                                           rand_seed=seed,
-                                           if_single_runs=False,
-                                           from_clusterpy=True)
+elif mode == "aug_training":
+    for dd in data_source_dirs:   #, certain_dirs)
+        for method in ["same_mean"]:  #, "ops_mean" ,  #
+            for fold in [5, 9]:  #, 1,, 5  #
+                for scale in [0.05, 0.2, 0.3, 0.5]:  # #
+                    config_dirs = overwrite_params(args, config_dirs,
+                                                   input_data=dd,  #data dir
+                                                   certain_dir=None,
+                                                   aug_method=method,
+                                                   aug_scale=scale,
+                                                   aug_folds=fold,
+                                                   theta_thr=1,
+                                                   rand_seed=seed,
+                                                   if_single_runs=False,
+                                                   from_clusterpy=True)
+elif mode == "pure_training":  # without DA, without distillation
+    args.if_save_certain = False
+    for dd in data_source_dirs:   #
+        config_dirs = overwrite_params(args, config_dirs,
+                                       input_data=dd,  #data dir
+                                       certain_dir=None,
+                                       aug_method=None,
+                                       aug_scale=0,
+                                       aug_folds=0,
+                                       theta_thr=1,
+                                       rand_seed=seed,
+                                       if_single_runs=False,
+                                       from_clusterpy=True)
 elif mode == "testing":
     pretrained_dirs = [
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-49--MLP-Nonex0-factor-0-from-data5-certainFalse-theta-1-s1847-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-50--MLP-Nonex0-factor-0-from-data1-certainFalse-theta-1-s1847-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-52--MLP-Nonex0-factor-0-from-data2-certainFalse-theta-1-s1847-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-53--MLP-Nonex0-factor-0-from-data3-certainFalse-theta-1-s1847-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-55--MLP-Nonex0-factor-0-from-data4-certainFalse-theta-1-s1847-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-56--MLP-Nonex0-factor-0-from-data6-certainFalse-theta-1-s1847-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-57--MLP-Nonex0-factor-0-from-data7-certainFalse-theta-1-s1847-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-58--MLP-Nonex0-factor-0-from-data8-certainFalse-theta-1-s1847-train/network",
-       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/2020-11-04T10-25-59--MLP-Nonex0-factor-0-from-data9-certainFalse-theta-1-s1847-train/network"
+
     ]
     src_data = [os.path.basename(os.path.dirname(pre_train)).split("-")[-6] for pre_train in pretrained_dirs]
     data_source_dirs = [
