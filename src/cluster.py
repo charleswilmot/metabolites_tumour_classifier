@@ -14,6 +14,7 @@ class ClusterQueue:
         # special treatment for the "description" param (for convevience)
         # self.cmd_slurm += " --job-name {}".format(kwargs["description"])
         self.cmd_slurm += " cluster.sh"
+        # self.cmd_slurm = "python3 classifier.py "
 
         # Creating the flags to be passed to classifier.py
         self.cmd_python = ""
@@ -87,7 +88,8 @@ if __name__ == "__main__":
     submit_array = False   #True   #
     
     if submit_array:
-        os.system("sbatch --output {}/%N_%j.log --array 0-{}%5 cluster_test.sh {}".format(config_files[0], len(config_dirs), commands))
+        os.system("sbatch --output {}/%N_%j.log --array 0-{}%{} cluster_test.sh {}".format(config_files[0], len(config_dirs), min(5, len(config_dirs)), commands))
+        # os.system("sbatch --output {}/%N_%j.log --array 0-{}%5 cluster_test.sh {}".format(config_files[0], len(config_dirs), commands))
     else:
         for dirs in config_dirs:
             ClusterQueue(dirs)

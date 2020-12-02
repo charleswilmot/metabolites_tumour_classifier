@@ -5,6 +5,7 @@ matplotlib.use('Agg')
 import sys
 sys.path.append("..")
 import graph
+import ipdb
 import dataio
 import utils
 import argparse
@@ -17,7 +18,9 @@ import logging
 from tensorflow.python.client import device_lib
 from dataio import make_output_dir
 tf.compat.v1.disable_v2_behavior()
-
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+if len(physical_devices) > 0:
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
 def get_available_gpus():

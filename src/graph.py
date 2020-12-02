@@ -44,7 +44,7 @@ class MLP:
     ## Constructor
     #  @param args arguments passed to the command line
     def __init__(self, args):
-        logger.debug("Defining multilayer perceptron")
+        print("-------Building {} network-----------".format(args.model_name))
         self.layer_dims = args.layer_dims
         self.drop_fc = args.drop_fc
         self.batch_norm = args.batch_norm
@@ -108,7 +108,7 @@ class CNN:
     # construct a CNN: cnn 8*3*1-pool2*1-cnn 16*3*1-pool2*1-cnn 32 3*1-pool2*1-fnn--softmax(class)
     #  @param args arguments passed to the command line
     def __init__(self, args):
-        logger.debug("Defining CNN")
+        print("-------Building {} network-----------".format(args.model_name))
         self.height = args.height
         self.width = args.width
         self.out_channels = np.array(args.out_channels)
@@ -130,8 +130,8 @@ class CNN:
         out = {}
         net = tf.reshape(features, [-1, self.height, self.width, 1])
         self._net_constructed_once = True
-        net = self.construct_cnn_layers(out, training)
-        net = self.construct_fnn_layers(out, training)
+        net = self.construct_cnn_layers(net, training)
+        net = self.construct_fnn_layers(net, training)
         
         ##### track all variables
         all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
@@ -189,20 +189,20 @@ class CNN:
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             kernel_size = inp.get_shape().as_list()[1]
-            out = tf.compat.v1.layers.conv2d(inp, out_ch,
+            net = tf.compat.v1.layers.conv2d(inp, out_ch,
                                              kernel_size, 1,
                                              padding='SAME',
                                              kernel_initializer=initializer)
-            out = tf.compat.v1.layers.max_pooling2d(out, pool_size=[self.pool_size, 1],
+            net = tf.compat.v1.layers.max_pooling2d(net, pool_size=[self.pool_size, 1],
                                                     strides=[self.stride, 1],
                                                     padding='same')
-            out = tf.compat.v1.layers.batch_normalization(
-                out, training=training) if bn else out
-            out = out if activation is None else activation(out)
-            out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
-        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
+            net = tf.compat.v1.layers.batch_normalization(
+                net, training=training) if bn else net
+            net = net if activation is None else activation(net)
+            net = tf.compat.v1.layers.dropout(net, rate=drop, training=training) if drop != 0 else net
+        print("layer {} out_size {}".format(layer_name, net.get_shape().as_list()))
 
-        return out
+        return net
 
     ## Private function for adding fully-connected layers to the network
     # @param inp input tensor
@@ -218,14 +218,14 @@ class CNN:
         logger.debug(string.format(*_to_format))
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_dim))
-            out = tf.compat.v1.layers.dense(inp, out_dim,
+            net = tf.compat.v1.layers.dense(inp, out_dim,
                                             kernel_initializer=initializer,
                                             activation=activation)
-            out = tf.compat.v1.layers.batch_normalization(
-                out, training=training) if bn else out
-            out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
-        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
-        return out
+            net = tf.compat.v1.layers.batch_normalization(
+                net, training=training) if bn else net
+            net = tf.compat.v1.layers.dropout(net, rate=drop, training=training) if drop != 0 else net
+        print("layer {} out_size {}".format(layer_name, net.get_shape().as_list()))
+        return net
 
 
 class CNN_CAM:
@@ -233,7 +233,7 @@ class CNN_CAM:
     # construct a CNN: cnn 8*3*1-pool2*1-cnn 16*3*1-pool2*1-cnn 32 3*1-pool2*1-fnn--softmax(class)
     #  @param args arguments passed to the command line
     def __init__(self, args):
-        logger.debug("Defining CNN")
+        print("-------Building {} network-----------".format(args.model_name))
         self.height = args.height
         self.width = args.width
         self.out_channels = np.array(args.out_channels)
@@ -280,13 +280,13 @@ class CNN_CAM:
         :return:
         """
         layer_number = 1
-        out = inp
+        net = inp
         for (out_ch, bn, activation, drop, num_l) in zip(self.out_channels, self.bn_cnn, self.activations_cnn,
                                                          self.drop_cnn, self.num_layers):
-            out = self._make_cnn_layer(out, out_ch, bn, activation, drop, layer_number, num_l, training)
+            net = self._make_cnn_layer(net, out_ch, bn, activation, drop, layer_number, num_l, training)
             layer_number += 1
 
-        return out
+        return net
 
     def construct_fnn_layers(self, inp, training):
         """
@@ -296,12 +296,12 @@ class CNN_CAM:
         :return: output tensors of the layers
         """
         layer_number = 1
-        out = tf.compat.v1.layers.flatten(inp)
+        net = tf.compat.v1.layers.flatten(inp)
         for (out_dim, bn, activation, drop) in zip(self.fc_dims, self.bn_cnn, self.activations_cnn, self.drop_cnn):
-            out = self._make_fnn_layer(out, out_dim, bn, activation, drop, layer_number, training)
+            net = self._make_fnn_layer(net, out_dim, bn, activation, drop, layer_number, training)
             layer_number += 1
 
-        return out
+        return net
 
     def _make_cnn_layer(self, inp, out_ch, bn, activation, drop, layer_number, num_layers, training):
         """
@@ -321,7 +321,7 @@ class CNN_CAM:
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\tActivation = {} (training = {})"
         logger.debug(string.format(*_to_format))
-        out = inp
+        net = inp
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             if self.kernel_size >= 100:
@@ -329,7 +329,7 @@ class CNN_CAM:
                                   1] // 2  # later layers, the filter size should be adjusted by the input
             else:
                 kernel_size = self.kernel_size
-            out = tf.compat.v1.layers.conv2d(inputs=out,
+            net = tf.compat.v1.layers.conv2d(inputs=net,
                                              filters=out_ch,
                                              kernel_size=[kernel_size, 1],
                                              strides=[1, 1],
@@ -338,16 +338,16 @@ class CNN_CAM:
                                              # kernel_regularizer = regularizer,
                                              activation=None)
             # if np.mod(layer_number, 2) == 1:  # only pool after odd number layer
-            out = tf.compat.v1.layers.max_pooling2d(out, pool_size=[self.pool_size, 1],
+            net = tf.compat.v1.layers.max_pooling2d(net, pool_size=[self.pool_size, 1],
                                                     strides=[self.stride, 1],
                                                     padding='same')
-            out = tf.compat.v1.layers.batch_normalization(
-                out, training=training) if bn else out
-            out = out if activation is None else activation(out)
-            out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
-        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
+            net = tf.compat.v1.layers.batch_normalization(
+                net, training=training) if bn else net
+            net = net if activation is None else activation(net)
+            net = tf.compat.v1.layers.dropout(net, rate=drop, training=training) if drop != 0 else net
+        print("layer {} out_size {}".format(layer_name, net.get_shape().as_list()))
 
-        return out
+        return net
 
     ## Private function for adding fully-connected layers to the network
     # @param inp input tensor
@@ -363,14 +363,14 @@ class CNN_CAM:
         logger.debug(string.format(*_to_format))
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_dim))
-            out = tf.compat.v1.layers.dense(inp, out_dim,
+            net = tf.compat.v1.layers.dense(inp, out_dim,
                                             kernel_initializer=initializer,
                                             activation=activation)
-            out = tf.compat.v1.layers.batch_normalization(
-                out, training=training) if bn else out
-            out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
-        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
-        return out
+            net = tf.compat.v1.layers.batch_normalization(
+                net, training=training) if bn else net
+            net = tf.compat.v1.layers.dropout(net, rate=drop, training=training) if drop != 0 else net
+        print("layer {} out_size {}".format(layer_name, net.get_shape().as_list()))
+        return net
 
 
 class Res_FNN:
@@ -379,14 +379,14 @@ class Res_FNN:
         logger.info("constructing Res_FNN")
 
     def __call__(self, features, training=False):
-        ret = {}
+        out = {}
         net = features
-        out = self.make_res_fnn_block(net, training=training)
+        net = self.make_res_fnn_block(net, training=training)
 
-        ret["conv"] = self.construct_res_blocks_ecg(out, training=training)
+        out["conv"] = self.construct_res_blocks_ecg(net, training=training)
         # GAP layer - global average pooling
         with tf.compat.v1.variable_scope('GAP', reuse=tf.compat.v1.AUTO_REUSE) as scope:
-            net_gap = tf.squeeze(tf.reduce_mean(ret["conv"], (1)),
+            net_gap = tf.squeeze(tf.reduce_mean(out["conv"], (1)),
                                  axis=1)  # get the mean of axis 1 and 2 resulting in shape [batch_size, filters]
 
             print("gap shape", net_gap.get_shape().as_list())
@@ -397,12 +397,12 @@ class Res_FNN:
 
         ##### track all variables
         all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
-        ret["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
+        out["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
         print("Res_ECG_CAM total_trainables {} during training={}".format(out["total_trainables"], training))
 
-        ret["logits"] = logits
-        ret["gap_w"] = gap_w
-        return ret
+        out["logits"] = logits
+        out["gap_w"] = gap_w
+        return out
 
     def make_res_fnn_block(self, inp, unit, layer_id=0, training=True):
         """
@@ -411,23 +411,23 @@ class Res_FNN:
         :param training:
         :return:
         """
-        out = inp
+        net = inp
         with tf.compat.v1.variable_scope("res_fnn_block" + str(layer_id), reuse=tf.compat.v1.AUTO_REUSE):
             for j in range(self.num_layers_in_res):  # there are two conv layers in one block
 
-                out = tf.compat.v1.layers.batch_normalization(out, training=training)
-                out = tf.nn.relu(out)
+                net = tf.compat.v1.layers.batch_normalization(net, training=training)
+                net = tf.nn.relu(net)
                 if not (layer_id == 0 and j == 0):
                     drop = self.drop_fnn if j > 0 else 0
-                    out = tf.compat.v1.layers.dropout(out, drop, training=training)
+                    net = tf.compat.v1.layers.dropout(net, drop, training=training)
 
-                out = tf.compat.v1.layers.dense(out, unit, kernel_initializer=initializer, activation=None)
+                net = tf.compat.v1.layers.dense(net, unit, kernel_initializer=initializer, activation=None)
 
             shortcut = inp
-            output = tf.nn.relu(shortcut + out)
-            print("ResiBlock{}-output pooling shape".format(layer_id), out.shape.as_list())
+            output = tf.nn.relu(shortcut + net)
+            print("ResiBlock{}-output pooling shape".format(layer_id), net.shape.as_list())
             return output
-        return out
+        return net
 
 
 
@@ -436,7 +436,7 @@ class Res_ECG_CAM:
     # construct a CNN: cnn 8*3*1-pool2*1-cnn 16*3*1-pool2*1-cnn 32 3*1-pool2*1-fnn--softmax(class)
     #  @param args arguments passed to the command line
     def __init__(self, args):
-        logger.debug("Defining Res_ECG")
+        print("-------Building {} network-----------".format(args.model_name))
         self.height = args.height
         self.width = args.width
         self.channel_start = args.out_channels  # Starting num of channels
@@ -451,19 +451,19 @@ class Res_ECG_CAM:
         self.increase_interval = min(self.num_res_blocks // 3, 4)
 
     def __call__(self, features, training=False):
-        ret = {}
+        out = {}
         inp = tf.reshape(features, [-1, self.height, self.width, 1])
         self._net_constructed_once = True
 
-        out = self._make_cnn_layer(inp, self.channel_start,
+        net = self._make_cnn_layer(inp, self.channel_start,
                                    self.bn, self.drop_cnn, 1, 1,
                                    training=training)
-        out = self.build_res_block_ecg_1st(out, training=training)
+        net = self.build_res_block_ecg_1st(net, training=training)
 
-        ret["conv"] = self.construct_res_blocks_ecg(out, training=training)
+        out["conv"] = self.construct_res_blocks_ecg(net, training=training)
         # GAP layer - global average pooling
         with tf.compat.v1.variable_scope('GAP', reuse=tf.compat.v1.AUTO_REUSE) as scope:
-            net_gap = tf.squeeze(tf.reduce_mean(ret["conv"], (1)),
+            net_gap = tf.squeeze(tf.reduce_mean(out["conv"], (1)),
                                  axis=1)  # get the mean of axis 1 and 2 resulting in shape [batch_size, filters]
 
             print("gap shape", net_gap.get_shape().as_list())
@@ -474,12 +474,12 @@ class Res_ECG_CAM:
             
         ##### track all variables
         all_trainable_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
-        ret["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
+        out["total_trainables"] = np.sum([np.product([xi.value for xi in x.get_shape()]) for x in all_trainable_vars])
         print("Res_ECG_CAM total_trainables {} during training={}".format(out["total_trainables"], training))
         
-        ret["logits"] = logits
-        ret["gap_w"] = gap_w
-        return ret
+        out["logits"] = logits
+        out["gap_w"] = gap_w
+        return out
 
     def construct_res_blocks_ecg(self, inp, training=True):
         """
@@ -488,7 +488,7 @@ class Res_ECG_CAM:
         :param training:
         :return:
         """
-        out = inp
+        net = inp
         channel = self.channel_start
         k = 0
         strides = [2 if (i + 1) % self.increase_interval == 0 else 1 for i in
@@ -500,9 +500,9 @@ class Res_ECG_CAM:
                 k += 1
                 channel = self.channel_start * np.power(2, k)
 
-            out = self.build_res_blocks_ecg(out, channel, s,
+            net = self.build_res_blocks_ecg(net, channel, s,
                                             layer_id=bl_id, training=training)
-        return out
+        return net
 
     def _make_cnn_layer(self, inp, out_ch, bn, drop, layer_number, num_layers, training=True):
         """
@@ -521,11 +521,11 @@ class Res_ECG_CAM:
         layer_name = "cnn_layer_{}".format(layer_number)
         logger.debug("Creating new layer:")
 
-        out = inp
+        net = inp
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             kernel_size = min(self.kernel_size, inp.get_shape().as_list()[1])
-            out = tf.compat.v1.layers.conv2d(inputs=out,
+            net = tf.compat.v1.layers.conv2d(inputs=net,
                                              filters=out_ch,
                                              kernel_size=[kernel_size, 1],
                                              strides=[1, 1],
@@ -534,12 +534,12 @@ class Res_ECG_CAM:
                                              # kernel_regularizer = regularizer,
                                              activation=None)
 
-            out = tf.compat.v1.layers.batch_normalization(
-                out, training=training) if bn else out
-            out = tf.nn.relu(out)
+            net = tf.compat.v1.layers.batch_normalization(
+                net, training=training) if bn else net
+            net = tf.nn.relu(net)
             # out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
 
-        return out
+        return net
 
     def build_res_block_ecg_1st(self, inp, training=True):
         """
@@ -550,11 +550,11 @@ class Res_ECG_CAM:
         :param layer_id: int, the layer id
         :return: Conv bn relu drop conv
         """
-        out = inp
+        net = inp
 
         with tf.compat.v1.variable_scope("res_block_start", reuse=tf.compat.v1.AUTO_REUSE):
-            out = tf.compat.v1.layers.conv2d(
-                inputs=out,
+            net = tf.compat.v1.layers.conv2d(
+                inputs=net,
                 filters=self.channel_start,
                 kernel_size=[self.kernel_size, 1],
                 strides=[self.stride, 1],  # reduce the height, because shortcut also reduce the height
@@ -563,11 +563,11 @@ class Res_ECG_CAM:
                 # kernel_regularizer=regularizer,
                 activation=None
             )
-            out = tf.compat.v1.layers.batch_normalization(out, training=training)
-            out = tf.nn.relu(out)
-            out = tf.compat.v1.layers.dropout(out, self.drop_cnn, training=training)
-            out = tf.compat.v1.layers.conv2d(
-                inputs=out,
+            net = tf.compat.v1.layers.batch_normalization(net, training=training)
+            net = tf.nn.relu(net)
+            net = tf.compat.v1.layers.dropout(net, self.drop_cnn, training=training)
+            net = tf.compat.v1.layers.conv2d(
+                inputs=net,
                 filters=self.channel_start,
                 kernel_size=[self.kernel_size, 1],
                 padding='SAME',
@@ -578,8 +578,8 @@ class Res_ECG_CAM:
             shortcut = tf.compat.v1.layers.max_pooling2d(inp, pool_size=[self.pool_size, 1],
                                                          strides=[self.stride, 1],
                                                          padding='same')
-            output = tf.nn.relu(shortcut + out)
-            logger.info("ResiBlock_start-output pooling shape", out.shape.as_list())
+            output = tf.nn.relu(shortcut + net)
+            print("ResiBlock_start-output pooling shape", net.shape.as_list())
             return output
 
     def build_res_blocks_ecg(self, x, out_channel, stride, layer_id=0, training=True):
@@ -591,7 +591,7 @@ class Res_ECG_CAM:
         :param layer_id: int, the layer id
         :return: bn relu  conv bn relu drop conv
         """
-        out = x
+        net = x
         if (
                 layer_id + 1) % self.increase_interval == 0 and layer_id > 0:  # only every 4 blocks increase the number of channels and decrease the height
             zeros_x = tf.zeros_like(x)
@@ -601,14 +601,14 @@ class Res_ECG_CAM:
         with tf.compat.v1.variable_scope("res_block" + str(layer_id), reuse=tf.compat.v1.AUTO_REUSE):
             for j in range(self.num_layers_in_res):  # there are two conv layers in one block
                 print(training)
-                out = tf.compat.v1.layers.batch_normalization(out, training=training)
-                out = tf.nn.relu(out)
+                net = tf.compat.v1.layers.batch_normalization(net, training=training)
+                net = tf.nn.relu(net)
                 if not (layer_id == 0 and j == 0):
                     drop = self.drop_cnn if j > 0 else 0
-                    out = tf.compat.v1.layers.dropout(out, drop, training=training)
+                    net = tf.compat.v1.layers.dropout(net, drop, training=training)
 
-                out = tf.compat.v1.layers.conv2d(
-                    inputs=out,
+                net = tf.compat.v1.layers.conv2d(
+                    inputs=net,
                     filters=out_channel,
                     kernel_size=[self.kernel_size, 1],
                     padding='SAME',
@@ -620,8 +620,8 @@ class Res_ECG_CAM:
 
             shortcut = tf.compat.v1.layers.max_pooling2d(x, pool_size=[self.pool_size, 1], strides=[stride, 1],
                                                          padding='same')
-            output = tf.nn.relu(shortcut + out)
-            print("ResiBlock{}-output pooling shape".format(layer_id), out.shape.as_list())
+            output = tf.nn.relu(shortcut + net)
+            print("ResiBlock{}-output pooling shape".format(layer_id), net.shape.as_list())
             return output
 
 
@@ -635,7 +635,7 @@ class Inception:
 
     def __init__(self, args):
         "https://mohitjain.me/2018/06/09/googlenet/"
-        logger.debug("Defining Inception model")
+        print("-------Building {} network-----------".format(args.model_name))
         self.height = args.height
         self.width = args.width
         self.num_classes = args.num_classes
@@ -679,11 +679,11 @@ class Inception:
         logger.debug("Creating new layer:")
         string = "Output size = {}\tBatch norm = {}\tDropout prob = {}\t (training = {})"
         logger.debug(string.format(*_to_format))
-        out = inp
+        net = inp
         with tf.compat.v1.variable_scope(layer_name, reuse=tf.compat.v1.AUTO_REUSE):
             print("layer {} in_size {} out_size {}".format(layer_name, inp.get_shape().as_list(), out_ch))
             kernel_size = min(self.kernel_size, inp.get_shape().as_list()[1])
-            out = tf.compat.v1.layers.conv2d(inputs=out,
+            net = tf.compat.v1.layers.conv2d(inputs=net,
                                              filters=out_ch,
                                              kernel_size=[kernel_size, 1],
                                              strides=[1, 1],
@@ -692,19 +692,19 @@ class Inception:
                                              kernel_regularizer=regularizer,
                                              activation=None)
 
-            out = tf.compat.v1.layers.batch_normalization(
-                out, training=training) if bn else out
-            out = tf.nn.relu(out)
+            net = tf.compat.v1.layers.batch_normalization(
+                net, training=training) if bn else net
+            net = tf.nn.relu(net)
             # out = tf.compat.v1.layers.dropout(out, rate=drop, training=training) if drop != 0 else out
-        print("layer {} out_size {}".format(layer_name, out.get_shape().as_list()))
+        print("layer {} out_size {}".format(layer_name, net.get_shape().as_list()))
 
-        return out
+        return net
 
     def conv_layer(self, x, filter_height, filter_width,
                    num_filters, name, stride=1, padding='SAME', training=False):
         """Create a convolution layer."""
         with tf.compat.v1.variable_scope(name, reuse=tf.compat.v1.AUTO_REUSE) as scope:
-            out = tf.compat.v1.layers.conv2d(
+            net = tf.compat.v1.layers.conv2d(
                 inputs=x,
                 filters=num_filters,
                 kernel_size=[filter_height, 1],
@@ -714,10 +714,10 @@ class Inception:
                 # kernel_regularizer=regularizer,
                 activation=None
             )
-            out = tf.compat.v1.layers.batch_normalization(out, training=training)
-            out = tf.nn.relu(out)
+            net = tf.compat.v1.layers.batch_normalization(net, training=training)
+            net = tf.nn.relu(net)
 
-            return out
+            return net
 
     def inception_layer(self, x,
                         conv_1_size=64,
@@ -1034,6 +1034,7 @@ class RNN(object):
     total_trainables 234338
     """
     def __init__(self, args):
+        print("-------Building {} network-----------".format(args.model_name))
         self.rnn_dims = args.rnn_dims
         self.drop_rnn = args.drop_rnn  # to drop for the linear transformation of the recurrent state.
         self.drop_rnn_ln = args.drop_rnn_ln  # to drop for the linear transformation of the inputs.
@@ -1045,8 +1046,6 @@ class RNN(object):
         self.initializer = tf.compat.v1.keras.initializers.glorot_uniform()
 
     def build_rnn(self, inp, units, layer_id=0):
-        print("-------Building network-----------")
-
         with tf.compat.v1.variable_scope("RNN_{}".format(layer_id), reuse=tf.compat.v1.AUTO_REUSE):
             inputs = tf.unstack(tf.expand_dims(inp, axis=2), axis=1)
             self.rnn_cell = tf.keras.layers.LSTMCell(units, recurrent_dropout=self.drop_rnn, dropout=self.drop_rnn_ln,
@@ -1182,7 +1181,7 @@ def get_train_op(args, loss, learning_rate_op):
 # @see get_optimizer function to generate an optimizer object
 # @see MLP example of a network object
 def get_graph(args, data_tensors):
-    logger.info("Defining graph")
+    print("Defining graph")
     graph = data_tensors
     if args.model_name == "MLP":
         net = MLP(args)
@@ -1224,5 +1223,5 @@ def get_graph(args, data_tensors):
         # graph["train_op"] = tf.compat.v1.train.AdamOptimizer(learning_rate=graph["learning_rate_op"]).minimize(graph["train_loss"])
         graph["train_op"] = get_train_op(args, graph["train_loss"], graph["train_learning_rate_op"])
 
-    logger.info("Graph defined")
+    print("Graph defined")
     return graph

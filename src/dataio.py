@@ -1032,7 +1032,7 @@ def copy_save_all_files(args):
     save_dir = os.path.join(args.model_save_dir, 'src')
     if not os.path.exists(save_dir):  # if subfolder doesn't exist, should make the directory and then save file.
         os.makedirs(save_dir)
-    req_extentions = ['py', 'json']
+    req_extentions = ['py', 'json', "sh"]
     for filename in os.listdir(src_dir):
         exten = filename.split('.')[-1]
         if exten in req_extentions:

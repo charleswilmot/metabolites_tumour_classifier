@@ -386,7 +386,7 @@ def Find_Optimal_Cutoff(target, predicted):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "distill_valid_labels"
+plot_name = "rename_test_folders"
 
 
 if plot_name == "indi_rating_with_model":
@@ -715,7 +715,7 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
     #         plt.close()
 
 elif plot_name == "rename_test_folders":
-    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-Res7-updateDataio-Res_ECG_CAM"
+    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA-RNN"
     folders = find_folderes(results, pattern="*-test")
     pattern = "accuracy_step_0.0_acc_*"
     for fn in folders:
@@ -749,7 +749,6 @@ elif plot_name == "move_folder":
         new_dest = os.path.join(target, os.path.basename(fd))
         if not os.path.isdir(new_dest):
             shutil.copytree(fd, new_dest)
-
 
 elif plot_name == "certain_tsne_distillation":
     from scipy.io import loadmat as loadmat
@@ -1202,15 +1201,10 @@ elif plot_name == "100_single_ep_corr_classification_rate":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-10-27T19-36-37--RNN-nonex0-factor-0-from-data5-certainFalse-theta-0-s789-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-10-27T19-36-39--RNN-nonex0-factor-0-from-data3-certainFalse-theta-0-s789-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-10-27T19-36-40--RNN-nonex0-factor-0-from-data4-certainFalse-theta-0-s789-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-10-27T19-36-41--RNN-nonex0-factor-0-from-data6-certainFalse-theta-0-s789-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-10-27T19-36-43--RNN-nonex0-factor-0-from-data7-certainFalse-theta-0-s789-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-10-27T19-36-44--RNN-nonex0-factor-0-from-data8-certainFalse-theta-0-s789-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-10-27T19-36-45--RNN-nonex0-factor-0-from-data9-certainFalse-theta-0-s789-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-10-27T20-21-52--RNN-nonex0-factor-0-from-data1-certainFalse-theta-0-s789-100rns-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-10-27T20-21-53--RNN-nonex0-factor-0-from-data2-certainFalse-theta-0-s789-100rns-train/certains"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-11-19T12-15-01--RNN-nonex0-factor-0-from-data5-certainFalse-theta-0-s789-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-11-19T12-15-02--RNN-nonex0-factor-0-from-data1-certainFalse-theta-0-s789-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-11-19T12-15-04--RNN-nonex0-factor-0-from-data2-certainFalse-theta-0-s789-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-11-19T12-15-05--RNN-nonex0-factor-0-from-data7-certainFalse-theta-0-s789-100rns-train",
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,

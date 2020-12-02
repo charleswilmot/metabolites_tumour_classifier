@@ -1,12 +1,16 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #SBATCH --partition sleuths
 #SBATCH --job-name metab
-#SBATCH --reservation triesch-shared
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=2
+#SBATCH --nodes=1
+##SBATCH --reservation triesch-shared
 ##SBATCH --nodelist speedboat
-#SBATCH --nodelist jetski
+##SBATCH --nodelist jetski
 #SBATCH --mincpus 2
-#SBATCH --mem 6GB
-#SBATCH --job-name metab
+#SBATCH --mem 5GB
+#SBATCH --mail-type=END
+#SBATCH --mail-user=elu@fias.uni-frankfurt.de
 ##SBATCH --gres gpu:1
 
 
@@ -27,13 +31,20 @@ function get_output_folder() {
         n=$(($n+1))
     done
 }
+j=$((SLURM_ARRAY_TASK_ID))
+JOB_ID=$((SLURM_JOB_ID))
+ARRAY_JOB_ID=$((SLURM_ARRAY_JOB_ID))
+ARRAY_TASK_ID=$((SLURM_ARRAY_TASK_ID))
 
 for i in "$@";
+  log_fn="$JOB_ID"
   do
       echo cluster job $i
       output_path="$(get_output_folder "$i")"
-#      echo parsed ${output_path}/output.log
-      python3 classifier.py $i  > "${output_path}/output.log" 2>&1 &
+      echo "job $j"
+      log_fn+="-$j"
+      echo "output_path: ${output_path}/$log_fn.log"
+#      srun python3 classifier.py $i > "${output_path}/$j.log" 2>&1
       # ^ don't wait for the job to finish, but continue the for loop instead
   done
 

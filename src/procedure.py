@@ -427,7 +427,7 @@ def training(sess, args, graph, saver):
     :param saver:
     :return:
     """
-    logger.info("Starting training procedure")
+    print("Starting training procedure")
     best_saver = tf.compat.v1.train.Saver(max_to_keep=2)  # keep the top 3 best models
 
     output_data = {}
@@ -544,7 +544,7 @@ def training(sess, args, graph, saver):
                                                ret_test["test_logits"][rand_inds],
                                                epoch, args)
 
-    logger.info("Training procedure done")
+    print("Training procedure done")
     save_plots(sess, args, output_data, training=True, epoch=epoch)
     return output_data
 
@@ -558,7 +558,7 @@ def single_epo_runs(sess, args, graph):
     :param saver:
     :return:
     """
-    logger.info("Starting training procedure")
+    print("Starting training procedure")
 
     output_data = {}
     output_data["train_loss"] = []
@@ -615,7 +615,7 @@ def single_epo_runs(sess, args, graph):
         output_data["current_step"] += 1
         # TODO: how to simplify the collecting of data for future plot? Don't need to fetch labels every epoch
 
-    logger.info("100 single-epoch Training procedure done")
+    print("100 single-epoch Training procedure done")
     output_data["test_labels"] = np.array([1, 0], [0, 1])
     output_data["test_logits"] = np.array([0.9, 0.1], [0.2, 0.8])
     save_plots(sess, args, output_data, training=True, epoch=epoch)
@@ -821,7 +821,7 @@ def condition(end, output_data, epoch, number_of_epochs):
         best_accuracy = max(output_data["test_accuracy"])
         c = (np.array(output_data["test_accuracy"])[-5:] < best_accuracy).all()
         if c:
-            logger.info("Termination condition fulfilled")
+            print("Termination condition fulfilled")
         return not c
 
 
@@ -836,20 +836,20 @@ def main_train(sess, args, graph):
     if args.restore_from:
         print("restore_from", args.restore_from)
         global_step = load_model(saver, sess, args.restore_from)
-        logger.info("Restore model Done! Global step is {}".format(global_step))
+        print("Restore model Done! Global step is {}".format(global_step))
     else:
         # raise(NotImplementedError("Initialize train iterator here..."))
-        logger.info("Initializing network with random weights")
+        print("Initializing network with random weights")
         sess.run([tf.compat.v1.global_variables_initializer(), tf.compat.v1.local_variables_initializer()])
 
     if args.train_or_test == 'train' and not args.if_single_runs:
-        logger.info("Starting training")
+        print("Starting training")
         initialize(sess, graph, test_only=False)
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
         output_data = training(sess, args, graph, saver)
         dataio.save_plots(sess, args, output_data, training=True)
     elif args.train_or_test == 'test':
-        logger.info("Starting testing")
+        print("Starting testing")
         initialize(sess, graph, test_only=True)
         if_check_cam = True if "CAM" in args.model_name else False
         output_data = test_phase(sess, graph, compute_batches=graph["test_batches"],
@@ -872,7 +872,7 @@ def main_train(sess, args, graph):
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
     # to get the correct clf rate of the whole data
     elif args.train_or_test == 'train' and args.if_single_runs:
-        logger.info("Starting single epoch training")
+        print("Starting single epoch training")
         initialize(sess, graph, test_only=False)
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
         output_data = single_epo_runs(sess, args, graph)
