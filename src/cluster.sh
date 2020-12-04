@@ -1,17 +1,18 @@
 #!/usr/bin/env sh
 
 #SBATCH --partition sleuths
-#SBATCH --reservation triesch-shared
-#SBATCH --nodelist jetski
+##SBATCH --reservation triesch-shared
+##SBATCH --nodelist jetski
 ##SBATCH --nodelist speedboat
 ##SBATCH --nodes 1
 ##SBATCH -n 10
+#SBATCH --time=1-00:05:00
 ##SBATCH --ntasks-per-node 32
 ##SBATCH --cpus-per-task 1
 #SBATCH --mem 5GB
 #SBATCH --mincpus 2
 #SBATCH --job-name rnn
-#SBATCH --gres gpu:1
+##SBATCH --gres gpu:1
 
 #j=$((SLURM_ARRAY_TASK_ID))
 

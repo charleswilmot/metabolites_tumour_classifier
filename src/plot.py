@@ -658,9 +658,9 @@ def plot_train_samples(samples, true_labels, args, postfix="samples", data_dim="
     """plot the trainin samples"""
     if data_dim == "1d":
         row, col = 6, 4
-        f, axs = plt.subplots(row, col, sharex=True, figsize=[12,8.5])
         for class_id in range(args.num_classes):
             indices = np.random.choice(np.where(true_labels == class_id)[0], min(row*col, np.where(true_labels == class_id)[0].size))
+            f, axs = plt.subplots(row, col, sharex=True, figsize=[12, 8.5])
             if len(indices) > 0:
                 samp_plot = samples[indices]
                 f.suptitle("Training samples after aug. in class {}".format(class_id), fontsize=base)

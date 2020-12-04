@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/bash
 #SBATCH --partition sleuths
 #SBATCH --job-name metab
 #SBATCH --ntasks-per-node=1
@@ -7,16 +7,14 @@
 ##SBATCH --reservation triesch-shared
 ##SBATCH --nodelist speedboat
 ##SBATCH --nodelist jetski
-#SBATCH --mincpus 2
 #SBATCH --mem 5GB
-#SBATCH --mail-type=END
-#SBATCH --mail-user=elu@fias.uni-frankfurt.de
+#SBATCH --array=0-3%3
+#SBATCH --time=1-00:00:00
+##SBATCH --mail-type=END
+##SBATCH --mail-user=elu@fias.uni-frankfurt.de
 ##SBATCH --gres gpu:1
 
-
 # parse the output folder from a set of arguments
-# i.e. --output_path exp1_path1 --exp_config exp1_path1/exp1_config1 --model_config exp1_path1/exp1_config2
-# becomes exp1_path1
 # because that's the value after --output_path
 function get_output_folder() {
     local config_array=($1)
@@ -37,14 +35,15 @@ ARRAY_JOB_ID=$((SLURM_ARRAY_JOB_ID))
 ARRAY_TASK_ID=$((SLURM_ARRAY_TASK_ID))
 
 for i in "$@";
-  log_fn="$JOB_ID"
   do
-      echo cluster job $i
-      output_path="$(get_output_folder "$i")"
-      echo "job $j"
-      log_fn+="-$j"
-      echo "output_path: ${output_path}/$log_fn.log"
-#      srun python3 classifier.py $i > "${output_path}/$j.log" 2>&1
+    echo "----------------------------------------------------------"
+    echo cluster job $i
+    echo "11111111111111111111111111111111111111111111111111111111111"
+    output_path="$(get_output_folder "$i")"
+    echo "output_path: ${output_path}/$JOB_ID-$ARRAY_TASK_ID-$j.log"
+    echo "22222222222222222222222222222222222222222222222222222222222"
+#    echo "python3 classifier.py $i > ${output_path}/$JOB_ID-$ARRAY_JOB_ID-$ARRAY_TASK_ID-${j}.log"
+    srun python3 classifier.py $i > "$output_path/$JOB_ID-$ARRAY_TASK_ID-${j}.log" 2>&1  &
       # ^ don't wait for the job to finish, but continue the for loop instead
   done
 

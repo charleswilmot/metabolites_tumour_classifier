@@ -241,7 +241,7 @@ def plot_mean_spec_in_cluster(mean, std, cluster_id, num_clusters, postfix, cros
     plt.close()
 
 
-def get_scaler_performance_metrices(folders):
+def get_scaler_performance_metrices():
     """
     Plot violin plots given the target dir of the test trials. Get the agg level [true-lb, agg-probability]
     :param pool_len:
@@ -249,7 +249,8 @@ def get_scaler_performance_metrices(folders):
     :return:
     """
     postfix = ""
-
+    data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res7-Res_ECG_CAM"
+    folders = find_folderes(data_dir, pattern="*same*meanx5*factor-0.5*data5*-test-0.*")
     performance = {"ACC": np.empty((0,)), "patient_ACC": np.empty((0,)), "AUC": np.empty((0,)), "SEN": np.empty((0,)), "SPE": np.empty((0,))}
 
     for fd in folders:
@@ -286,31 +287,31 @@ def get_scaler_performance_metrices(folders):
 
 
     ## Human performance
-    human_file = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class-human-ratings.mat"
-    original = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
-    values = scipy.io.loadmat(human_file)["data_ratings"]
-
-    true_v = scipy.io.loadmat(original)["DATA"]
-    ids = true_v[:, 0]
-    pred_lbs = values[:, 0]
-    true_lbs = true_v[:, 1]
-    count = dict(Counter(list(ids)))
-    human_diagnosis = []
-    right_count = 0
-    for id in count.keys():
-        id_inds = np.where(ids == id)[0]
-        vote_label = (np.sum(true_lbs[id_inds]) * 1.0 / id_inds.size).astype(np.int)
-        vote_pred = ((np.sum(pred_lbs[id_inds]) / id_inds.size) > 0.5).astype(np.int)
-        right_count = right_count + 1 if vote_label==vote_pred else right_count
-        human_diagnosis.append((id, vote_label, vote_pred))
-
-    human_diagnosis = np.array(human_diagnosis)
-    sen = np.sum(human_diagnosis[:, 2][np.where(human_diagnosis[:, 1] == 1)[0]] == 1) / len(
-        np.where(human_diagnosis[:, 1] == 1)[0])
-    spe = np.sum(human_diagnosis[:, 2][np.where(human_diagnosis[:, 1] == 0)[0]] == 0) / len(
-        np.where(human_diagnosis[:, 1] == 0)[0])
-
-    np.savetxt("/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/" + "human_patient_wise_diagnosis.csv", np.array(human_diagnosis), header="id,true,pred", fmt="%d", delimiter=",")
+    # human_file = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class-human-ratings.mat"
+    # original = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
+    # values = scipy.io.loadmat(human_file)["data_ratings"]
+    #
+    # true_v = scipy.io.loadmat(original)["DATA"]
+    # ids = true_v[:, 0]
+    # pred_lbs = values[:, 0]
+    # true_lbs = true_v[:, 1]
+    # count = dict(Counter(list(ids)))
+    # human_diagnosis = []
+    # right_count = 0
+    # for id in count.keys():
+    #     id_inds = np.where(ids == id)[0]
+    #     vote_label = (np.sum(true_lbs[id_inds]) * 1.0 / id_inds.size).astype(np.int)
+    #     vote_pred = ((np.sum(pred_lbs[id_inds]) / id_inds.size) > 0.5).astype(np.int)
+    #     right_count = right_count + 1 if vote_label==vote_pred else right_count
+    #     human_diagnosis.append((id, vote_label, vote_pred))
+    #
+    # human_diagnosis = np.array(human_diagnosis)
+    # sen = np.sum(human_diagnosis[:, 2][np.where(human_diagnosis[:, 1] == 1)[0]] == 1) / len(
+    #     np.where(human_diagnosis[:, 1] == 1)[0])
+    # spe = np.sum(human_diagnosis[:, 2][np.where(human_diagnosis[:, 1] == 0)[0]] == 0) / len(
+    #     np.where(human_diagnosis[:, 1] == 0)[0])
+    #
+    # np.savetxt("/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/" + "human_patient_wise_diagnosis.csv", np.array(human_diagnosis), header="id,true,pred", fmt="%d", delimiter=",")
 
 
     print("ave sen", np.mean(performance["SEN"]), "std sen", np.std(performance["SEN"]), '\n', "min", performance["SEN"].min(), "max", performance["SEN"].max(), '\n'),
@@ -386,7 +387,7 @@ def Find_Optimal_Cutoff(target, predicted):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "rename_test_folders"
+plot_name = "re_split_data_0_9_except_5"
 
 
 if plot_name == "indi_rating_with_model":
@@ -466,6 +467,7 @@ if plot_name == "indi_rating_with_model":
     plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.pdf"), format='pdf')
     plt.close()
 
+
 elif plot_name == "human_whole_with_model":
     data_dir = "../data/20190325"
     human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
@@ -515,6 +517,7 @@ elif plot_name == "human_whole_with_model":
     plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively_certain.png"), format='png')
     plt.close()
 
+
 elif plot_name == "all_ROCs":
     data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-Res7-updateDataio-Res_ECG_CAM/great"
 
@@ -548,6 +551,7 @@ elif plot_name == "all_ROCs":
     plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.pdf"), format='pdf')
     plt.close()
 
+
 elif plot_name == "average_models":
     file_dirs = ["/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-27-42-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.7176-lout40-data5.csv", "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-27-11-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.6669-lout40-data5.csv", "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-09-09T14-23-45-data-20190325-3class_lout40_val_data5-class-2-Res_ECG_CAM--filter144-bl5-ch16-aug0.1-mean-test/AUCs/AUC_curve_step_0.00-auc_0.6662-lout40-data5.csv"]
     predictions = {}
@@ -562,6 +566,7 @@ elif plot_name == "average_models":
             agg_pred += values[:, 1]
     print("ok")
 
+
 elif plot_name == "plot_mean_cluster":
     data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/KMeans/metabolites_clustering-spec-whole-20190325/2019-12-16T13-34-47/7-cluster/plots"
     mean_files = find_files(data_dir, pattern="*.csv")
@@ -574,21 +579,22 @@ elif plot_name == "plot_mean_cluster":
 
         plot_mean_spec_in_cluster(mean, std, cluster_id, num_clusters, "train", crosstab_count=[None], save_folder=data_dir)
 
+
 elif plot_name == "test_performance_with_different_data_aug_parameters":
     from_dirs = True
     if from_dirs:
-        data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/randomDA-Res_ECG_CAM"
-        model = "Res_ECG_CAM"
-        exp_mode = "randomDA"
+        data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-RandomDA-MLP"
+        model = os.path.basename(data_dir).split("-")[-1]
+        exp_mode = os.path.basename(data_dir).split("-")[-2]
 
-        for data_source in ["data5", "data3", "data1"]:  #, "data7", "data3", "data9"
+        for data_source in ["data5", "data2", "data1"]:  #, "data7", "data9", "data1", "data3"
             # data_source = "data7"
             pattern = "*-{}-test-*".format(data_source)
             folders = find_folderes(data_dir, pattern=pattern)
 
             configs = []  # "aug_method": [], "aug_factor": [], "aug_fold": [], "from_epoch":
-            indplus2 = 0 if model == "MLP" else 2
-            # indplus2 = 2
+            indplus2 = 2 if model == "CAM" else 0
+
             aug_name_encode = {"same":0, "ops":1, "both":2}
             for fn in folders:
                 splits = os.path.basename(fn).split("-")
@@ -654,7 +660,8 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
 
             factor_style = {0.05:"-", 0.2:"-.", 0.35:"--", 0.5:":"}
             meth_color = {"ops":"tab:orange", "same":"tab:blue", "both":"m"}
-            markers = {0.05:"d", 0.2:"*", 0.35:"o", 0.5:"^"}
+            markers = {1:"-d", 3:"-*", 5:"-o", 9:"-^"}
+            styles = {1:":", 3:"-.", 5:"--", 9:"-"}
 
             plt.figure(figsize=[12, 8])
             for res, method in zip([aug_same, aug_ops, aug_both], ["same", "ops", "both"]):
@@ -667,11 +674,11 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
                             if len(np.where(fd_configs[:,2] == scale)[0]) >= 1:
                                 plot_vl.append([np.float(scale), np.mean(fd_configs[np.where(fd_configs[:,2] == scale)[0],-1])])
 
-                        plt.plot(np.array(plot_vl)[:,0], np.array(plot_vl)[:,1], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(plot_vl)[:,1])), marker=markers[scale], color=meth_color[method])
+                        plt.plot(np.array(plot_vl)[:,0], np.array(plot_vl)[:,1], markers[fold], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(plot_vl)[:,1])), color=meth_color[method])
             plt.legend(),
             plt.title("{} with {} on {}".format(exp_mode, model, data_source))
-            plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}.png".format(exp_mode, model, data_source)))
-            plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}.pdf".format(exp_mode, model, data_source)), format="pdf")
+            plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.png".format(exp_mode, model, data_source))),
+            plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.pdf".format(exp_mode, model, data_source)), format="pdf")
             plt.close()
 
 
@@ -714,28 +721,30 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
     #         plt.savefig(os.path.join(results, "model-{}-Augment by {} fold from epoch {}.png".format(model, fold, epo)))
     #         plt.close()
 
+
 elif plot_name == "rename_test_folders":
-    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA-RNN"
-    folders = find_folderes(results, pattern="*-test")
+    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/4-aug-with-noise"
+    folders = find_folderes(results, pattern="*-train*")
     pattern = "accuracy_step_0.0_acc_*"
     for fn in folders:
         print(fn)
         test_result = find_files(fn, pattern=pattern)
 
         if len(test_result) >= 1:
-            splits = os.path.basename(test_result[0]).split("_")
-            new_name =  os.path.basename(fn).replace("_", "-")
-            auc = splits[-2]
-            os.rename(fn, os.path.join(os.path.dirname(fn), new_name+"-{}".format(auc)))
+            # splits = os.path.basename(test_result[0]).split("_")
+            new_name = os.path.basename(fn).replace("_", "-")
+            # auc = splits[-2]
+            os.rename(fn, os.path.join(os.path.dirname(fn), new_name))
+            # os.rename(fn, os.path.join(os.path.dirname(fn), new_name+"-{}".format(auc)))
 
         # new_name = os.path.basename(fn).replace("MLP", "Res_ECG_CAM")
         # os.rename(fn, os.path.join(os.path.dirname(fn), new_name))
 
+
 elif plot_name == "get_performance_metrices":
-    data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-Res7-updateDataio-Res_ECG_CAM/great"
-    folders = find_folderes(data_dir, pattern="*data5-test-0.*")
-    get_scaler_performance_metrices(folders)
-    
+    get_scaler_performance_metrices()
+
+
 elif plot_name == "move_folder":
     import shutil
     # target = "C:/\Users\\LDY\\Desktop\\metabolites-0301\\metabolites_tumour_classifier\\dest"
@@ -749,6 +758,7 @@ elif plot_name == "move_folder":
         new_dest = os.path.join(target, os.path.basename(fd))
         if not os.path.isdir(new_dest):
             shutil.copytree(fd, new_dest)
+
 
 elif plot_name == "certain_tsne_distillation":
     from scipy.io import loadmat as loadmat
@@ -1201,10 +1211,9 @@ elif plot_name == "100_single_ep_corr_classification_rate":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-11-19T12-15-01--RNN-nonex0-factor-0-from-data5-certainFalse-theta-0-s789-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-11-19T12-15-02--RNN-nonex0-factor-0-from-data1-certainFalse-theta-0-s789-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-11-19T12-15-04--RNN-nonex0-factor-0-from-data2-certainFalse-theta-0-s789-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-RNN/2020-11-19T12-15-05--RNN-nonex0-factor-0-from-data7-certainFalse-theta-0-s789-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2020-11-18T10-23-19--Inception-nonex0-factor-0-from-data5-certainFalse-theta-0-s789-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2020-11-18T10-23-20--Inception-nonex0-factor-0-from-data1-certainFalse-theta-0-s789-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2020-11-18T10-23-21--Inception-nonex0-factor-0-from-data2-certainFalse-theta-0-s789-100rns-train"
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,
@@ -1475,6 +1484,68 @@ elif plot_name == "distill_valid_labels":
     plt.savefig(os.path.join("C:/Users/LDY/Desktop", "CCR-distribution-of-NP-validated-samples-p{:.2E}.pdf".format(p_rank)), format="pdf")
     plt.close()
     print("ok")
+
+
+elif plot_name == "re_split_data_0_9_except_5":
+    src_data = ["data{}".format(jj) for jj in [0,1,2,3,4,6,7,8,9]]
+    data_source_dirs = [
+        "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format(
+            src_dir) for src_dir in src_data]
+
+
+    # each cross_validation set
+    coll_mat = np.empty((0, 290))
+    for dd in data_source_dirs:
+        ## load original .mat data and split train_val
+        mat = scipy.io.loadmat(dd)["DATA"]
+        coll_mat = np.vstack((coll_mat, mat))
+    np.random.shuffle(coll_mat)
+    print("ok")
+    for cc in range(3):
+        print("class ", cc, np.sum(coll_mat[:, 1] == cc))
+    total_pat_ids = Counter(coll_mat[:, 0])
+    np.random.shuffle(coll_mat)
+    split_parts = {key: {} for key in range(5)}
+    part_len = len(coll_mat) // 5
+    for ii in range(4):
+        split_parts[ii]["DATA"] = coll_mat[ii*part_len: (ii+1)*part_len]
+        num_pat = len(Counter(split_parts[ii]["DATA"][:, 0]))
+        scipy.io.savemat(
+            os.path.join(os.path.dirname(dd),
+                         "5_fold_20190325-3class[{}-{}-{}]_pat_{}_test_data{}.mat".format(
+                             np.sum(split_parts[ii]["DATA"][:, 1] == 0),
+                             np.sum(split_parts[ii]["DATA"][:, 1] == 1),
+                             np.sum(split_parts[ii]["DATA"][:, 1] == 2), num_pat, ii)), split_parts[ii])
+
+    split_parts[4]["DATA"] = coll_mat[4 * part_len: ]
+    num_pat = len(Counter(split_parts[4]["DATA"][:, 0]))
+    ii = 4
+    scipy.io.savemat(
+        os.path.join(os.path.dirname(dd),
+                     "5_fold_20190325-3class[{}-{}-{}]_pat_{}_test_data{}.mat".format(
+                         np.sum(split_parts[ii]["DATA"][:, 1] == 0),
+                         np.sum(split_parts[ii]["DATA"][:, 1] == 1),
+                         np.sum(split_parts[ii]["DATA"][:, 1] == 2), num_pat, ii)), split_parts[ii])
+
+
+    # merge the other 4 sets to form train_validation set
+    for jj in range(5):
+        train_inds = list(np.arange(5))
+        del train_inds[jj]
+        train_coll = {"DATA": np.empty((0, 290))}
+        for ii in train_inds:
+            train_coll["DATA"] = np.vstack((train_coll["DATA"], split_parts[ii]["DATA"]))
+        num_pat = len(Counter(train_coll["DATA"][:, 0]))
+        print("ok")
+        scipy.io.savemat(
+            os.path.join(os.path.dirname(dd),
+                         "5_fold_20190325-3class[{}-{}-{}]_pat_{}_train_val_data{}.mat".format(
+                             np.sum(train_coll["DATA"][:, 1] == 0),
+                             np.sum(train_coll["DATA"][:, 1] == 1),
+                             np.sum(train_coll["DATA"][:, 1] == 2), num_pat, jj)), train_coll)
+
+
+
     
 
 

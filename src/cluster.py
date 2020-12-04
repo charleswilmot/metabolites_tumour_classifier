@@ -88,7 +88,8 @@ if __name__ == "__main__":
     submit_array = False   #True   #
     
     if submit_array:
-        os.system("sbatch --output {}/%N_%j.log --array 0-{}%{} cluster_test.sh {}".format(config_files[0], len(config_dirs), min(5, len(config_dirs)), commands))
+        os.system("sbatch --output {}/%N_%j.log cluster_test.sh {}".format(config_files[0], commands))
+        # os.system("sbatch --output {}/%N_%j.log --array 0-{}%{} cluster_test.sh {}".format(config_files[0], len(config_dirs), min(5, len(config_dirs)), commands))
         # os.system("sbatch --output {}/%N_%j.log --array 0-{}%5 cluster_test.sh {}".format(config_files[0], len(config_dirs), commands))
     else:
         for dirs in config_dirs:
