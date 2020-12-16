@@ -10,44 +10,43 @@ from scipy.stats import zscore
 import sys
 import os
 sys.path.insert(0, os.path.abspath('..'))
-import tqdm
+from tqdm import tqdm
 
 import ipdb
 import datetime
 
 
-
 ### Hyperparams
 class Config():
-	def __init__(self):
-		self.height, self.width = 288, 1
-		self.hid_dim1 = 256
-		self.hid_dim2 = 64
-		self.latent_dim = 2  #0.98
-		self.batch_size = 64
-		self.num_epochs = 101
-		self.num_classes = 2
+    def __init__(self):
+        self.height, self.width = 288, 1
+        self.hid_dim1 = 256
+        self.hid_dim2 = 64
+        self.latent_dim = 2  #0.98
+        self.batch_size = 64
+        self.num_epochs = 101
+        self.num_classes = 2
 
 
-def plot_prior(sess, load_model=False, save_name='save_name'):
+def plot_prior(sess, args, load_model=False, save_name='save_name'):
     #if load_model:
         #saver.restore(sess, os.path.join(os.getcwd(), logdir + '/' + "{}".format(model_No)))
     nx = ny = 4
     x_values = np.linspace(-3, 3, nx)
     y_values = np.linspace(-3, 3, ny)
-    canvas = np.empty((height * ny, width * nx))
-    noise = tf.random_normal([1, latent_dim])
-    z = tf.placeholder(tf.float32, [1, latent_dim], 'dec_input')
+    canvas = np.empty((args.height * ny, args.width * nx))
+    noise = tf.random_normal([1, args.latent_dim])
+    z = tf.placeholder(tf.float32, [1, args.latent_dim], 'dec_input')
     reconstruction = decoder(z)
-    latent = np.random.randn(1, latent_dim)
+    latent = np.random.randn(1, args.latent_dim)
     #sess2 = tf.Session()
     #sess2.run(tf.global_variables_initializer())
     for ii, yi in enumerate(x_values):
       for j, xi in enumerate(y_values):
         latent[0, 0:2] = xi, yi  #sess.run(reconstruction, {z_2: np_z, X: np_x_fixed})
         x_reconstruction = sess.run(reconstruction, feed_dict={z: latent})
-        canvas[(nx - ii - 1) * height:(nx - ii) * height, j *
-               width:(j + 1) * width] = x_reconstruction.reshape(height, width)
+        canvas[(nx - ii - 1) * args.height:(nx - ii) * args.height, j *
+                                                               args.width:(j + 1) * args.width] = x_reconstruction.reshape(args.height, args.width)
     plt.savefig(save_name, format="jpg")   # canvas
                         
 def upsample(inputs, name='depool', factor=[2,2]):
@@ -89,23 +88,23 @@ def plot_test(original, reconstruction, load_model = False, save_name="save"):
     plt.close()
 
 
-def load_data(data_dir):
-	mat = scipyio.loadmat(data_dir)["DATA"]
-	spectra = mat[:, 2:]
-	labels = mat[:, 1]
-	ids = mat[:, 0]
-	spectra = zscore(spectra, axis=1)
-	## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
-	if cfg.num_classes - 1 < np.max(labels):
-		need_inds = np.empty((0))
-		for class_id in range(cfg.num_classes):
-			need_inds = np.append(need_inds, np.where(labels == class_id)[0])
-		need_inds = need_inds.astype(np.int32)
-		spectra = spectra[need_inds]
-		labels = labels[need_inds]
-		ids = ids[need_inds]
+def load_data(data_dir, args):
+    mat = scipyio.loadmat(data_dir)["DATA"]
+    spectra = mat[:, 2:]
+    labels = mat[:, 1]
+    ids = mat[:, 0]
+    spectra = zscore(spectra, axis=1)
+    ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
+    if args.num_classes - 1 < np.max(labels):
+        need_inds = np.empty((0))
+        for class_id in range(args.num_classes):
+            need_inds = np.append(need_inds, np.where(labels == class_id)[0])
+        need_inds = need_inds.astype(np.int32)
+        spectra = spectra[need_inds]
+        labels = labels[need_inds]
+        ids = ids[need_inds]
 
-	return spectra, labels
+    return spectra, labels
 
 ############################ Encoder ############################
 
@@ -137,19 +136,19 @@ def encoder(inputs_enc, config, num_filters=[32, 64, 64, 64], kernel_size=[3, 3]
                                         padding='SAME',
                                         activation=tf.nn.relu)
                 #net = tf.layers.max_pooling2d(inputs=net, pool_size=pool_size, padding='SAME', strides=2)
-                net = tf.layers.batchnormalization()
+                net = tf.compat.v1.layers.BatchNormalization()
                 print(net.shape)
                 
         ### dense layer
         with tf.name_scope("dense"):
-            net = tf.layers.dropout(inputs=net, rate=0.75)
+            net = tf.compat.v1.layers.dropout(inputs=net, rate=0.75)
             net = tf.reshape(net, [-1,  net.shape[1]*net.shape[2]*net.shape[3]])
-            net = tf.layers.dense(inputs=net, units=config.hid_dim2, activation=tf.nn.relu)
+            net = tf.compat.v1.layers.dense(inputs=net, units=config.hid_dim2, activation=tf.nn.relu)
         print(net.shape)
         ### Get mu
-        mu_1 = tf.contrib.layers.fully_connected(net, config.latent_dim, activation_fn=None)
+        mu_1 = tf.compat.v1.layers.dense(net, config.latent_dim, activation_fn=None)
         # layer 2   Output mean and std of the latent variable distribution
-        sigma_1 = tf.contrib.layers.fully_connected(net, config.latent_dim, activation_fn=None)
+        sigma_1 = tf.compat.v1.layers.dense(net, config.latent_dim, activation_fn=None)
         # Reparameterize import Randomness
         noise = tf.random_normal([1, config.latent_dim])
         # z_1 is the fisrt leverl output(latent variable) of our Encoder
@@ -196,7 +195,7 @@ def decoder(inputs_dec, config, num_filters=[25, 1], kernel_size=5, scope=None):
 
 
 def train(input_enc):
-    cfg = Config()
+    args = Config()
     version = "vae_cnn"
 
     root = "results_vae"
@@ -216,16 +215,16 @@ def train(input_enc):
         test_data, test_labels = load_data("/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat")
 
         # create TensorFlow Dataset objects
-        dataset_train = tf.data.Dataset.from_tensor_slices((train_data, train_data)).repeat().batch(cfg.batch_size).shuffle(buffer_size=5000)
-        dataset_test = tf.data.Dataset.from_tensor_slices((test_data, test_labels)).repeat().batch(cfg.batch_size).shuffle(buffer_size=5000)
+        dataset_train = tf.data.Dataset.from_tensor_slices((train_data, train_data)).repeat().batch(args.batch_size).shuffle(buffer_size=5000)
+        dataset_test = tf.data.Dataset.from_tensor_slices((test_data, test_labels)).repeat().batch(args.batch_size).shuffle(buffer_size=5000)
         iter = dataset_train.make_initializable_iterator()
         iter_test = dataset_test.make_initializable_iterator()
         ele = iter.get_next()   #you get the filename
         ele_test = iter_test.get_next()   #you get the filename
 
     ### Graph
-    mu_1, sigma_1, z = encoder(inputs_enc, cfg)
-    reconstruction = decoder(z, cfg)
+    mu_1, sigma_1, z = encoder(inputs_enc, args)
+    reconstruction = decoder(z, args)
 
     # Loss function = reconstruction error + regularization(similar image's latent representation close)
     with tf.name_scope('loss'):
@@ -242,17 +241,17 @@ def train(input_enc):
     test_loss = tf.Variable(0.0)
     # test_loss_sum = tf.summary.scalar('test_loss', test_loss)
 
-    optimizer = tf.train.AdadeltaOptimizer().minimize(-VAE_loss)
+    optimizer = tf.compat.v1.train.AdadeltaOptimizer().minimize(-VAE_loss)
 
     #################### Set up logging for TensorBoard.
     # Training  init all variables and start the session!
-    init = tf.global_variables_initializer()
-    sess = tf.Session()
+    init = tf.compat.v1.global_variables_initializer()
+    sess = tf.compat.v1.Session()
     sess.run(init)
     sess.run(iter.initializer)
     sess.run(iter_test.initializer)
     ## Add ops to save and restore all the variables.
-    saver = tf.train.Saver()
+    saver = tf.compat.v1.train.Saver()
 
     #store value for these 3 terms so we can plot them later
     vae_loss_array = []
@@ -263,7 +262,7 @@ def train(input_enc):
 
     ### get the real data
     num_classes = 2
-    for ep in tqdm(range(cfg.epochs)):
+    for ep in tqdm(range(args.epochs)):
 
         # save_name = config.results_dir + '/' + "_step{}_".format( batch)
         data_train, labels_train =  sess.run(ele)   # names, 1s/0s
@@ -295,14 +294,14 @@ def train(input_enc):
             nx = ny = 8
             x_values = np.linspace(-1, 1, nx)
             y_values = np.linspace(-1, 1, ny)
-            canvas = np.zeros((cfg.height * ny, cfg.width * nx))
+            canvas = np.zeros((args.height * ny, args.width * nx))
             z_sample = tf.placeholder(tf.float32)
             for ii, yi in enumerate(x_values):
                 for jj, xi in enumerate(y_values):
                     latent = np.array([[xi, yi]])  # sess.run(reconstruction, {z_2: np_z, X: np_x_fixed})
                     x_reconstruction = sess.run(reconstruction, feed_dict={z: latent})
-                    canvas[ii * cfg.height:(ii + 1) * cfg.height,
-                    jj * cfg.width:(jj + 1) * cfg.width] = x_reconstruction.reshape(cfg.height, cfg.width)
+                    canvas[ii * args.height:(ii + 1) * args.height,
+                    jj * args.width:(jj + 1) * args.width] = x_reconstruction.reshape(args.height, args.width)
             plt.savefig(save_dir + 'prior.png', format="jpg")  # canvas
 
 

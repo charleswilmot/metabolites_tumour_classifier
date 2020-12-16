@@ -428,7 +428,7 @@ def training(sess, args, graph, saver):
     :return:
     """
     print("Starting training procedure")
-    best_saver = tf.compat.v1.train.Saver(max_to_keep=2)  # keep the top 3 best models
+    best_saver = tf.compat.v1.train.Saver(max_to_keep=2, save_relative_paths=True)  # keep the top 3 best models
 
     output_data = {}
     output_data["train_loss"] = []
@@ -831,7 +831,7 @@ def condition(end, output_data, epoch, number_of_epochs):
 # @param graph the graph (cf See also)
 # @param input_data training and testing data
 def main_train(sess, args, graph):
-    saver = tf.compat.v1.train.Saver()
+    saver = tf.compat.v1.train.Saver(save_relative_paths=True)
 
     if args.restore_from:
         print("restore_from", args.restore_from)

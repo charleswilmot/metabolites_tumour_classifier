@@ -414,7 +414,7 @@ def Find_Optimal_Cutoff(target, predicted):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "certain_tsne_distillation"
+plot_name = "test_performance_with_different_data_aug_parameters"
 
 
 if plot_name == "indi_rating_with_model":
@@ -608,13 +608,13 @@ elif plot_name == "plot_mean_cluster":
 
 
 elif plot_name == "test_performance_with_different_data_aug_parameters":
-    from_dirs = True
+    from_dirs = False  # True
     if from_dirs:
-        data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-certain-DA-Res7-Res_ECG_CAM"
+        data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM"
         model = os.path.basename(data_dir).split("-")[-1]
         exp_mode = os.path.basename(data_dir).split("-")[-2]
 
-        for data_source in ["data5", "data3", "data7"]:  #, "data7", "data9", "data1", "data3"
+        for data_source in ["data5", "data3", "data1", "data2"]:  #, "data7", "data9", "data1", "data3"
             # data_source = "data7"
             pattern = "*-{}-test-*".format(data_source)
             folders = find_folderes(data_dir, pattern=pattern)
@@ -624,12 +624,12 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
 
             aug_name_encode = {"same":0, "ops":1, "both":2}
             for fn in folders:
+                print(fn)
                 splits = os.path.basename(fn).split("-")
                 aug_name = aug_name_encode[splits[7+indplus2]]
                 aug_fold = np.int(splits[8+indplus2].split("x")[-1])
                 aug_factor = np.float(splits[10+indplus2])
                 test_auc = np.float(splits[-1])
-                print(fn)
                 if "random" in pattern:
                     theta = 1
                 else:
@@ -705,30 +705,30 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
                         plt.plot(np.array(plot_vl)[:,0], np.array(plot_vl)[:,1], markers[fold], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(plot_vl)[:,1])), color=meth_color[method])
             plt.legend(),
             plt.title("\n".join(wrap("{} with {} on {}".format(exp_mode, model, data_source), 60)))
-            plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.png".format(exp_mode, model, data_source))),
-            plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.pdf".format(exp_mode, model, data_source)), format="pdf")
+            plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}.png".format(exp_mode, model, data_source))),
+            plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}.pdf".format(exp_mode, model, data_source)), format="pdf")
             plt.close()
             
             
             # plot each fold and aug-method w.r.t augmentation factor alpha
-            plt.figure(figsize=[12, 8])
-            for res, method in zip([aug_same, aug_ops, aug_both], ["same", "ops", "both"]):
-                for fold in [1,3,5,9]:
-                    fd_configs = np.array(res[np.where(res[:,1] == fold)[0]])
-                    if len(fd_configs) > 0:
-                        plot_vl = []
-                        for scale in [0.05, 0.2, 0.35, 0.5]:
-                            print("{}, {}, {}".format(method, fold, scale))
-                            if len(np.where(fd_configs[:,2] == scale)[0]) >= 1:
-                                plot_vl.append([np.float(scale), np.mean(fd_configs[np.where(fd_configs[:,2] == scale)[0],-1])])
-
-                        plt.plot(np.array(plot_vl)[:,0], np.array(plot_vl)[:,1], markers[fold], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(plot_vl)[:,1])), color=meth_color[method])
-            plt.legend(),
-            plt.title("\n".join(wrap("{} with {} on {}".format(exp_mode, model, data_source), 60)))
-            plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.png".format(exp_mode, model, data_source))),
-            plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.pdf".format(exp_mode, model, data_source)), format="pdf")
-            plt.close()
-            
+            # plt.figure(figsize=[12, 8])
+            # for res, method in zip([aug_same, aug_ops, aug_both], ["same", "ops", "both"]):
+            #     for fold in [1,3,5,9]:
+            #         fd_configs = np.array(res[np.where(res[:,1] == fold)[0]])
+            #         if len(fd_configs) > 0:
+            #             plot_vl = []
+            #             for scale in [0.05, 0.2, 0.35, 0.5]:
+            #                 print("{}, {}, {}".format(method, fold, scale))
+            #                 if len(np.where(fd_configs[:,2] == scale)[0]) >= 1:
+            #                     plot_vl.append([np.float(scale), np.mean(fd_configs[np.where(fd_configs[:,2] == scale)[0],-1])])
+            #
+            #             plt.plot(np.array(plot_vl)[:,0], np.array(plot_vl)[:,1], markers[fold], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(plot_vl)[:,1])), color=meth_color[method])
+            # plt.legend(),
+            # plt.title("\n".join(wrap("{} with {} on {}".format(exp_mode, model, data_source), 60)))
+            # plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.png".format(exp_mode, model, data_source))),
+            # plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.pdf".format(exp_mode, model, data_source)), format="pdf")
+            # plt.close()
+            #
 
 
             np.savetxt(os.path.join(data_dir, 'model_{}_aug_same_entry_{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same),exp_mode, model, data_source)), aug_same, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s"),
@@ -736,8 +736,10 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             np.savetxt(os.path.join(data_dir, 'model_{}_aug_both_entry_{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same),exp_mode, model, data_source)), aug_both, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s"),
             np.savetxt(os.path.join(data_dir, 'model_{}_all_different_config_theta{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same),exp_mode, model, data_source)), configs, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s")
     else:
-        file_dir = "/home/epilepsy-data/data/metabolites/paper_results_2700/saved_all_models_and_tests"
+        file_dir = "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta5-DA+DA-with-Res_ECG_CAM-on-data5.txt"
         aug_meth = ["same", "ops", "both"]
+        configs = pd.read_csv(file_dir, header=0).values
+        aug_name_encode = {"same": 0, "ops": 1,"both": 2}
 
         configs = np.array(configs)
         aug_same = configs[np.where(configs[:, 0] == aug_name_encode["same"])[0]]
@@ -796,7 +798,7 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
 
 
 elif plot_name == "rename_test_folders":
-    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Inception"
+    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM"
     folders = find_folderes(results, pattern="*-test")
     pattern = "accuracy_step_0.0_acc_*"
     for fn in folders:

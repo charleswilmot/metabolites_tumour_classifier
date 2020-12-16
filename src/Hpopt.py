@@ -738,6 +738,8 @@ if __name__ == "__main__":
         num_channels = 1
 
     # fitness(x=default_params)
+    
+    
     time_str = '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now())
     search_result = gp_minimize(func=fitness,
                                 dimensions=params_space,

@@ -35,8 +35,8 @@
     "if_from_certain": false,
     "if_save_certain": false,
     "distill_old": false,
+    "number_of_epochs": 201,
     "train": {
-            "number_of_epochs": 201,
             "test_freq": 1,
             "test_every": null,
             "test_ratio": 0.2,
