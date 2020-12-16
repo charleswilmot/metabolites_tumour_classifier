@@ -21,8 +21,8 @@ import datetime
 from scipy.stats import zscore
 import ipdb
 from collections import Counter
-from sklearn import svm
 from sklearn import metrics
+import dataio as dataio
 
 import matplotlib.pylab as pylab
 base_size = 24
@@ -940,9 +940,9 @@ def load_data(data_dir, num_classes=2):
         need_inds = need_inds.astype(np.int32)
         spectra = spectra[need_inds]
         labels = labels[need_inds]
-        ids = ids[need_inds]
+        pat_ids = ids[need_inds]
 
-    return spectra, labels, ids
+    return spectra, labels, pat_ids, sample_ids
 
 
 def plot_from_certain_ids(data_dir, fn):
@@ -1012,30 +1012,71 @@ def cluster_spectra(data_dir):
     print("clustering is Done!")
 
 
-def SVM_classifier(train_data_dir, test_data_dir):
-    spec, lbs, ids = load_data(train_data_dir, num_classes=2)
-    data_mode = 'spec'
-    postfix = 'whole-20190325'
-    root_folder = '../SVM/metabolites_SVM-{}-{}/{}' \
-        .format(data_mode, postfix, '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now()))
-    # Get data
-    print("Got all data", spec.shape, 'label shape:', lbs.shape, '\n save_foler: ', root_folder)
-    check_make_dir(root_folder, [])
+def SVM_classifier(train_data, test_data, data_source="lout40_5", epoch=1000,
+                   num_classes=2, if_save_certain=False, save_dir="../results"):
+    """
+    SVM training
+    :param train_data:
+    :param test_data:
+    :param data_source:
+    :return:
+    """
+    from sklearn import svm
+    from sklearn.calibration import CalibratedClassifierCV
 
-    clf = svm.SVC()
-    clf.fit(spec, lbs)
+    svmm = svm.LinearSVC(max_iter=epoch)
+    clf = CalibratedClassifierCV(svmm)
+    clf.fit(train_data["spectra"], train_data["labels"])
+    pred_prob_train = clf.predict_proba(train_data["spectra"])
 
-    test_spec, test_lbs, test_ids = load_data(test_data_dir, num_classes=2)
-    pred = clf.predict(test_spec)
+    pred = clf.predict(test_data["spectra"])
+    pred_prob_test = clf.predict_proba(test_data["spectra"])
 
-    auc = metrics.roc_auc_score(test_lbs, pred)
-    np.savetxt(os.path.join(root_folder, "svm_pred_labels_auc_{:.3f}.txt".format(auc)), np.array(pred), fmt="%d", delimiter=",")
+    if if_save_certain:
+        save_certain_in_svm(train_data, test_data, pred_prob_train, pred_prob_test,
+                            num_classes=num_classes, theta=[90, 95, 98],
+                            postfix="certain_ep_{}_{}".format(epoch, data_source),
+                            save_dir=save_dir)
+
+    auc = metrics.roc_auc_score(test_data["labels"], pred_prob_test)
+    np.savetxt(os.path.join(results_dir, "svm_pred_labels_auc_{:.3f}.txt".format(auc)), np.array(pred), fmt="%d", delimiter=",")
+
+
+def save_certain_in_svm(train_data, test_data, pred_prob_train, pred_prob_test,
+                        num_classes=2, theta=[90], postfix="certain", save_dir="../results_dir"):
+    percentiles = {}
+    inds_perc_train = {}
+    inds_perc_test = {}
+
+    for th in theta:
+        percentiles[th] = np.percentile(pred_prob_train, th)
+        inds_perc_train[th] = np.where(np.sum([p > percentiles[th] for p in pred_prob_train], axis=1) == 1)[0]
+        inds_perc_test[th] = np.where(np.sum([p > percentiles[th] for p in pred_prob_test], axis=1) == 1)[0]
+
+        concat_data_train = np.concatenate((np.array(train_data["sample_ids"])[inds_perc_train[th]].reshape(-1, 1),
+                                            np.array(train_data["ids"])[inds_perc_train[th]].reshape(-1, 1),
+                                            np.array(train_data["labels"])[inds_perc_train[th]].reshape(-1, 1),
+                                            pred_prob_train[inds_perc_train[th]]), axis=1)
+        np.savetxt(os.path.join(save_dir,
+                                "train_top_{}th_{}_num_{}_theta_{:.4f}.csv".format(th, postfix,
+                                                                                        inds_perc_train[th].size,
+                                                                                        percentiles[th])),
+                   concat_data_train, header="sample_ids,pat_ids,labels" + ",logits" * num_classes, delimiter=",")
+        concat_data_test = np.concatenate((np.array(test_data["sample_ids"])[inds_perc_test[th]].reshape(-1, 1),
+                                           np.array(test_data["ids"])[inds_perc_test[th]].reshape(-1, 1),
+                                           np.array(test_data["lbs"])[inds_perc_test[th]].reshape(-1, 1),
+                                           pred_prob_test[inds_perc_test[th]]), axis=1)
+        np.savetxt(os.path.join(save_dir,
+                                "test_top_{}th_{}_num_{}_theta_{:.4f}.csv".format(th,
+                                                                                  postfix, inds_perc_train[th].size,
+                                                                                  percentiles[th])),
+                   concat_data_test, header="sample_ids,pat_ids,labels" + ",logits" * num_classes, delimiter=",")
 
 
 #######################################################################################
 if __name__ == "__main__":
 
-    process = "train"
+    process = "svm"
 
 
 
@@ -1049,8 +1090,99 @@ if __name__ == "__main__":
         load_and_test(data_dir, pkl_dir=pkl_dir)
 
     elif process == "svm":
-        train_data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat"
-        test_data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
+        from_saved_certain = True
+        num_classes = 2
+        if from_saved_certain:
+            certain_dirs = [
+                "/home/epilepsy-data/data/metabolites/SVM-results/2020-09-30T11-51-45-lout40_data0-ep-1000",
+                "/home/epilepsy-data/data/metabolites/SVM-results/2020-09-30T11-52-05-lout40_data1-ep-1000",
+                "/home/epilepsy-data/data/metabolites/SVM-results/2020-09-30T11-52-23-lout40_data2-ep-1000",
+                "/home/epilepsy-data/data/metabolites/SVM-results/2020-09-30T11-52-43-lout40_data3-ep-1000",
+                "/home/epilepsy-data/data/metabolites/SVM-results/2020-09-30T11-53-02-lout40_data4-ep-1000",
+                "/home/epilepsy-data/data/metabolites/SVM-results/2020-09-30T11-53-21-lout40_data5-ep-1000",
+                "/home/epilepsy-data/data/metabolites/SVM-results/2020-09-30T11-53-40-lout40_data6-ep-1000",
+                "/home/epilepsy-data/data/metabolites/SVM-results/2020-09-30T11-53-58-lout40_data7-ep-1000",
+                "/home/epilepsy-data/data/metabolites/SVM-results/2020-09-30T11-54-17-lout40_data8-ep-1000",
+                "/home/epilepsy-data/data/metabolites/SVM-results/2020-09-30T11-54-37-lout40_data9-ep-1000"
+            ]
+            ori_data_dirs = [
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data0.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data8.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat"]
 
-        SVM_classifier(train_data_dir, test_data_dir)
+            for ct_dir, input_data_dir in zip(certain_dirs, ori_data_dirs):
+                theta = 90
+                assert os.path.basename(input_data_dir).split("_")[-1][0:-4] == os.path.basename(ct_dir).split("-")[-3].split("_")[-1], "train and test data mismatch!"
+                results_dir = '/home/epilepsy-data/data/metabolites/SVM-results/{}-from-certain-{}th-{}' \
+                    .format('{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now()), theta, os.path.basename(input_data_dir).split("_")[-1][0:-4])
+                check_make_dir(results_dir, [])
+
+                certain_files = dataio.find_files(ct_dir, pattern="train_top_{}th_*.csv".format(theta))
+                params = {"input_data": input_data_dir,
+                          "output_path": results_dir, "num_classes": num_classes,
+                          "test_ratio":0.2, "test_or_train":"train",
+                          "aug_method":"both-mean", "aug_folds":5, "aug_scale":0.5}
+                from types import SimpleNamespace
+                args = SimpleNamespace(**params)
+                train_data, test_data = dataio.get_data_from_certain_ids(args,
+                                                                  certain_fns=certain_files)
+                SVM_classifier(train_data, test_data, data_source="{}".format(set),
+                               epoch=1000, if_save_certain=False, save_dir=results_dir)
+
+        else:
+            train_data_dirs = [
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data0.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data8.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat"
+            ]
+            test_data_dirs = [
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data0.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data1.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data2.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data3.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data4.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data6.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data7.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data8.mat",
+                "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data9.mat"
+            ]
+
+            if_aug_data = True
+            for train_dir, test_dir in zip(train_data_dirs, test_data_dirs):
+                train_data = {}
+                test_data = {}
+                set = os.path.basename(train_dir).split("_")[-1][0:-4]
+                results_dir = '/home/epilepsy-data/data/metabolites/SVM-results/{}-{}' \
+                    .format('{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now()), set)
+                check_make_dir(results_dir, [])
+                train_data["spec"], train_data["lbs"], train_data["pat_ids"], train_data["samp_ids"] = load_data(
+                    train_dir, num_classes=2)
+                test_data["spec"], test_data["lbs"], test_data["pat_ids"], test_data["samp_ids"] = load_data(
+                    test_dir, num_classes=num_classes)
+
+                params = {"input_data": train_dir,
+                          "output_path": results_dir, "num_classes": num_classes,
+                          "test_ratio": 0.2, "test_or_train": "train",
+                          "aug_method": "both-mean", "aug_folds": 5, "aug_scale": 0.5}
+                from types import SimpleNamespace
+
+                args = SimpleNamespace(**params)
+                train_data, test_data = dataio.get_data_from_certain_ids(args)
+
+                SVM_classifier(train_data, test_data, data_source="lout40_{}".format(set),
+                               epoch = 1000, if_save_certain = False, save_dir = results_dir)
 

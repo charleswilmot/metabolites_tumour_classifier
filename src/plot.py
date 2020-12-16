@@ -14,14 +14,14 @@ import tensorflow as tf
 import os
 import matplotlib.pylab as pylab
 base = 22
-params = {'legend.fontsize': base-8,
+args = {'legend.fontsize': base - 8,
           'figure.figsize': (13, 8.6),
          'axes.labelsize': base-4,
-         #'weight' : 'bold',
+        #'weight' : 'bold',
          'axes.titlesize':base,
          'xtick.labelsize':base-8,
          'ytick.labelsize':base-8}
-pylab.rcParams.update(params)
+pylab.rcParams.update(args)
 
 logger = log.getLogger("classifier")
 
@@ -72,7 +72,7 @@ def accuracy_figure(args, data, training=False, epoch=0):
     auc = metrics.roc_auc_score(data["test_labels"], data["test_logits"])
     max_acc = accuracy_plot(ax, data, training=training)
 
-    f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}-{}.png'.format(epoch, max_acc, auc, args.data_source, args.test_or_train))
+    f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}-{}.png'.format(epoch, max_acc, auc, args.data_source, args.train_or_test))
     plt.close()
     logger.info("Accuracy plot saved")
 
@@ -91,8 +91,8 @@ def plot_auc_curve(args, data, epoch=0):
     plt.legend(loc=4)
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
-    f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.png'.format(epoch, auc, args.data_source, args.test_or_train))
-    np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.csv'.format(epoch, auc, args.data_source, args.test_or_train),
+    f.savefig(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.png'.format(epoch, auc, args.data_source, args.train_or_test))
+    np.savetxt(args.output_path + '/AUCs/AUC_curve_step_{:.2f}-auc_{:.4}-{}-{}.csv'.format(epoch, auc, args.data_source, args.train_or_test),
                np.hstack((np.argmax(data["test_labels"], 1).reshape(-1,1), data["test_logits"][:, 1].reshape(-1,1))), fmt="%.8f", delimiter=',', header="labels,pred[:,1]")
     plt.close()
     return auc
@@ -654,20 +654,40 @@ def plot_mean_of_each_class(train_spec, train_lbs, test_spec, test_args):
     plt.close()
 
 
-def plot_train_samples(samples, true_labels, args, postfix="samples"):
+def plot_train_samples(samples, true_labels, args, postfix="samples", data_dim="1d"):
     """plot the trainin samples"""
-    row, col = 6, 4
-    f, axs = plt.subplots(row, col, sharex=True)
-    for class_id in range(args.num_classes):
-        indices = np.random.choice(np.where(true_labels == class_id)[0], min(row*col, np.where(true_labels == class_id)[0].size))
-        if len(indices) > 0:
-            samp_plot = samples[indices]
-            f.suptitle("Training samples in class {}".format(class_id), fontsize=base)
-            for ii in range(indices.size):
-                axs[ii // col, np.mod(ii, col)].plot(samp_plot[ii])
-            plt.tight_layout()
-            # plt.setp(ax1.get_xticklabels(), visible=False)
-            plt.subplots_adjust(hspace=0.00, wspace=0.15)
-            plt.savefig(args.output_path + '/augmented_samples-class-{}-{}.png'.format(class_id, args.aug_method), format = 'png')
+    if data_dim == "1d":
+        row, col = 6, 4
+        for class_id in range(args.num_classes):
+            indices = np.random.choice(np.where(true_labels == class_id)[0], min(row*col, np.where(true_labels == class_id)[0].size))
+            f, axs = plt.subplots(row, col, sharex=True, figsize=[12, 8.5])
+            if len(indices) > 0:
+                samp_plot = samples[indices]
+                f.suptitle("Training samples after aug. in class {}".format(class_id), fontsize=base)
+                for ii in range(indices.size):
+                    axs[ii // col, np.mod(ii, col)].plot(samp_plot[ii])
+                plt.tight_layout()
+                # plt.setp(ax1.get_xticklabels(), visible=False)
+                # plt.subplots_adjust(hspace=0.00, wspace=0.15)
+                plt.savefig(args.output_path + '/augmented_samples-class-{}-{}-{}.png'.format(class_id, args.aug_method, postfix), format = 'png'),
+                plt.savefig(args.output_path + '/augmented_samples-class-{}-{}-{}.pdf'.format(class_id, args.aug_method, postfix), format = 'pdf')
 
-            plt.close()
+                plt.close()
+    elif data_dim == "2d":
+        row, col = 6, 6
+        for class_id in range(args.num_classes):
+            f, axs = plt.subplots(row, col, sharex=True, figsize=[12, 12])
+            indices = np.random.choice(np.where(true_labels == class_id)[0],
+                                       min(row*col, np.where(true_labels == class_id)[0].size))
+            if len(indices) > 0:
+                samp_plot = samples[indices]
+                f.suptitle("Training samples after aug. in class {}".format(class_id), fontsize=base)
+                for ii in range(indices.size):
+                    axs[ii // col, np.mod(ii, col)].imshow(samp_plot[ii].reshape(args.height, args.width), interpolation="nearest", aspect="auto")
+                plt.tight_layout()
+                plt.subplots_adjust(hspace=0.00, wspace=0.00)
+                plt.savefig(args.output_path + '/augmented_samples-class-{}-{}-{}.png'.format(class_id, args.aug_method, postfix),
+                            format='png')
+                plt.savefig(args.output_path + '/augmented_samples-class-{}-{}-{}.pdf'.format(class_id, args.aug_method, postfix),
+                            format='pdf')
+                plt.close()

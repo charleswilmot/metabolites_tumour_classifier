@@ -8,6 +8,7 @@ import sys
 
 import logging as log
 import tensorflow as tf
+from utils import Params
 import dataio
 import datetime
 import ipdb
@@ -17,45 +18,60 @@ PADDING_SIZE = 35
 logger = log.getLogger("classifier")
 
 
-class Params():
-    """Class that loads hyperparameters from a json file.
-    https://github.com/cs230-stanford/cs230-code-examples/blob/master/tensorflow/vision/model/utils.py
-    Example:
-    ```
-    params = Params(json_path)
-    print(params.learning_rate)
-    params.learning_rate = 0.5  # change the value of learning_rate in params
-    ```
-    """
-
-    def __init__(self, json_path):
-        # type: (object) -> object
-        # self.update(json_path)
-        pass
-    def save(self, json_path):
-        """Saves parameters to json file"""
-        with open(json_path, 'w') as f:
-            json.dump(self.__dict__, f, indent=4)
-
-    def update(self, json_path, mode=None):
-        """Loads parameters from json file. if specify a modelkey, only load the params under thta modelkey"""
-        with open(json_path) as f:
-            dicts = json.load(f)
-            if not mode:
-                self.__dict__.update(dicts)
-            elif mode == "train" or mode == "test":
-                general_params = dicts["train_or_test"]["general"]
-                exp_params = dicts["train_or_test"][mode]
-                self.__dict__.update(general_params)
-                self.__dict__.update(exp_params)
-            else:
-                model_params = dicts["model"][mode]
-                self.__dict__.update(model_params)
-
-    @property
-    def dict(self):
-        """Gives dict-like access to Params instance by `params.dict['learning_rate']`"""
-        return self.__dict__
+# class Params():
+#     """Class that loads hyperparameters from a json file.
+#     https://github.com/cs230-stanford/cs230-code-examples/blob/master/tensorflow/vision/model/utils.py
+#     Example:
+#     ```
+#     params = Params(json_path)
+#     print(params.learning_rate)
+#     params.learning_rate = 0.5  # change the value of learning_rate in params
+#     ```
+#     """
+#
+#     def __init__(self, json_path):
+#         # type: (object) -> object
+#         # self.update(json_path)
+#         pass
+#     def save(self, json_path):
+#         """Saves parameters to json file"""
+#         with open(json_path, 'w') as f:
+#             json.dump(self.__dict__, f, indent=4)
+#
+#     def update(self, json_path, mode=None):
+#         """Loads parameters from json file. if specify a modelkey, only load the params under thta modelkey"""
+#         with open(json_path) as f:
+#             dicts = json.load(f)
+#             if not mode:
+#                 self.__dict__.update(dicts)
+#             elif mode == "train" or mode == "test":
+#                 general_params = dicts["train_or_test"]["general"]
+#                 exp_params = dicts["train_or_test"][mode]
+#                 self.__dict__.update(general_params)
+#                 self.__dict__.update(exp_params)
+#             else:
+#                 model_params = dicts["model"][mode]
+#                 self.__dict__.update(model_params)
+#     def update(self, json_path, mode=None):
+#         """Loads parameters from json file. if specify a modelkey, only load the params under thta modelkey"""
+#         with open(json_path) as f:
+#             dicts = json.load(f)
+#             if not mode:
+#                 self.__dict__.update(dicts)
+#             elif mode == "train" or mode == "test":
+#                 # general_params = dicts["train_or_test"]["general"]
+#                 general_params = dicts["general"]
+#                 exp_params = dicts[mode]
+#                 self.__dict__.update(general_params)
+#                 self.__dict__.update(exp_params)
+#             else:
+#                 model_params = dicts["model"][mode]
+#                 self.__dict__.update(model_params)
+#
+#     @property
+#     def dict(self):
+#         """Gives dict-like access to Params instance by `params.dict['learning_rate']`"""
+#         return self.__dict__
 
 
 def padding(message):
@@ -85,6 +101,16 @@ def compute_ratio(s):
     if f > 95:
         logger.critical("At most 95%% of the time can be spent testing (asked {})".format(v))
         raise argparse.ArgumentTypeError("At most 95%% of the time can be spent testing (asked {})".format(v))
+    return f
+
+
+## Interprets the string passed as an argument to the option --number-of-epochs
+# @param s the string
+def nepoch(s):
+    f = float(s)
+    if f < 0.05 and f != -1:
+        logger.critical("Not enough epochs (asked {}, minimum is 0.05)".format(s))
+        raise argparse.ArgumentTypeError("Not enough epochs (asked {}, minimum is 0.05)".format(s))
     return f
 
 
@@ -124,6 +150,12 @@ def batch_norm(v):
     _layer_number_batch_norm += 1
 
 
+## custom activation function
+def lrelu(x):
+    a = 1 / 3
+    return tf.nn.relu(x) * (1 - a) + a * x
+
+
 _layer_number_activation = 1
 ## Interprets the string passed as an argument to the option --activations
 # @param s the string
@@ -131,13 +163,11 @@ def activation(s):
     if s == 'relu':
         return tf.nn.relu
     elif s == 'lrelu':
-        return tf.nn.leaky_relu
+        return lrelu
     elif s == 'tanh':
         return tf.tanh
     elif s == 'sigmoid':
         return tf.nn.sigmoid
-    elif s == 'None':
-        return None
     else:
         logger.critical("Activation function not recognized: {}".format(s))
         raise argparse.ArgumentTypeError("Activation function not recognized: {}".format(s))
@@ -180,200 +210,120 @@ def log_debug_arg(type_constructor, message):
 
 
 parser = argparse.ArgumentParser()
+# parser.add_argument(
+#     '-v', '--verbose', action='count', default=1,
+#     help="Verbosity level. Use -v, -vv, -vvv -vvvv."
+# )
+# parser.add_argument(
+#     '-T', dest='separator', action='store_true',
+#     help="Separator in case the option before train/test is a list. See https://bugs.python.org/issue9338 ."
+# )
 parser.add_argument(
-    '-v', '--verbose', action='count', default=1,
-    help="Verbosity level. Use -v, -vv, -vvv -vvvv."
-)
-parser.add_argument(
-    '-resplit_data', default="../data",
-    help="Verbosity level. Use -v, -vv, -vvv -vvvv."
-)
-parser.add_argument(
-    '-T', dest='separator', action='store_true',
-    help="Separator in case the option before train/test is a list. See https://bugs.python.org/issue9338 ."
-)
-parser.add_argument(
-    '-exp_config', default="./exp_parameters.json",
+    '--output_path', default="./exp_parameters.json",
     help="Json file path for experiment parameters"
 )
 parser.add_argument(
-    '-model_config', default="./model_parameters.json",
+    '--exp_config', default="./exp_parameters.json",
+    help="Json file path for experiment parameters"
+)
+parser.add_argument(
+    '--model_config', default="./model_parameters.json",
     help="Json file path for model parameters"
 )
-parser.add_argument(
-    '-A', '--activations', type=activation, action='store', nargs='+',
-    default=['lrelu', 'lrelu', 'lrelu', 'lrelu', 'sigmoid'],
-    help="Activation functions for every layer. Taken in 'lrelu', 'relu', 'sigmoid', 'tanh'"
-)
-parser.add_argument(
-    '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
-    default=None,
-    help="which cross-validation set is used"
-)
-subparsers = parser.add_subparsers(dest="test_or_train")
-
-train_parser = subparsers.add_parser("train")
-# train_parser.add_argument(
-#     'output_path', metavar='OUTPUT',
-#     type=log_debug_arg(str, "Output path:"),
-#     nargs='?', default='../results',
-#     help="Path to the output data."
-# )
-train_parser.add_argument(
-    '--restore_from', type=log_debug_arg(str, "Restore model from:"),
-    nargs='?', default= None,
-    help="Path to a previously trained model."
-)
-train_parser.add_argument(
-    '--aug_method', type=log_debug_arg(str, "the augmentation method"),
-    default='noise',
-    help="augmentation methods: mean, ops_mean, both"
-)
-train_parser.add_argument(
-    '--aug_scale', type=log_debug_arg(float, "augmenatation scale w: w*another + (1-w)*self"),
-     default=None,
-    help="a float number of aug scale."
-)
-
-train_parser.add_argument(
-    '--from_epoch', type=log_debug_arg(int, "Use certain examples from epoch "),
-    default=None,
-    help="Certain examples from which epoch to use for training"
-)
-train_parser.add_argument(
-    '--aug_folds', type=log_debug_arg(int, "How many folds to augment"),
-    default=None,
-    help="How many folds to augment the data"
-)
-train_parser.add_argument(
-    '--theta_thr', type=float, dest="theta_thr",
-    default=0.999,
-    help="the threshold to determine certain"
-)
-train_parser.add_argument(
-    '--randseed', type=float, dest="randseed",
-    default=0.999,
-    help="the threshold to determine certain"
-)
-# when use cluster
-train_parser.add_argument(
-    '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
-    default=None,
-    help="which cross-validation set is used"
-)
-train_parser.add_argument(
-    '--output_path', type=log_debug_arg(str, "output path"),
-    default=None,
-)
-
-test_parser = subparsers.add_parser("test")
-test_parser.add_argument(
-    '--restore_from', metavar='restore from MODEL',
-    type=log_debug_arg(str, "Restore model from:"),
-    help="Path to a previously trained model.",
-    default=None
-)
-test_parser.add_argument(
-    '-x', '--data-not-labeled', action='store_true',
-    help="Set this flag if the data you want to classify is not labeled."
-)
-test_parser.add_argument(
-    '--output_path', type=log_debug_arg(str, "output path"),
-    default=None,
-)
-test_parser.add_argument(
-    '--input_data', type=log_debug_arg(str, "which cross-validation set is used"),
-    default=None,
-    help="which cross-validation set is used"
-)
-# test_parser.add_argument(
-#     '--output_path', type=log_debug_arg(str, "Test Output path"),
-#     default='/home/epilepsy-data/data/metabolites/results',
-# )
 
 
-## Read arguments once to get the verbosity level
-args = parser.parse_args()
-_layer_number_dim = 0
-_layer_number_dropout = 1
-_layer_number_batch_norm = 1
-_layer_number_activation = 1
+def load_all_params(args):
+# args = parser.parse_args()
+    json_path = args.exp_config  # exp_param stores general training params
+    assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
+    args = Params(json_path)
+    args.update(json_path, mode=args.test_or_train)
 
-# Re-read the arguments after the verbosity has been set correctly
-args = parser.parse_args()
+    # load model specific parameters
+    json_path = args.model_config
+    assert os.path.isfile(json_path), "No json file found at {}".format(json_path)
 
-## Load experiment parameters and model parameters
-json_path = args.exp_config  # exp_param stores general training params
-assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
-params = Params(json_path)
-params.update(json_path, mode=args.test_or_train)
+    args.update(json_path, mode=args.model_name) # update params with the model configuration
+# args.from_clusterpy = args.from_clusterpy
+# args.certain_dir = args.certain_dir
+#
+#
+# if args.data_mode == "mnist" or args.data_mode == "MNIST":
+#     args.width = 28
+#     args.height = 28
+#     args.data_source = "mnist"
+#     args.noise_ratio = args.noise_ratio
+# elif args.data_mode == "metabolite" or args.data_mode == "metabolites":
+#     args.width = 1
+#     args.height = 288
+#     # TODO, cluster and param.json all give this parameter
+#
+# if not args.from_clusterpy:
 
-# load model specific parameters
-json_path = args.model_config
-assert os.path.isfile(json_path), "No json file found at {}".format(json_path)
-
-params.update(json_path, mode=params.model_name) # update params with the model configuration
-
-# specify some params
-time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
-
-if params.data_shape == "2d":
-    params.height = params.data_len // 6
-    params.width = 6
-else:
-    params.width = 1
-    params.height = params.data_len
-    
-
-# TODO, cluster and param.json all give this parameter
-if args.input_data is None:  # don't run on the cluster
-    params.data_source = os.path.basename(params.input_data).split("_")[-1].split(".")[0]
-else: # run on the cluster
-    params.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
-if args.restore_from is None and args.output_path is None:  #cluster.py
-    # params.output_path = os.path.join(params.output_root,
-    #                             time_str + "data-{}-class{}-{}-{}-aug_{}x{}-{}-{}".format(params.data_source, params.num_classes, params.model_name, params.postfix, args.aug_method, args.aug_folds, args.aug_scale, args.test_or_train))
-    params.output_path = os.path.join(params.output_root,
-                 "{}{}x{}_factor_{}_from-epoch_{}_from-lout40_{}_{}".format(time_str, args.aug_method, args.aug_folds, args.aug_scale, args.from_epoch, params.data_source, args.test_or_train))
-    params.postfix = "-test"
-elif args.restore_from is None and args.output_path is not None:
-    params.output_path = args.output_path
-elif args.restore_from is not None:
-    params.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(params.data_source, "test")
-
-params.model_save_dir = os.path.join(params.output_path, "network")
-# dataio.make_output_dir(params, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
-
-
-
-params.resplit_data = args.resplit_data
-params.restore_from = args.restore_from
-params.test_or_train = args.test_or_train
-params.resume_training = (args.restore_from != None)
-params.randseed = args.randseed
-
-if params.test_or_train == "test":
-    params.if_from_certain = False
-    params.if_save_certain = False
-elif params.test_or_train == "train":
-    params.aug_scale = args.aug_scale
-    params.aug_method = args.aug_method
-    params.aug_folds = args.aug_folds
-    params.from_epoch = args.from_epoch
-    params.theta_thr = args.theta_thr
-    # params.input_data = args.input_data
-    params.if_save_certain = not params.if_from_certain
+#     print("Not run from cluster.py params.input data dir: ", args.input_data)
+#     if args.data_mode == "metabolite":
+#         args.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
+#     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+#         args.data_source = "mnist"
+#
+#     # specify some params
+#     time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
+#     if args.restore_from is None:  # and args.output_path is None:  #cluster.py
+#         postfix = "100rns-" + args.test_or_train if args.if_single_runs else args.test_or_train
+#         args.output_path = os.path.join(args.output_root,
+#                                           "{}-{}-{}x{}-factor-{}-from-{}-certain{}-theta-{}-s{}-{}".format(
+#                                               time_str, args.model_name, args.aug_method, args.aug_folds,
+#                                               args.aug_scale, args.data_source,
+#                                               args.if_from_certain, args.theta_thr,
+#                                               args.randseed, postfix))
+#         # params.postfix = "-test"
+#     # elif args.restore_from is None and args.output_path is not None:
+#     #     params.output_path = args.output_path
+#     elif args.restore_from is not None:  # restore a model
+#         args.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(args.data_source, "test")
+#         args.postfix = "-test"
+#     dataio.make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+# else:
+#     print("Run from cluster.py args.input data dir: ", args.input_data)
+#     if args.data_mode == "metabolite":
+#         args.data_source = os.path.basename(args.input_data).split("_")[-1].split(".")[0]
+#     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+#         args.data_source = "mnist"
+#     args.output_path = args.output_path
+#
+# # params.resplit_data = args.resplit_data
+# args.restore_from = args.restore_from
+# args.test_or_train = args.test_or_train
+# args.resume_training = (args.restore_from != None)
+# args.randseed = args.randseed
+# args.if_single_runs = False
+# print("argument.py, params.if_single_runs: ", args.if_single_runs)
+#
+# args.model_save_dir = os.path.join(args.output_path, "network")
+# print("output dir: ", args.output_path)
+#
+#
+# if args.test_or_train == "test":
+#     args.if_from_certain = False
+#     args.if_save_certain = False
+# elif args.test_or_train == "train":
+#     args.aug_scale = args.aug_scale
+#     args.aug_method = args.aug_method
+#     args.aug_folds = args.aug_folds
+#     args.theta_thr = args.theta_thr
 
 # Verbosity level:
-level = 50 - (args.verbose * 10) + 1
-logger.setLevel(level)
-ch = log.StreamHandler()
-ch.setLevel(level)
-formatter = log.Formatter(" " * 12 + '%(message)s\r' + '[\033[1m%(levelname)s\033[0m]')
-ch.setFormatter(formatter)
-fh = log.FileHandler(params.output_path + "/summary.log")
-fh.setLevel(1)
-formatter = log.Formatter('[%(levelname)s] %(message)s\r')
-fh.setFormatter(formatter)
-logger.addHandler(ch)
-logger.addHandler(fh)
+# level = 50 - (args.verbose * 10) + 1
+# logger.setLevel(level)
+# ch = log.StreamHandler()
+# ch.setLevel(level)
+# formatter = log.Formatter(" " * 12 + '%(message)s\r' + '[\033[1m%(levelname)s\033[0m]')
+# ch.setFormatter(formatter)
+# dataio.make_output_dir(args)
+# fh = log.FileHandler(args.output_path + "/summary.log")
+# fh.setLevel(1)
+# formatter = log.Formatter('[%(levelname)s] %(message)s\r')
+# fh.setFormatter(formatter)
+# logger.addHandler(ch)
+# ## Re-read the arguments after the verbosity has been set correctly
+# args = parser.parse_args()
