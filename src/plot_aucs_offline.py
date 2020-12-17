@@ -696,13 +696,13 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
                 for fold in [1,3,5,9]:
                     fd_configs = np.array(res[np.where(res[:,1] == fold)[0]])
                     if len(fd_configs) > 0:
-                        plot_vl = []
+                        value_per_scale = []
                         for scale in [0.05, 0.2, 0.35, 0.5]:
                             print("{}, {}, {}".format(method, fold, scale))
                             if len(np.where(fd_configs[:,2] == scale)[0]) >= 1:
-                                plot_vl.append([np.float(scale), np.mean(fd_configs[np.where(fd_configs[:,2] == scale)[0],-1])])
+                                value_per_scale.append([np.float(scale), np.mean(fd_configs[np.where(fd_configs[:, 2] == scale)[0], -1])])
 
-                        plt.plot(np.array(plot_vl)[:,0], np.array(plot_vl)[:,1], markers[fold], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(plot_vl)[:,1])), color=meth_color[method])
+                        plt.plot(np.array(value_per_scale)[:, 0], np.array(value_per_scale)[:, 1], markers[fold], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(value_per_scale)[:, 1])), color=meth_color[method])
             plt.legend(),
             plt.title("\n".join(wrap("{} with {} on {}".format(exp_mode, model, data_source), 60)))
             plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}.png".format(exp_mode, model, data_source))),
@@ -740,6 +740,8 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
         aug_meth = ["same", "ops", "both"]
         configs = pd.read_csv(file_dir, header=0).values
         aug_name_encode = {"same": 0, "ops": 1,"both": 2}
+        model_name = "Res_ECG_CAM"
+        data_source = "data5"
 
         configs = np.array(configs)
         aug_same = configs[np.where(configs[:, 0] == aug_name_encode["same"])[0]]
@@ -747,54 +749,63 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
         aug_both = configs[np.where(configs[:, 0] == aug_name_encode["both"])[0]]
 
         factor_style = {0.05:"-", 0.2:"-.", 0.35:"--", 0.5:":"}
-        meth_color = {"ops":"tab:orange", "same":"tab:blue", "both":"m"}
-        markers = {1:"-d", 3:"-*", 5:"-o", 9:"-^"}
+        meth_color = {"ops":"tab:orange", "same":"tab:green", "both":"tab:brown"}
+        markers = {1:"d", 3:"*", 5:"o", 9:"^"}
         styles = {1:":", 3:"-.", 5:"--", 9:"-"}
         
-        # plot aug. method with error bar
-        plt.figure(figsize=[12, 8])
-        for res, method in zip([aug_same, aug_ops, aug_both], ["same", "ops", "both"]):
-            for fold in [1,3,5,9]:
-                fd_configs = np.array(res[np.where(res[:,1] == fold)[0]])
-                if len(fd_configs) > 0:
-                    plot_vl = []
-                    for scale in [0.05, 0.2, 0.35, 0.5]:
-                        print("{}, {}, {}".format(method, fold, scale))
-                        if len(np.where(fd_configs[:,2] == scale)[0]) >= 1:
-                            plot_vl.append([np.float(scale), np.mean(fd_configs[np.where(fd_configs[:,2] == scale)[0],-1])])
+        # plot aug. method with boxplot and error bar
+        plt.figure(figsize=[8, 5.5])
+        for res, method, case in zip([aug_same, aug_ops, aug_both], ["same", "ops", "both"], np.arange(3)):
+            value_per_scale, names, xs = [], [], []
+            for ind, scale in enumerate([0.05, 0.2, 0.35, 0.5]):
+                scale_configs = np.array(res[np.where(res[:,2] == scale)[0]])
+                vals = np.empty((0))
+                if len(scale_configs) > 0:
+                    for jj, fold in enumerate([1,3,5,9]) :
+                        fold_inds = np.where(scale_configs[:,1] == fold)[0]
+                        fd_configs = np.array(scale_configs[fold_inds])
+                        print("method_{}-scale_{}-fold_{} num {}".format(method, scale, fold, len(fold_inds)))
+                        if len(fold_inds) >= 1:
+                            plt.scatter(np.ones(len(fold_inds))*ind*4+1+case, fd_configs[:,-1], color=meth_color[method], marker=markers[fold], s=100)
+                            vals = np.append(vals, fd_configs[:,-1])
+                value_per_scale.append(vals)
+                names.append(scale)
+                xs.append(np.random.normal(ind, 0.04, len(vals)))
+            
+            bp_positions = [jj*4+1+case for jj in range(4)]
+            bplot = plt.boxplot(value_per_scale, labels=names, positions=bp_positions, widths = 0.85)
+            
+            for bpind in range(len(bplot["boxes"])):
+                plt.setp(bplot["boxes"][bpind], color=meth_color[method]),
+                plt.setp(bplot['caps'][bpind*2], color=meth_color[method]),
+                plt.setp(bplot['caps'][bpind*2+1], color=meth_color[method]),
+                plt.setp(bplot['whiskers'][bpind*2], color=meth_color[method]),
+                plt.setp(bplot['whiskers'][bpind*2+1], color=meth_color[method]),
+                plt.setp(bplot['fliers'][bpind], color=meth_color[method]),
+                plt.setp(bplot['medians'][bpind], color=meth_color[method])
+            print("{} Done!".format(method))
+                
+        for fold in [1,3,5,9]:
+            hide_pts = plt.scatter(1+case, 0.6, color=meth_color[method], marker=markers[fold], s=100, label="$\Phi$={}".format(fold))
+            
+        meth_color = {"other":"tab:orange", "same":"tab:green", "both":"tab:brown"}
+        for jj, method in enumerate(["same", "other", "both"]):
+            hide_line, = plt.plot([0.6,0.6], color=meth_color[method], label="aug-with-{}".format(method))
+        plt.legend(scatterpoints=3, ncol=2, frameon=False)
 
-                    plt.plot(np.array(plot_vl)[:,0], np.array(plot_vl)[:,1], markers[fold], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(plot_vl)[:,1])), color=meth_color[method])
-        plt.legend(),
-        plt.title("\n".join(wrap("{} with {} on {}".format(exp_mode, model, data_source), 60)))
-        plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.png".format(exp_mode, model, data_source))),
-        plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.pdf".format(exp_mode, model, data_source)), format="pdf")
+
+        plt.xlabel(r"mixing weight $\alpha$")
+        plt.ylabel("ROC-AUC")
+        print("ok")
+        
+        plt.title("\n".join(wrap("{} with {} on {}".format(method, model_name, data_source), 60)))
+        plt.savefig(os.path.join(os.path.dirname(file_dir), "all-methods-in-one-{}-with-{}-on-{}.png".format(method, model_name, data_source))),
+        plt.savefig(os.path.join(os.path.dirname(file_dir), "all-methods-in-one-{}-with-{}-on-{}.pdf".format(method, model_name, data_source)), format="pdf")
         plt.close()
 
-        for vars in [[None, epoch, factor], [fold, None, factor], [fold, epoch, None]]:
-
-            get_auc_as_factor(file_dir, fold=vars[0], epoch=vars[1], factor=vars[2], aug_meth=aug_meth, colors=colors)
-
-    # for fold in [5, 10]:
-    #     same = aug_same[np.where(aug_same[:, 1].astype(np.int) == fold)[0]]
-    #     ops = aug_ops[np.where(aug_ops[:, 1].astype(np.int) == fold)[0]]
-    #     both = aug_both[np.where(aug_both[:, 1].astype(np.int) == fold)[0]]
-    #
-    #     epoch_counter_same = list(Counter(list(same[:, 3])))
-    #     epoch_counter_ops = list(Counter(list(ops[:, 3])))
-    #     epoch_counter_both = list(Counter(list(both[:, 3])))
-    #
-    #     plt.figure(),
-    #     for epo in [3, 4, 5, 6]:
-    #         for data, name in zip([same, ops, both], ["same", "ops", "both"]):
-    #             subdata = data[np.where(data[:, 3].astype(np.int) == epo)[0]]
-    #             sortdata = np.array(sorted(zip(subdata[:, 2], subdata[:, 4], subdata[:, 1]), key=lambda x: x[0]))
-    #
-    #             if len(subdata) > 0:
-    #                 plt.plot(sortdata[:, 0].astype(np.float), sortdata[:, 1].astype(np.float), label="{} class".format(name)),
-    #         plt.title("Augment by {} fold from epoch {}".format(fold, epo))
-    #         plt.legend(),
-    #         plt.savefig(os.path.join(results, "model-{}-Augment by {} fold from epoch {}.png".format(model, fold, epo)))
-    #         plt.close()
+        # for vars in [[None, epoch, factor], [fold, None, factor], [fold, epoch, None]]:
+        #
+        #     get_auc_as_factor(file_dir, fold=vars[0], epoch=vars[1], factor=vars[2], aug_meth=aug_meth, colors=colors)
 
 
 elif plot_name == "rename_test_folders":
@@ -1333,9 +1344,9 @@ elif plot_name == "100_single_ep_corr_classification_rate":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2020-11-18T10-23-19--Inception-nonex0-factor-0-from-data5-certainFalse-theta-0-s789-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2020-11-18T10-23-20--Inception-nonex0-factor-0-from-data1-certainFalse-theta-0-s789-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2020-11-18T10-23-21--Inception-nonex0-factor-0-from-data2-certainFalse-theta-0-s789-100rns-train"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-11--MLP-nonex0-factor-0-from-data5-certainFalse-theta-0-s789-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-12--MLP-nonex0-factor-0-from-data1-certainFalse-theta-0-s789-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-14--MLP-nonex0-factor-0-from-data2-certainFalse-theta-0-s789-100rns-train"
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,
@@ -1387,8 +1398,7 @@ elif plot_name == "100_single_ep_corr_classification_rate":
         plt.savefig(
             os.path.dirname(data_dir) + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
                 os.path.basename(files[0]).split("_")[7], total_num, data_source)),
-        plt.savefig(
-            os.path.dirname(data_dir) + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
+        plt.savefig(data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
                 os.path.basename(files[0]).split("_")[7], total_num, data_source), format="pdf")
         print("ok")
         plt.close()

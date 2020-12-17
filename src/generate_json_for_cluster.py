@@ -123,7 +123,7 @@ data_source_dirs = [
 
 config_dirs = []
 seed = np.random.randint(9999)
-mode = "testing"
+mode = "aug_training"
 
 
 if mode == "single_runs":
@@ -149,8 +149,8 @@ elif mode == "aug_training":
     elif aug_method == "certain":
         certain_dirs = [
             "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-37--Res_ECG_CAM-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train",
-            # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-38--Res_ECG_CAM-nonex0-factor-0-from-data3-certainFalse-theta-0-s989-100rns-train",
-            # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-39--Res_ECG_CAM-nonex0-factor-0-from-data1-certainFalse-theta-0-s989-100rns-train",
+            # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-14--MLP-nonex0-factor-0-from-data2-certainFalse-theta-0-s789-100rns-train",
+            # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-15--MLP-nonex0-factor-0-from-data7-certainFalse-theta-0-s789-100rns-train",
             # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T23-08-12--Res_ECG_CAM-nonex0-factor-0-from-data9-certainFalse-theta-0-s989-100rns-train",
             # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T23-08-13--Res_ECG_CAM-nonex0-factor-0-from-data7-certainFalse-theta-0-s989-100rns-train"
         ]
@@ -160,7 +160,7 @@ elif mode == "aug_training":
                 src_dir) for src_dir in src_data]
         theta = 0.5
     for dd, certain in zip(data_source_dirs, certain_dirs):   #, certain_dirs)
-        for method in ["ops_mean"]:  #"same_mean", "both_mean" ,, "noise"  #
+        for method in ["same_mean", "both_mean", "ops_mean"]:  # , "noise" #
             for fold in [1, 3, 5, 9]:  #, 7, 10, 9, 1,, 5  #
                 for scale in [0.05, 0.2, 0.35, 0.5]:  # , 0.2, 0.3, 0.5#
                     config_dirs = overwrite_params(args, config_dirs,

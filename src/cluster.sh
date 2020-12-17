@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 
 #SBATCH --partition sleuths
-##SBATCH --reservation triesch-shared
+#SBATCH --reservation triesch-shared
 ##SBATCH --nodelist jetski
-##SBATCH --nodelist speedboat
+#SBATCH --nodelist speedboat
 ##SBATCH --nodes 1
 ##SBATCH -n 10
 #SBATCH --time=1-00:05:00
