@@ -251,7 +251,7 @@ def get_scaler_performance_metrices():
     :return:
     """
     postfix = ""
-    data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Inception"
+    data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM"
     folders = find_folderes(data_dir, pattern="*both*meanx5*data5*-test-0.*")
     performance = {"ACC": np.empty((0,)), "patient_ACC": np.empty((0,)), "AUC": np.empty((0,)), "SEN": np.empty((0,)), "SPE": np.empty((0,))}
 
@@ -608,19 +608,20 @@ elif plot_name == "plot_mean_cluster":
 
 
 elif plot_name == "test_performance_with_different_data_aug_parameters":
-    from_dirs = False  # True
+    from_dirs = False  #True   #
     if from_dirs:
         data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM"
         model = os.path.basename(data_dir).split("-")[-1]
         exp_mode = os.path.basename(data_dir).split("-")[-2]
 
-        for data_source in ["data5", "data3", "data1", "data2"]:  #, "data7", "data9", "data1", "data3"
+        for data_source in ["data7"]:  #, "data7", "data9", "data1", "data3"
             # data_source = "data7"
             pattern = "*-{}-test-*".format(data_source)
             folders = find_folderes(data_dir, pattern=pattern)
 
             configs = []  # "aug_method": [], "aug_factor": [], "aug_fold": [], "from_epoch":
             indplus2 = 2 if "CAM" in model else 0
+            # indplus2 = 0
 
             aug_name_encode = {"same":0, "ops":1, "both":2}
             for fn in folders:
@@ -636,58 +637,15 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
                     theta = 1
                 configs.append((aug_name, aug_fold, aug_factor, theta, test_auc))
 
-            # for alpha in [0.05, 0.2, 0.35, 0.5]:
-            #     for meth in ["same", "both", "ops"]:
-            #         folders = find_folderes(data_dir, pattern=pattern)
-            #         configs = [] # "aug_method": [], "aug_factor": [], "aug_fold": [], "from_epoch":
-            #         coll_auc = 0
-            #         coll_tprs = []
-            #         base_fpr = np.linspace(0, 1, 20)
-            #         for fn in folders:
-            #             print(fn)
-            #             splits = os.path.basename(fn).split("-")
-            #             aug_name = splits[5]
-            #             aug_fold = np.int(splits[6].split("x")[-1])
-            #             aug_factor = np.float(splits[8])
-            #             from_epoch = np.int(splits[11])
-            #             test_auc = np.float(splits[-1])
-            #             theta = np.float(splits[-6])
-            #             configs.append((aug_name, aug_fold, aug_factor, from_epoch, theta, test_auc))
-            #
-            #
-            #             saved_test_data = find_files(fn, pattern="Data*.txt")
-            #             ff = open(saved_test_data[0], 'rb')
-            #             data_dict = pickle.load(ff)
-            #             labels = data_dict["output_data"]["test_labels"]
-            #             logits = data_dict["output_data"]["test_logits"]
-            #
-            #             fpr, tpr, threshold = metrics.roc_curve(np.argmax(labels,axis=1),  logits[:,1])
-            #             tpr_1 = np.interp(base_fpr, fpr, tpr)
-            #             tpr_1[0] = 0.0
-            #             coll_tprs.append(tpr_1)
-            #             coll_auc += metrics.auc(base_fpr, tpr_1)
-            #
-            #         coll_tprs = np.array(coll_tprs)
-            #         mean_tprs_1 = coll_tprs.mean(axis=0)
-            #         std_1 = coll_tprs.std(axis=0)
-            #         meanauc = coll_auc / len(coll_tprs)
-            #
-            #         plt.plot(base_fpr, mean_tprs_1, 'g',
-            #                  label='AUC={:.3f}'.format(meanauc))
-            #         plt.title("theta {}-method {}-ep1-alpha {}".format(0.9, meth, alpha))
-            #         plt.savefig(os.path.join(data_dir, "theta {} method {}-auc-{:.3f}-ep1-alpha-{}.png".format(0.9, meth, meanauc, alpha)))
-            #         plt.savefig(os.path.join(data_dir, "theta {} method {}-auc-{:.3f}-ep1-alpha-{}.pdf".format(0.9, meth, meanauc, alpha)), format="pdf")
-            #         plt.close()
-            ## plot same_mean aug, auc w.r.t.
             print("ok")
             configs = np.array(configs)
             aug_same = configs[np.where(configs[:, 0] == aug_name_encode["same"])[0]]
             aug_ops = configs[np.where(configs[:, 0] == aug_name_encode["ops"])[0]]
             aug_both = configs[np.where(configs[:, 0] == aug_name_encode["both"])[0]]
 
-            factor_style = {0.05:"-", 0.2:"-.", 0.35:"--", 0.5:":"}
-            meth_color = {"ops":"tab:orange", "same":"tab:blue", "both":"m"}
-            markers = {1:"-d", 3:"-*", 5:"-o", 9:"-^"}
+            scale_style = {0.05: "-", 0.2: "-.", 0.35: "--", 0.5: ":"}
+            meth_color = {"ops":"tab:orange", "same":"tab:green", "both":"tab:brown"}
+            fold_markers = {1: "-d", 3: "-*", 5: "-o", 9: "-^"}
             styles = {1:":", 3:"-.", 5:"--", 9:"-"}
             
             # plot aug. method with error bar
@@ -698,11 +656,11 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
                     if len(fd_configs) > 0:
                         value_per_scale = []
                         for scale in [0.05, 0.2, 0.35, 0.5]:
-                            print("{}, {}, {}".format(method, fold, scale))
+                            print("{}, {}, {}, auc".format(method, fold, scale))
                             if len(np.where(fd_configs[:,2] == scale)[0]) >= 1:
                                 value_per_scale.append([np.float(scale), np.mean(fd_configs[np.where(fd_configs[:, 2] == scale)[0], -1])])
 
-                        plt.plot(np.array(value_per_scale)[:, 0], np.array(value_per_scale)[:, 1], markers[fold], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(value_per_scale)[:, 1])), color=meth_color[method])
+                        plt.plot(np.array(value_per_scale)[:, 0], np.array(value_per_scale)[:, 1], fold_markers[fold], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(value_per_scale)[:, 1])), color=meth_color[method])
             plt.legend(),
             plt.title("\n".join(wrap("{} with {} on {}".format(exp_mode, model, data_source), 60)))
             plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}.png".format(exp_mode, model, data_source))),
@@ -736,77 +694,109 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             np.savetxt(os.path.join(data_dir, 'model_{}_aug_both_entry_{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same),exp_mode, model, data_source)), aug_both, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s"),
             np.savetxt(os.path.join(data_dir, 'model_{}_all_different_config_theta{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same),exp_mode, model, data_source)), configs, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s")
     else:
-        file_dir = "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta5-DA+DA-with-Res_ECG_CAM-on-data5.txt"
+        file_dirs = [
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta5-DA+DA-with-Res_ECG_CAM-on-data5.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta0-DA+DA-with-Res_ECG_CAM-on-data2.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data7.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta0-DA+DA-with-Res_ECG_CAM-on-data3.txt"
+        ]
         aug_meth = ["same", "ops", "both"]
-        configs = pd.read_csv(file_dir, header=0).values
+        
+        configs = np.empty((0, 5))
+        for fn in file_dirs:
+            load_data = pd.read_csv(fn, header=0).values
+            configs = np.vstack((configs, load_data))
+            
         aug_name_encode = {"same": 0, "ops": 1,"both": 2}
         model_name = "Res_ECG_CAM"
-        data_source = "data5"
+        data_source = "all-data"
 
         configs = np.array(configs)
         aug_same = configs[np.where(configs[:, 0] == aug_name_encode["same"])[0]]
         aug_ops = configs[np.where(configs[:, 0] == aug_name_encode["ops"])[0]]
         aug_both = configs[np.where(configs[:, 0] == aug_name_encode["both"])[0]]
 
-        factor_style = {0.05:"-", 0.2:"-.", 0.35:"--", 0.5:":"}
-        meth_color = {"ops":"tab:orange", "same":"tab:green", "both":"tab:brown"}
-        markers = {1:"d", 3:"*", 5:"o", 9:"^"}
+        scale_style = {0.05: "-", 0.2: "-.", 0.35: "--", 0.5: ":"}
+        meth_color = {"other":"tab:orange", "same":"tab:green", "both":"tab:brown"}
+        fold_markers = {1: "d", 3: "*", 5: "o", 9: "^"}
         styles = {1:":", 3:"-.", 5:"--", 9:"-"}
         
         # plot aug. method with boxplot and error bar
-        plt.figure(figsize=[8, 5.5])
-        for res, method, case in zip([aug_same, aug_ops, aug_both], ["same", "ops", "both"], np.arange(3)):
-            value_per_scale, names, xs = [], [], []
-            for ind, scale in enumerate([0.05, 0.2, 0.35, 0.5]):
-                scale_configs = np.array(res[np.where(res[:,2] == scale)[0]])
-                vals = np.empty((0))
-                if len(scale_configs) > 0:
-                    for jj, fold in enumerate([1,3,5,9]) :
-                        fold_inds = np.where(scale_configs[:,1] == fold)[0]
-                        fd_configs = np.array(scale_configs[fold_inds])
-                        print("method_{}-scale_{}-fold_{} num {}".format(method, scale, fold, len(fold_inds)))
-                        if len(fold_inds) >= 1:
-                            plt.scatter(np.ones(len(fold_inds))*ind*4+1+case, fd_configs[:,-1], color=meth_color[method], marker=markers[fold], s=100)
-                            vals = np.append(vals, fd_configs[:,-1])
-                value_per_scale.append(vals)
-                names.append(scale)
-                xs.append(np.random.normal(ind, 0.04, len(vals)))
-            
-            bp_positions = [jj*4+1+case for jj in range(4)]
-            bplot = plt.boxplot(value_per_scale, labels=names, positions=bp_positions, widths = 0.85)
-            
-            for bpind in range(len(bplot["boxes"])):
-                plt.setp(bplot["boxes"][bpind], color=meth_color[method]),
-                plt.setp(bplot['caps'][bpind*2], color=meth_color[method]),
-                plt.setp(bplot['caps'][bpind*2+1], color=meth_color[method]),
-                plt.setp(bplot['whiskers'][bpind*2], color=meth_color[method]),
-                plt.setp(bplot['whiskers'][bpind*2+1], color=meth_color[method]),
-                plt.setp(bplot['fliers'][bpind], color=meth_color[method]),
-                plt.setp(bplot['medians'][bpind], color=meth_color[method])
-            print("{} Done!".format(method))
+        plot_style = "imshow"   #"boxplot"
+        if plot_style == "boxplot":
+            plt.figure(figsize=[8, 5.5])
+            for res, method, case in zip([aug_same, aug_ops, aug_both], ["same", "other", "both"], np.arange(3)):
+                value_per_scale, names, xs = [], [], []
+                for ind, scale in enumerate([0.05, 0.2, 0.35, 0.5]):
+                    scale_configs = np.array(res[np.where(res[:,2] == scale)[0]])
+                    vals = np.empty((0))
+                    if len(scale_configs) > 0:
+                        for jj, fold in enumerate([1,3,5,9]) :
+                            fold_inds = np.where(scale_configs[:,1] == fold)[0]
+                            fd_configs = np.array(scale_configs[fold_inds])
+                            print("method_{}-scale_{}-fold_{} num {}".format(method, scale, fold, len(fold_inds)))
+                            if len(fold_inds) >= 1:
+                                plt.scatter(np.ones(len(fold_inds)) * ind * 4 + 1 + case, fd_configs[:,-1], color=meth_color[method], marker=fold_markers[fold], s=100)
+                                vals = np.append(vals, fd_configs[:,-1])
+                    value_per_scale.append(vals)
+                    names.append(scale)
+                    xs.append(np.random.normal(ind, 0.04, len(vals)))
                 
-        for fold in [1,3,5,9]:
-            hide_pts = plt.scatter(1+case, 0.6, color=meth_color[method], marker=markers[fold], s=100, label="$\Phi$={}".format(fold))
+                bp_positions = [jj*4+1+case for jj in range(4)]
+                bplot = plt.boxplot(value_per_scale, labels=names, positions=bp_positions, widths = 0.85)
+                
+                for bpind in range(len(bplot["boxes"])):
+                    plt.setp(bplot["boxes"][bpind], color=meth_color[method]),
+                    plt.setp(bplot['caps'][bpind*2], color=meth_color[method]),
+                    plt.setp(bplot['caps'][bpind*2+1], color=meth_color[method]),
+                    plt.setp(bplot['whiskers'][bpind*2], color=meth_color[method]),
+                    plt.setp(bplot['whiskers'][bpind*2+1], color=meth_color[method]),
+                    plt.setp(bplot['fliers'][bpind], color=meth_color[method]),
+                    plt.setp(bplot['medians'][bpind], color=meth_color[method])
+                print("{} Done!".format(method))
+                
+            for fold in [1,3,5,9]:
+                hide_pts = plt.scatter(1 + case, 0.6, color=meth_color[method], marker=fold_markers[fold], s=100, label="$\Phi$={}".format(fold))
+                
+            meth_color = {"other":"tab:orange", "same":"tab:green", "both":"tab:brown"}
+            for jj, method in enumerate(["same", "other", "both"]):
+                hide_line, = plt.plot([0.6,0.6], color=meth_color[method], label="aug-with-{}".format(method))
+            plt.legend(scatterpoints=3, ncol=2, frameon=False)
+    
+            plt.xlabel(r"mixing weight $\alpha$")
+            plt.ylabel("ROC-AUC")
+            print("ok")
             
-        meth_color = {"other":"tab:orange", "same":"tab:green", "both":"tab:brown"}
-        for jj, method in enumerate(["same", "other", "both"]):
-            hide_line, = plt.plot([0.6,0.6], color=meth_color[method], label="aug-with-{}".format(method))
-        plt.legend(scatterpoints=3, ncol=2, frameon=False)
-
-
-        plt.xlabel(r"mixing weight $\alpha$")
-        plt.ylabel("ROC-AUC")
-        print("ok")
-        
-        plt.title("\n".join(wrap("{} with {} on {}".format(method, model_name, data_source), 60)))
-        plt.savefig(os.path.join(os.path.dirname(file_dir), "all-methods-in-one-{}-with-{}-on-{}.png".format(method, model_name, data_source))),
-        plt.savefig(os.path.join(os.path.dirname(file_dir), "all-methods-in-one-{}-with-{}-on-{}.pdf".format(method, model_name, data_source)), format="pdf")
-        plt.close()
-
-        # for vars in [[None, epoch, factor], [fold, None, factor], [fold, epoch, None]]:
-        #
-        #     get_auc_as_factor(file_dir, fold=vars[0], epoch=vars[1], factor=vars[2], aug_meth=aug_meth, colors=colors)
-
+            plt.title("\n".join(wrap("{} with {} on {}".format(method, model_name, data_source), 60)))
+            plt.savefig(os.path.join(os.path.dirname(file_dir), "{}-all-methods-in-one-{}-with-{}-on-{}.png".format(plot_style, method, model_name, data_source))),
+            plt.savefig(os.path.join(os.path.dirname(file_dir), "{}-all-methods-in-one-{}-with-{}-on-{}.pdf".format(plot_style, method, model_name, data_source)), format="pdf")
+            plt.close()
+        elif plot_style == "imshow":
+            plt.figure(figsize=[12, 8.4])
+            for res, method, md_case in zip([aug_same, aug_ops, aug_both], ["same", "other", "both"], np.arange(3)):
+                # each one is for each scale case
+                matrix_values = np.zeros((len(scale_style), len(fold_markers)))
+                matrix_stds = np.zeros((len(scale_style), len(fold_markers)))
+                for scl_ind, scale in enumerate([0.05, 0.2, 0.35, 0.5]):
+                    scale_configs = np.array(res[np.where(res[:,2] == scale)[0]])
+                    scale_values = []
+                    for fd_ind, fold in enumerate([1,3,5,9]) :
+                        fold_inds = np.where(scale_configs[:,1] == fold)[0]
+                        fd_configs = np.array(scale_configs[fold_inds]).reshape(-1, 5)
+                        print("method_{}-scale_{}-fold_{} num {}".format(method, scale, fold, len(fold_inds)))
+                        matrix_values[fd_ind, scl_ind] = np.mean([fd_configs[:,-1]])
+                        matrix_stds[fd_ind, scl_ind] = np.std([fd_configs[:,-1]])
+                    print("folds done")
+                im = plt.imshow(matrix_values, interpolation='none', vmin=matrix_values.min(), vmax=matrix_values.max(), aspect='equal', cmap="viridis")
+                plt.colorbar(),
+                plt.xticks(ticks=np.arange(0, 4, 1), labels=[0.05, 0.2, 0.35, 0.5]),
+                plt.yticks(ticks=np.arange(0, 4, 1), labels=[1,3,5,9])
+                
+                for scl_ind in range(4):
+                    for fd_inds in range(4):
+                        plt.text(fd_inds, scl_ind,r'${:.2f} \pm {:.2f}$'.format(matrix_values[scl_ind, fd_inds], matrix_stds[scl_ind, fd_inds]), horizontalalignment='center', fontsize=15)
+                print("oki")
+                plt.show()
 
 elif plot_name == "rename_test_folders":
     results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM"

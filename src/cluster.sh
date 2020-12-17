@@ -1,15 +1,15 @@
 #!/usr/bin/env sh
 
 #SBATCH --partition sleuths
-#SBATCH --reservation triesch-shared
+##SBATCH --reservation triesch-shared
 ##SBATCH --nodelist jetski
-#SBATCH --nodelist speedboat
+##SBATCH --nodelist speedboat
 ##SBATCH --nodes 1
 ##SBATCH -n 10
 #SBATCH --time=1-00:05:00
 ##SBATCH --ntasks-per-node 32
 ##SBATCH --cpus-per-task 1
-#SBATCH --mem 10GB
+#SBATCH --mem 7GB
 #SBATCH --mincpus 2
 #SBATCH --job-name noise
 #SBATCH --gres gpu:1

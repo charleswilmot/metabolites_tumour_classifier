@@ -12,8 +12,9 @@
     "aug_folds": 2,
     "from_epoch": 0,
     "theta_thr": 1,
-    "certain_dir": null,
+    "certain_dir": "../results/2020-10-14T22-07-37--Res_ECG_CAM-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train",
 
+    "restore_from": null,
     "output_path": null,
     "resume_training": false,
     "output_root": "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review",
@@ -32,7 +33,7 @@
     "loss_type": "softmax_ce",
     "learning_rate": 0.0002,
     "postfix": "none",
-    "if_from_certain": false,
+    "if_from_certain": true,
     "if_save_certain": false,
     "distill_old": false,
     "number_of_epochs": 201,
@@ -40,7 +41,6 @@
             "test_freq": 1,
             "test_every": null,
             "test_ratio": 0.2,
-            "restore_from": null,
             "num_train": null
     },
     "test": {

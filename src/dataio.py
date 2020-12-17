@@ -501,7 +501,7 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
     print(os.path.basename(certain_fns), len(picked_ids), "samples\n")
     certain_mat = whole_set[picked_ids]
 
-    np.savetxt(os.path.join(args.output_path, "selected_top_{}percent_total_{}_samples.csv".format(args.theta_thr*100, len(picked_ids))), np.concatenate((picked_ids.reshape(-1,1),whole_set[picked_ids,1:3],sort_rate[picked_ids].reshape(-1,1)), axis=1), fmt='%.4f', header="samp_id,pat_id,lb,clf_rate", delimiter=',')
+    np.savetxt(os.path.join(args.output_path, "selected_top_{}percent_total_{}_samples.csv".format(args.theta_thr*100, len(picked_ids))), np.concatenate((picked_ids.reshape(-1,1),whole_set[picked_ids,1:3], sort_rate[-np.int(args.theta_thr*total_2_class_num):].reshape(-1,1)), axis=1), fmt='%.4f', header="samp_id,pat_id,lb,clf_rate", delimiter=',')
 
     ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
     if args.num_classes - 1 < np.max(labels):
