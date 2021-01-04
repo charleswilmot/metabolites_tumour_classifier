@@ -1,12 +1,12 @@
 ## @package classifier
 #  This is the main file of the software.
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 import sys
 sys.path.append("..")
 import graph
 import ipdb
-import dataio
+import dataio as dataio
 import utils
 import argparse
 import procedure
@@ -16,7 +16,6 @@ import numpy as np
 import datetime
 import logging
 from tensorflow.python.client import device_lib
-from dataio import make_output_dir
 tf.compat.v1.disable_v2_behavior()
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
@@ -51,7 +50,7 @@ args = utils.load_all_params(params.exp_config, params.model_config)
 # if the job is NOT submitted with cluster.py, only locally, then
 if not args.from_clusterpy:
     args = utils.generate_output_path(args)
-    make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
+    dataio.make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
     dataio.save_command_line(args.model_save_dir)
 
 logger.info("Taking in config files: {}\n{}\n{}".format(params.output_path, params.exp_config, params.model_config))
@@ -63,6 +62,7 @@ if not args.rand_seed:
 
 np.random.seed(seed=np.int(args.rand_seed))
 tf.compat.v1.set_random_seed(np.int(args.rand_seed))
+
 
 # Get augmentation of the data
 if args.if_from_certain and args.train_or_test == 'train':

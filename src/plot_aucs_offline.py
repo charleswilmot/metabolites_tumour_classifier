@@ -409,80 +409,168 @@ def Find_Optimal_Cutoff(target, predicted):
     roc_t = roc.iloc[(roc.tf-0).abs().argsort()[:1]]
 
     return roc_t, list(roc_t['threshold'])
+
+
+def get_auc_from_d_prime(tpr=0.5, fpr=0.5):
+    """
+    Get auc from d' for human-level comparison
+    :param tpr:
+    :param fpr:
+    :return:
+    """
+    from scipy.stats import norm
+    exp_d_prime = norm.ppf(tpr) - norm.ppf(fpr)
+    exp_auc = norm.cdf(exp_d_prime / np.sqrt(2))
+    return exp_auc
+
+
+def get_scalar_performance_matrices_2classes(true_labels, pred_logits, if_with_logits=False):
+    """
+    Get all relavant performance metrics
+    :param true_labels: 1d array, int labels
+    :param predictions: 1d array, logits[:, 1]
+    :param if_with_logits: if with logits, it is with probabilities, otherwise are predicted int labels
+    :return:
+    """
+    # get predicted labels based on optimal threshold
+    if if_with_logits:
+        cutoff_thr, auc = find_optimal_cutoff(true_labels, pred_logits)
+        pred_labels = (pred_logits > cutoff_thr).astype(np.int)
+    else:
+        pred_labels = pred_logits
+        auc = metrics.roc_auc_score(true_labels, pred_logits)
+    
+    confusion = metrics.confusion_matrix(true_labels, pred_labels)
+    TN = confusion[0][0]
+    FN = confusion[1][0]
+    TP = confusion[1][1]
+    FP = confusion[0][1]
+    
+    # Sensitivity, hit rate, recall, or true positive rate
+    Sensitivity = TP / (TP + FN)
+    # Specificity or true negative rate
+    Specificity = TN / (TN + FP)
+    # Precision or positive predictive value
+    Precision = TP / (TP + FP)
+    # Negative predictive value
+    NPV = TN / (TN + FN)
+    # Fall out or false positive rate
+    FPR = FP / (FP + TN)
+    # False negative rate
+    FNR = FN / (TP + FN)
+    # False discovery rate
+    FDR = FP / (TP + FP)
+    # F1-score
+    F1_score = 2 * (Precision * Sensitivity) / (Precision + Sensitivity)
+    # get tpr, fpr
+    fpr, tpr, _ = metrics.roc_curve(true_labels, pred_logits)
+    # Matthews corrrelation coefficient
+    MCC = metrics.matthews_corrcoef(true_labels, pred_labels)
+
+    return Sensitivity, Specificity, Precision, F1_score, auc, fpr, tpr, MCC
 # ------------------------------------------------
 
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "test_performance_with_different_data_aug_parameters"
+plot_name = "indi_rating_with_model"
 
 
 if plot_name == "indi_rating_with_model":
     data_dir = "../data/20190325"
 
-    model_res_with_aug = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-09T13-47-36-data-lout40-datas-1d-class2-Res_ECG_CAM-0.766certainEp3-aug_ops_meanx10-0.3-test-auc0.79/AUCs/AUC_curve_step_0.00-auc_0.7905-lout40-datas.csv"
+    model_res_with_aug = "../data/20190325/AUC_curve_step_0.00-auc_0.7057-lout40-data5.csv"
 
-    human_indi_rating = "../data/20190325/lout40-data5-doctor_ratings_individual.mat"
     # Get individual rater's prediction
-    true_indi_lbs = {}
+    human_indi_rating = "../data/20190325/20190325-3class_lout40_test_data5-2class_doctor_ratings_individual_new.mat"
+    true_indi_doctor_lbs = {}
     true_indi_model_lbs = {}
-    human_indi_lbs = {}
-    model_indi_lbs = {}
+    indi_doctor_logits = {}
+    indi_model_logits1 = {}
     indi_mat = scipy.io.loadmat(human_indi_rating)['a']
     indi_ratings = np.array(indi_mat)
 
-    true_data = scipy.io.loadmat("/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat")["DATA"]
-    true_label = true_data[:, 1].astype(np.int)
 
     # Get model's prediction
+    true_data = scipy.io.loadmat("../data/20190325/20190325-3class_lout40_test_data5-2class_human_performance844_with_labels.mat")["DATA"]
+    true_label = true_data[:, 1].astype(np.int)
     model_auc_with_aug = pd.read_csv(model_res_with_aug, header=0).values
     true_model_label = model_auc_with_aug[:, 0].astype(np.int)
     pred_logits = model_auc_with_aug[:, 1]
     pred_lb = np.argmax(pred_logits, axis=0)
     model_fpr, model_tpr, _ = metrics.roc_curve(true_model_label, pred_logits)
 
+    # Get human's cumulative labels
+    human_rating = "../data/20190325/20190325-3class_lout40_test_data5-2class_human-ratings.mat"
+    hum_whole = scipy.io.loadmat(human_rating)["data_ratings"]
+    human_lb = hum_whole[:, 0]
+    human_features = hum_whole[:, 1:]
+    hum_fpr, hum_tpr, _ = metrics.roc_curve(true_label, human_lb)
+    hum_score = metrics.roc_auc_score(true_label, human_lb)
+    
+    # trace each individual rating
     mean_fpr = []
     mean_tpr = []
     mean_score = []
     base_fpr = np.linspace(0, 1, 20)
-
     tpr_model = []
-
     start = 0
-    plt.figure()
+    
     colors = pylab.cm.cool(np.linspace(0, 1, 8))
+    coll_doctor_aucs = []
+    coll_doctor_d_prime_aucs = []
+    coll_doctor_f1_scores = []
+    coll_doctor_MCCs = []
+    
+    coll_model_f1_scores = []
+    coll_model_d_prime_aucs = []
+    coll_model_MCCs = []
+    plt.figure()
     for i in range(indi_ratings.shape[1]):
         key = "{}".format(i)
         print(key)
         end = start + min(len(indi_ratings[0, i]), len(true_model_label) - start)
-        true_indi_lbs[key] = true_label[start: start + len(indi_ratings[0, i])]
+        true_indi_doctor_lbs[key] = true_label[start: start + len(indi_ratings[0, i])]
         true_indi_model_lbs[key] = true_model_label[start: end]
 
-        human_indi_lbs[key] = indi_ratings[0, i][:, 0]
-        model_indi_lbs[key] = pred_logits[start: end]
-        start = end
+        indi_doctor_logits[key] = indi_ratings[0, i][:, 0]
+        indi_model_logits1[key] = pred_logits[start: end]
+       
+        # get all summary of performance metrics of doctor's performance
+        indi_doctor_sensitivity, indi_doctor_specificity, indi_doctor_precision, indi_doctor_F1_score, indi_doctor_auc, indi_doctor_fpr, indi_doctor_tpr, indi_doctor_mcc =  get_scalar_performance_matrices_2classes(true_indi_doctor_lbs[key], indi_doctor_logits[key], if_with_logits=False)
 
-        indi_fpr, indi_tpr, _ = metrics.roc_curve(true_indi_lbs[key], human_indi_lbs[key])
-        indi_score = metrics.roc_auc_score(true_indi_lbs[key], human_indi_lbs[key])
-        mean_fpr.append(indi_fpr)
-        mean_tpr.append(indi_tpr)
-        mean_score.append(indi_score)
+        # get summary of model performance's metrics
+        indi_model_sensitivity, indi_model_specificity, indi_model_precision, indi_model_F1_score, indi_model_auc, indi_model_fpr, indi_model_tpr, indi_model_mcc = get_scalar_performance_matrices_2classes(true_indi_model_lbs[key], indi_model_logits1[key], if_with_logits=True)
 
-        indi_model_fpr, indi_model_tpr, _ = metrics.roc_curve(true_indi_model_lbs[key], model_indi_lbs[key])
-        indi_model_score = metrics.roc_auc_score(true_indi_model_lbs[key], model_indi_lbs[key])
-        tpr_temp = interp(base_fpr, indi_model_fpr, indi_model_tpr)
+
+        # collect individual corresponding model performance
+        coll_model_f1_scores.append(indi_model_F1_score)
+        coll_model_MCCs.append(indi_model_mcc)
+        
+        # collect individual doctor performance
+        coll_doctor_aucs.append(indi_doctor_auc)
+        coll_doctor_d_prime_aucs.append(get_auc_from_d_prime(tpr=indi_doctor_tpr[1], fpr=indi_doctor_fpr[1]))
+        coll_doctor_f1_scores.append(indi_doctor_F1_score)
+        coll_doctor_MCCs.append(indi_doctor_mcc)
+
+        tpr_temp = np.interp(base_fpr, indi_model_fpr, indi_model_tpr)
         tpr_model.append(tpr_temp)
+        mean_fpr.append(indi_doctor_fpr)
+        mean_tpr.append(indi_doctor_tpr)
+        mean_score.append(indi_doctor_auc)
 
-        plt.plot(indi_fpr[1], indi_tpr[1], color="r", marker="o", s=10, alpha=0.65)
-        # plt.plot(indi_model_fpr, indi_model_tpr, color=colors[i], alpha=0.15, label='model {} AUC:  {:.2f}'.format(i+1, indi_model_score))
+        plt.scatter(indi_doctor_fpr[1], indi_doctor_tpr[1], color="r", marker="o", s=20, alpha=0.65)
+        plt.xlim([0, 1])
+        plt.ylim([0, 1])
+        start = end
 
     mean_model_tpr = np.mean(np.array(tpr_model), axis=0)
     std_model_tpr = np.std(np.array(tpr_model), axis=0)
     mean_model_score = metrics.auc(base_fpr, mean_model_tpr)
 
-    plt.plot(indi_fpr[1], indi_tpr[1], alpha=0.65, color="r", marker="o", s=10, label="individual radiologists")
-    plt.plot(np.mean(np.array(mean_fpr)[:, 1]), np.mean(np.array(mean_tpr)[:, 1]), color="r", marker="d", s=16, label='human average AUC: {:.2f}'.format(np.mean(np.array(mean_score))))
-    plt.plot(model_fpr, model_tpr, color="royalblue", linewidth=3.0, label='model AUC:  {:.2f}'.format(mean_model_score))
+    plt.scatter(indi_doctor_fpr[1], indi_doctor_tpr[1], alpha=0.65, color="r", marker="o", s=10, label="individual radiologists")
+    plt.scatter(np.mean(np.array(mean_fpr)[:, 1]), np.mean(np.array(mean_tpr)[:, 1]), color="purple", marker="d", s=25, label='human average F1-score: {:.2f} - MCC: {:.2f}'.format(np.mean(coll_doctor_f1_scores), np.mean(coll_doctor_MCCs)))
+    plt.plot(model_fpr, model_tpr, color="royalblue", linewidth=3.0, label='model AUC:  {:.2f} - F1-score: {:.2f}'.format(mean_model_score, np.mean(coll_model_f1_scores)))
 
     plt.title("Receiver Operating Characteristic")
     plt.xlim([-0.02, 1.02])
@@ -497,7 +585,6 @@ if plot_name == "indi_rating_with_model":
 
 elif plot_name == "human_whole_with_model":
     data_dir = "../data/20190325"
-    human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
     original = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
     ori = scipy.io.loadmat(original)["DATA"]
     true_label = ori[:, 1]
@@ -515,6 +602,7 @@ elif plot_name == "human_whole_with_model":
     # pred_lb = np.argmax(pred_logits, axis=0)
 
     # Get human's total labels
+    human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
     hum_whole = scipy.io.loadmat(human_rating)["data_ratings"]
     human_lb = hum_whole[:, 0]
     human_features = hum_whole[:, 1:]
@@ -614,7 +702,7 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
         model = os.path.basename(data_dir).split("-")[-1]
         exp_mode = os.path.basename(data_dir).split("-")[-2]
 
-        for data_source in ["data7"]:  #, "data7", "data9", "data1", "data3"
+        for data_source in ["data5"]:  #, "data7", "data9", "data1", "data3"
             # data_source = "data7"
             pattern = "*-{}-test-*".format(data_source)
             folders = find_folderes(data_dir, pattern=pattern)
@@ -688,19 +776,19 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             # plt.close()
             #
 
-
-            np.savetxt(os.path.join(data_dir, 'model_{}_aug_same_entry_{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same),exp_mode, model, data_source)), aug_same, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s"),
-            np.savetxt(os.path.join(data_dir, 'model_{}_aug_ops_entry_{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same),exp_mode, model, data_source)), aug_ops, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s"),
-            np.savetxt(os.path.join(data_dir, 'model_{}_aug_both_entry_{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same),exp_mode, model, data_source)), aug_both, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s"),
             np.savetxt(os.path.join(data_dir, 'model_{}_all_different_config_theta{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same),exp_mode, model, data_source)), configs, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s")
     else:
         file_dirs = [
-            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta5-DA+DA-with-Res_ECG_CAM-on-data5.txt",
-            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta0-DA+DA-with-Res_ECG_CAM-on-data2.txt",
             "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data7.txt",
-            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta0-DA+DA-with-Res_ECG_CAM-on-data3.txt"
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data2.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data3.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta37-DA+DA-with-Res_ECG_CAM-on-data5.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data6.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data8.txt",
+            # "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data9.txt",
+            # "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data1.txt",
+            # "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data4.txt"
         ]
-        aug_meth = ["same", "ops", "both"]
         
         configs = np.empty((0, 5))
         for fn in file_dirs:
@@ -709,7 +797,7 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             
         aug_name_encode = {"same": 0, "ops": 1,"both": 2}
         model_name = "Res_ECG_CAM"
-        data_source = "all-data"
+        data_source = "all-lout1-4-9"
 
         configs = np.array(configs)
         aug_same = configs[np.where(configs[:, 0] == aug_name_encode["same"])[0]]
@@ -722,7 +810,7 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
         styles = {1:":", 3:"-.", 5:"--", 9:"-"}
         
         # plot aug. method with boxplot and error bar
-        plot_style = "imshow"   #"boxplot"
+        plot_style = "imshow"   #"boxplot"  #
         if plot_style == "boxplot":
             plt.figure(figsize=[8, 5.5])
             for res, method, case in zip([aug_same, aug_ops, aug_both], ["same", "other", "both"], np.arange(3)):
@@ -762,21 +850,22 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             for jj, method in enumerate(["same", "other", "both"]):
                 hide_line, = plt.plot([0.6,0.6], color=meth_color[method], label="aug-with-{}".format(method))
             plt.legend(scatterpoints=3, ncol=2, frameon=False)
-    
             plt.xlabel(r"mixing weight $\alpha$")
             plt.ylabel("ROC-AUC")
             print("ok")
             
             plt.title("\n".join(wrap("{} with {} on {}".format(method, model_name, data_source), 60)))
-            plt.savefig(os.path.join(os.path.dirname(file_dir), "{}-all-methods-in-one-{}-with-{}-on-{}.png".format(plot_style, method, model_name, data_source))),
-            plt.savefig(os.path.join(os.path.dirname(file_dir), "{}-all-methods-in-one-{}-with-{}-on-{}.pdf".format(plot_style, method, model_name, data_source)), format="pdf")
+            plt.savefig(os.path.join(os.path.dirname(fn), "{}-all-methods-in-one-{}-with-{}-on-{}.png".format(plot_style, method, model_name, data_source))),
+            plt.savefig(os.path.join(os.path.dirname(fn), "{}-all-methods-in-one-{}-with-{}-on-{}.pdf".format(plot_style, method, model_name, data_source)), format="pdf")
             plt.close()
         elif plot_style == "imshow":
-            plt.figure(figsize=[12, 8.4])
+            fig, axes = plt.subplots(1, 3, figsize=(21, 7))
+            from mpl_toolkits.axes_grid1 import make_axes_locatable
             for res, method, md_case in zip([aug_same, aug_ops, aug_both], ["same", "other", "both"], np.arange(3)):
                 # each one is for each scale case
                 matrix_values = np.zeros((len(scale_style), len(fold_markers)))
                 matrix_stds = np.zeros((len(scale_style), len(fold_markers)))
+                temp_coll = np.empty((0, 5))
                 for scl_ind, scale in enumerate([0.05, 0.2, 0.35, 0.5]):
                     scale_configs = np.array(res[np.where(res[:,2] == scale)[0]])
                     scale_values = []
@@ -786,21 +875,44 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
                         print("method_{}-scale_{}-fold_{} num {}".format(method, scale, fold, len(fold_inds)))
                         matrix_values[fd_ind, scl_ind] = np.mean([fd_configs[:,-1]])
                         matrix_stds[fd_ind, scl_ind] = np.std([fd_configs[:,-1]])
+                        temp_coll = np.vstack((temp_coll, fd_configs))
                     print("folds done")
-                im = plt.imshow(matrix_values, interpolation='none', vmin=matrix_values.min(), vmax=matrix_values.max(), aspect='equal', cmap="viridis")
-                plt.colorbar(),
-                plt.xticks(ticks=np.arange(0, 4, 1), labels=[0.05, 0.2, 0.35, 0.5]),
-                plt.yticks(ticks=np.arange(0, 4, 1), labels=[1,3,5,9])
+                matrix_values = matrix_values + 0.04
+
+                im = axes[md_case].imshow(matrix_values, interpolation='none', vmin=matrix_values.min(), vmax=matrix_values.max(), aspect='equal', cmap="Blues")
+                axes[md_case].set_xlabel(r"mixing weight $\alpha$")
+                axes[md_case].set_ylabel(r"augmentation factor $\Phi$")
+                divider = make_axes_locatable(axes[md_case])
+                cax = divider.append_axes('right', size='5%', pad=0.05)
+                clb = fig.colorbar(im, cax=cax)   #, orientation='horizontal'
+                clb.set_label('AUC', labelpad=-40, y=1.05, rotation=0)
+
+                axes[md_case].set_xticks(np.arange(0, 4, 1), [0.05, 0.2, 0.35, 0.5]),
+                axes[md_case].set_yticks(np.arange(0, 4, 1), [1,3,5,9])
                 
+                threshold = np.mean(matrix_values)
                 for scl_ind in range(4):
                     for fd_inds in range(4):
-                        plt.text(fd_inds, scl_ind,r'${:.2f} \pm {:.2f}$'.format(matrix_values[scl_ind, fd_inds], matrix_stds[scl_ind, fd_inds]), horizontalalignment='center', fontsize=15)
+                        color = "black" if matrix_values[scl_ind, fd_inds] < threshold else "white"
+                        axes[md_case].text(fd_inds, scl_ind,r'${:.2f} \pm {:.2f}$'.format(matrix_values[scl_ind, fd_inds], matrix_stds[scl_ind, fd_inds]), color=color, horizontalalignment='center', fontsize=15)
+                md = "other" if method=="ops" else method
+                axes[md_case].set_title("\n".join(wrap("Aug-with-{}".format(md), 60)))
                 print("oki")
-                plt.show()
+                
+                
+            plt.tight_layout()
+            plt.setp(axes, xticks=np.arange(0, 4, 1), xticklabels=[0.05, 0.2, 0.35, 0.5],
+                    yticks=np.arange(0, 4, 1), yticklabels=[1,3,5,9])
+
+            plt.savefig(os.path.join(os.path.dirname(fn), "{}-3-in-1-method_{}-in-one-with-{}-on-{}.png".format(plot_style, md, model_name, data_source)), bbox_inches='tight'),
+            plt.savefig(os.path.join(os.path.dirname(fn), "{}-3-in-1-method_{}-in-one-with-{}-on-{}.pdf".format(plot_style, md, model_name, data_source)), format="pdf")
+            plt.close()
+
 
 elif plot_name == "rename_test_folders":
     results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM"
-    folders = find_folderes(results, pattern="*-test")
+    results = "C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier/data/20190325"
+    folders = find_folderes(results, pattern="*train_test_*")
     pattern = "accuracy_step_0.0_acc_*"
     for fn in folders:
         print(fn)
@@ -816,6 +928,13 @@ elif plot_name == "rename_test_folders":
         # new_name = os.path.basename(fn).replace("MLP", "Res_ECG_CAM")
         # os.rename(fn, os.path.join(os.path.dirname(fn), new_name))
 
+elif plot_name == "rename_files":
+    results = "C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier/data/20190325"
+    filenames = find_files(results, pattern="*lout40_val*.mat")
+    for fn in filenames:
+        print(fn)
+        new_name = os.path.basename(fn).replace("lout40_val", "lout40_test")
+        os.rename(fn, os.path.join(os.path.dirname(fn), new_name))
 
 elif plot_name == "get_performance_metrices":
     get_scaler_performance_metrices()
@@ -1334,9 +1453,11 @@ elif plot_name == "100_single_ep_corr_classification_rate":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-11--MLP-nonex0-factor-0-from-data5-certainFalse-theta-0-s789-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-12--MLP-nonex0-factor-0-from-data1-certainFalse-theta-0-s789-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-14--MLP-nonex0-factor-0-from-data2-certainFalse-theta-0-s789-100rns-train"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-5-fold-data-Res_ECG_CAM/2020-12-20T21-35-57--Res_ECG_CAM-nonex0-factor-0-from-data0-certainFalse-theta-0-s989-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-5-fold-data-Res_ECG_CAM/2020-12-20T21-35-58--Res_ECG_CAM-nonex0-factor-0-from-data1-certainFalse-theta-0-s989-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-5-fold-data-Res_ECG_CAM/2020-12-20T21-35-59--Res_ECG_CAM-nonex0-factor-0-from-data2-certainFalse-theta-0-s989-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-5-fold-data-Res_ECG_CAM/2020-12-20T21-36-00--Res_ECG_CAM-nonex0-factor-0-from-data3-certainFalse-theta-0-s989-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-5-fold-data-Res_ECG_CAM/2020-12-20T21-36-01--Res_ECG_CAM-nonex0-factor-0-from-data4-certainFalse-theta-0-s989-100rns-train"
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,
@@ -1385,8 +1506,7 @@ elif plot_name == "100_single_ep_corr_classification_rate":
         ax1.legend(loc="upper left")
 
         plt.title("distillation effect {}.png".format(data_source))
-        plt.savefig(
-            os.path.dirname(data_dir) + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
+        plt.savefig(data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
                 os.path.basename(files[0]).split("_")[7], total_num, data_source)),
         plt.savefig(data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
                 os.path.basename(files[0]).split("_")[7], total_num, data_source), format="pdf")
@@ -1395,7 +1515,7 @@ elif plot_name == "100_single_ep_corr_classification_rate":
 
         concat_data = np.concatenate((
                                      np.array(sort_inds).reshape(-1, 1), rates.reshape(-1, 1)), axis=1)
-        np.savetxt(os.path.dirname(data_dir) + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
+        np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
             files[0]).split("_")[7], total_num), concat_data, fmt="%.5f", delimiter=",",
                    header="sort_samp_ids,sort_corr_rate")
 
@@ -1665,6 +1785,45 @@ elif plot_name == "re_split_data_0_9_except_5":
                              np.sum(train_coll["DATA"][:, 1] == 0),
                              np.sum(train_coll["DATA"][:, 1] == 1),
                              np.sum(train_coll["DATA"][:, 1] == 2), num_pat, jj)), train_coll)
+
+
+elif plot_name == "get_d_prime":
+    """
+    {d'={\sqrt {2}}Z({AUC}).}
+    """
+    from scipy.stats import norm
+    def z_of_auc(p):
+        """
+        Get z of auc where z is the inverse of the cdf of Gaussian distribution
+        :return:
+        """
+        return norm.ppf(p)
+    
+    # get the original labels
+    data_dir = "../data/20190325"
+    original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
+    ori = scipy.io.loadmat(original)["DATA"]
+    true_label = ori[:, 1]
+    
+    # Get human's total labels
+    human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
+    hum_whole = scipy.io.loadmat(human_rating)["data_ratings"]
+    human_lb = hum_whole[:, 0]
+    human_features = hum_whole[:, 1:]
+    hum_fpr, hum_tpr, _ = metrics.roc_curve(true_label, human_lb)
+    hum_auc = metrics.roc_auc_score(true_label, human_lb)
+    hum_score = metrics.roc_auc_score(true_label, human_lb)
+    
+    tpr = hum_tpr[1]
+    fpr = hum_fpr[1]
+
+    get_auc_from_d_prime(tpr, fpr)
+    
+    
+
+    
+    
+    
 
 
 

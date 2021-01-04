@@ -9,9 +9,9 @@
 #SBATCH --time=1-00:05:00
 ##SBATCH --ntasks-per-node 32
 ##SBATCH --cpus-per-task 1
-#SBATCH --mem 7GB
+#SBATCH --mem 9GB
 #SBATCH --mincpus 2
-#SBATCH --job-name noise
+#SBATCH --job-name augment
 #SBATCH --gres gpu:1
 
 #j=$((SLURM_ARRAY_TASK_ID))

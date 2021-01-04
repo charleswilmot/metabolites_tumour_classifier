@@ -2879,7 +2879,7 @@ https://www.cyberciti.biz/faq/linux-check-disk-space-command/:
     du -a ./ | sort -n -r | head -n 20
     
     elu@oak ~/LU/2_Neural_Network$ du -a -H ./ | sort -n -r | head -n 30
-    du -a -H  /home/epilepsy-data/data/ | sort -n -r | head -n 20
+    du -a -H  /home/epilepsy-data/data/ | sort -n -r | head -n 30
 
 2019.03.13
 open .TRC files:

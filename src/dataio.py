@@ -234,33 +234,33 @@ def put_values_in_train_data_dict(X_train, Y_train, train_data, args, aug_data=N
     return train_data
 
 
-def put_values_in_test_data_dict(X_test, Y_test, test_data, args):
+def put_values_in_test_data_dict(X, Y, data_dict, args):
     """
     put_values_in_test_data_dict
-    :param X_test:
-    :param Y_test:
-    :param test_data:
+    :param X:
+    :param Y:
+    :param data_dict:
     :param args:
     :return:
     """
-    test_data["spectra"] = zscore(X_test[:, 3:], axis=1).astype(np.float32)
-    test_data["labels"] = Y_test.astype(np.int32)
-    assert np.sum(Y_test.astype(np.int32) == X_test[:, 2].astype(np.int32)) == len(
-        X_test), "train_test_split messed up the data!"
-    test_data["ids"] = X_test[:, 1].astype(np.int32)
-    test_data["sample_ids"] = X_test[:, 0].astype(np.int32)
-    test_data["num_samples"] = len(test_data["labels"])
-    print("Test num of class 0: ", len(np.where(test_data["labels"] == 0)[0]), "num of class 1: ",
-          len(np.where(test_data["labels"] == 1)[0]))
-    test_count = dict(Counter(list(test_data["ids"])))  # count the num of samples of each id
+    data_dict["spectra"] = zscore(X[:, 3:], axis=1).astype(np.float32)
+    data_dict["labels"] = Y.astype(np.int32)
+    assert np.sum(Y.astype(np.int32) == X[:, 2].astype(np.int32)) == len(
+        X), "train_test_split messed up the data!"
+    data_dict["ids"] = X[:, 1].astype(np.int32)
+    data_dict["sample_ids"] = X[:, 0].astype(np.int32)
+    data_dict["num_samples"] = len(data_dict["labels"])
+    print("Test num of class 0: ", len(np.where(data_dict["labels"] == 0)[0]), "num of class 1: ",
+          len(np.where(data_dict["labels"] == 1)[0]))
+    test_count = dict(Counter(list(data_dict["ids"])))  # count the num of samples of each id
     sorted_count = sorted(test_count.items(), key=lambda kv: kv[1])
     np.savetxt(os.path.join(args.output_path, "test_ids_count_{}.csv".format(args.data_source)), np.array(sorted_count),
                fmt='%d',
                delimiter=',')
     np.savetxt(os.path.join(args.output_path, "original_labels_{}.csv".format(args.data_source)),
-               np.array(test_data["labels"]), fmt='%d',
+               np.array(data_dict["labels"]), fmt='%d',
                delimiter=',')
-    return test_data
+    return data_dict
 
 
 def oversample_train(samp_ids, pat_ids, labels, features):
@@ -407,6 +407,66 @@ def load_original_mat_train_val(args):
     else:
         X_train, X_test, Y_train, Y_test = train_test_split(sub_mat, sub_mat[:, 2], test_size=args.test_ratio)
     return X_test, X_train, Y_test, Y_train
+
+
+def get_pat_wise_data(args, num_per_pat=10):
+    """
+    Get patient-wise spectra and group together as one 2d data sample
+    :param args:
+    :param num_per_pat:
+    :return:
+    """
+    ## load all data
+    mat = scipy.io.loadmat(args.input_data)["DATA"]
+    labels = mat[:, 1]
+    whole_set = np.zeros((mat.shape[0], mat.shape[1] + 1))
+    whole_set[:, 0] = np.arange(mat.shape[0])  # tag every sample
+    whole_set[:, 1:] = mat
+
+    # go through all patients
+    pre_pat = whole_set[0, 1]
+    per_pat_spectra = {}
+    pat_data = np.empty((0, whole_set.shape[1]))
+    count = 0
+    lb = []
+    counts = []
+    for i in range(len(whole_set)):
+        if whole_set[i, 1] == pre_pat:  # still the same pat and not label 2
+            if whole_set[i, 2] != 2:
+                pat_data = np.vstack((pat_data, whole_set[i].reshape(-1, whole_set.shape[1])))
+                count += 1
+                lb.append(whole_set[i, 2])
+        else:
+            if whole_set[i, 2] != 2:
+                print("patient {}, {} spectra".format(pre_pat, count))
+                np.savetxt(os.path.join(os.path.dirname(args.input_data), "20190325", "patient-wise-data", "group-{:.0f}-pat-{:.0f}-num-{:.0f}-wo-class2-whole.csv".format(np.mean(np.array(lb)), pre_pat, count)), pat_data, delimiter=",", fmt="%.4f")
+                per_pat_spectra[pre_pat] = pat_data
+                counts.append(count)
+                
+                ## start new patient
+                pat_data = whole_set[i]
+                pre_pat = whole_set[i, 1]
+                lb = [whole_set[i, 2]]
+                count = 1
+    per_pat_spectra[pre_pat] = pat_data
+    counts.append(count)
+    np.savetxt(os.path.join(os.path.dirname(args.input_data), "20190325", "patient-wise-data", "group-{:.0f}-pat-{:.0f}-num-{:.0f}-wo-class2-whole.csv".format(np.mean(np.array(lb)), pre_pat, count)), pat_data, delimiter=",", fmt="%.4f")
+    
+    print("ok")
+    nums = [len(v) for _, v in per_pat_spectra.items()]
+    plt.hist(np.array(counts), bins=50),
+    plt.vlines(np.percentile(np.array(counts), 90), 0, 35, "m", linestyles="-.", label="90th-{:.0f}".format(np.percentile(np.array(counts), 90))),
+    plt.vlines(np.percentile(np.array(counts), 10), 0, 35, "c", linestyles="-.", label="10th-{:.0f}".format(np.percentile(np.array(counts), 10))),
+    plt.vlines(np.mean(np.array(counts)), 0, 35, "b", linestyles="-.", label="mean - {:.0f}".format(np.mean(np.array(counts)))),
+    plt.xlabel("number of spectra per patient"),
+    plt.ylabel("number of patients"),
+    plt.legend()
+    plt.savefig(os.path.dirname(args.input_data)+"/whole-patient-wise-spectra-hist.png"),
+    plt.savefig(os.path.dirname(args.input_data)+"/whole-patient-wise-spectra-hist.pdf", format="pdf")
+    plt.close()
+    
+        
+    # get spectra for each patients
 
 #######################################################################################################3
 def get_data_tensors(args, certain_fns=None):
