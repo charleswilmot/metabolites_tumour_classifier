@@ -582,7 +582,16 @@ if plot_name == "indi_rating_with_model":
     plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.png"), format='png')
     plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.pdf"), format='pdf')
     plt.close()
-
+    
+    filename = "C:/Users/LDY/Desktop/1-all-experiment-results/Gk-patient-wise-classification/2021-01-04T01-17-45-classifier3-20-gentest-non-overlap/classifier3-31-CV9--ROC-AUC-[n_cv_folds,n_spec_per_pat].csv"
+    data = pd.read_csv(filename, header=None).values
+    plt_x = np.arange(1, 32, 5)
+    for i in range(10):
+        plt.plot(plt_x, data[i], label="CV fold {}".format(i))
+    plt.legend(bbox_to_anchor=(1.05, 1))
+    plt.xlabel("# of spectra per patient"),
+    plt.ylabel("ROC AUC")
+    plt.tight_layout()
 
 elif plot_name == "human_whole_with_model":
     data_dir = "../data/20190325"
