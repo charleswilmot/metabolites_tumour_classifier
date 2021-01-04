@@ -1,0 +1,94 @@
+{
+    "model": {
+                "CNN":{
+                    "model_name": "CNN",
+                    "out_channels": [16, 32],
+                    "pool_size": 3,
+                    "strides": 2,
+                    "kernel_size": 288,
+                    "fc": [200, 2],
+                    "dropout_probs": [0.3, 0.3, 0.5, 0.5],
+                    "batch_norms":[true, true, true, true],
+                    "activations":["lrelu", "lrelu", "lrelu", "softmax"]
+
+                },
+                "CNN_CAM":{
+                    "model_name": "CNN_CAM",
+                    "out_channels": [8, 16, 32],
+                    "num_layers": [1, 1, 1],
+                    "pool_size": 3,
+                    "strides": 2,
+                    "kernel_size": 288,
+                    "dropout_probs": [0.3, 0.3, 0.3],
+                    "batch_norms":[true, true, true],
+                    "activations":["relu", "relu", "relu"]
+
+                },
+                "MLP":{
+                    "model_name": "MLP",
+                    "layer_dims": [320, 512, 400, 256],
+                    "drop_fc": [0.50, 0.50, 0.50, 0.50],
+                    "batch_norm": true
+
+                },
+                "Res_ECG_CAM": {
+                    "model_name": "Res_ECG_CAM",
+                    "out_channels": 16,
+                    "num_layers_in_res": 2,
+                    "num_res_blocks": 7,
+                    "pool_size": 2,
+                    "stride": 2,
+                    "filter_size": 16,
+                    "bn": true,
+                    "drop_cnn": 0.5,
+                    "drop_fnn": 0.5
+                },
+                "Inception": {
+                    "model_name": "Inception",
+                    "out_channels": 32,
+                    "num_incep_blocks": 7,
+                    "num_moduleA": 2,
+                    "num_moduleB": 4,
+                    "ks_small": 5,
+                    "ks_big": 11,
+                    "ks_bbig": 16,
+                    "reduce_factor": 4,
+                    "incep_filter_size": [
+                        5,
+                        9,
+                        15,
+                        32
+                    ],
+                    "filter_size": 144,
+                    "conv_1_size": 16,
+                    "conv_3_size": 32,
+                    "conv_3_reduced_size": 32,
+                    "conv_5_reduced_size": 64,
+                    "conv_5_size": 64,
+                    "pool_size": 3,
+                    "stride": 2,
+                    "fc": [
+                        500
+                    ],
+                    "bn": true,
+                    "drop_cnn": 0.55,
+                    "drop_fnn": 0.55,
+                    "activations": [
+                        "relu",
+                        "softmax"
+                    ]
+                },
+                "RNN": {
+                    "model_name": "RNN",
+                    "bn": true,
+                    "fc_dim": [256, 128],
+                    "rnn_dims": [64, 128],
+                    "drop_rnn": 0.5,
+                    "drop_rnn_ln": 0.5,
+                    "drop_fc": 0.5
+                    }
+
+
+
+    }
+}
