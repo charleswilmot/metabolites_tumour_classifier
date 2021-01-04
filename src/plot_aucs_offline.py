@@ -578,6 +578,7 @@ if plot_name == "indi_rating_with_model":
     plt.legend(loc=4)
     plt.ylabel('true positive rate')
     plt.xlabel('false positive rate')
+    
     plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.png"), format='png')
     plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.pdf"), format='pdf')
     plt.close()
