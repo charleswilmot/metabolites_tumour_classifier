@@ -243,86 +243,6 @@ def plot_mean_spec_in_cluster(mean, std, cluster_id, num_clusters, postfix, cros
     plt.close()
 
 
-def get_scaler_performance_metrices():
-    """
-    Plot violin plots given the target dir of the test trials. Get the agg level [true-lb, agg-probability]
-    :param pool_len:
-    :param task_id:
-    :return:
-    """
-    postfix = ""
-    data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM"
-    folders = find_folderes(data_dir, pattern="*both*meanx5*data5*-test-0.*")
-    performance = {"ACC": np.empty((0,)), "patient_ACC": np.empty((0,)), "AUC": np.empty((0,)), "SEN": np.empty((0,)), "SPE": np.empty((0,))}
-
-    for fd in folders:
-        file = find_files(fd, pattern="AUC_curve_step*.csv")
-        num_patient = find_files(fd, pattern="*prob_distri_of*.png")
-        # rat_id = os.path.basename(fn).split("-")[-3]
-        values = pd.read_csv(file[0], header=0).values
-
-        true_labels = values[:, 0]   # assign true-lbs and probs in aggregation
-        prob = values[:, 1]
-        cutoff_thr, auc = find_optimal_cutoff(true_labels, prob)
-        pred_lbs = (prob > cutoff_thr).astype(np.int)
-
-        class0_inds = np.where(true_labels == 0.0)[0]
-        class1_inds = np.where(true_labels == 1.0)[0]
-        class0_prob = prob[class0_inds]
-        class1_prob = prob[class1_inds]
-
-        patient_acc = np.sum(["right" in name for name in num_patient]) / len(num_patient)
-        acc = np.sum(pred_lbs == true_labels) / true_labels.size
-        # sen = np.sum(pred_lbs[class1_inds] == true_labels[class1_inds]) / class1_inds.size
-        sen = np.sum(pred_lbs[np.where(true_labels == 1.0)[0]] == 1.0) / len(np.where(true_labels == 1.0)[0])
-        spe = np.sum(pred_lbs[class0_inds] == true_labels[class0_inds]) / class0_inds.size
-
-        # scores["class0"] = np.append(scores["class0"],
-        #                              class0_prob)
-        # scores["class1"] = np.append(scores["class1"],
-        #                              class1_prob)
-        performance["ACC"] = np.append(performance["ACC"], acc)
-        performance["SEN"] = np.append(performance["SEN"], sen)
-        performance["SPE"] = np.append(performance["SPE"], spe)
-        performance["AUC"] = np.append(performance["AUC"], auc)
-        performance["patient_ACC"] = np.append(performance["patient_ACC"], patient_acc)
-
-
-    ## Human performance
-    # human_file = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class-human-ratings.mat"
-    # original = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
-    # values = scipy.io.loadmat(human_file)["data_ratings"]
-    #
-    # true_v = scipy.io.loadmat(original)["DATA"]
-    # ids = true_v[:, 0]
-    # pred_lbs = values[:, 0]
-    # true_lbs = true_v[:, 1]
-    # count = dict(Counter(list(ids)))
-    # human_diagnosis = []
-    # right_count = 0
-    # for id in count.keys():
-    #     id_inds = np.where(ids == id)[0]
-    #     vote_label = (np.sum(true_lbs[id_inds]) * 1.0 / id_inds.size).astype(np.int)
-    #     vote_pred = ((np.sum(pred_lbs[id_inds]) / id_inds.size) > 0.5).astype(np.int)
-    #     right_count = right_count + 1 if vote_label==vote_pred else right_count
-    #     human_diagnosis.append((id, vote_label, vote_pred))
-    #
-    # human_diagnosis = np.array(human_diagnosis)
-    # sen = np.sum(human_diagnosis[:, 2][np.where(human_diagnosis[:, 1] == 1)[0]] == 1) / len(
-    #     np.where(human_diagnosis[:, 1] == 1)[0])
-    # spe = np.sum(human_diagnosis[:, 2][np.where(human_diagnosis[:, 1] == 0)[0]] == 0) / len(
-    #     np.where(human_diagnosis[:, 1] == 0)[0])
-    #
-    # np.savetxt("/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/" + "human_patient_wise_diagnosis.csv", np.array(human_diagnosis), header="id,true,pred", fmt="%d", delimiter=",")
-
-
-    print("ave sen", np.mean(performance["SEN"]), "std sen", np.std(performance["SEN"]), '\n', "min", performance["SEN"].min(), "max", performance["SEN"].max(), '\n'),
-    print("ave spe", np.mean(performance["SPE"]), "std sen", np.std(performance["SPE"]), '\n', "min", performance["SPE"].min(), "max", performance["SPE"].max(), '\n'),
-    print("ave auc", np.mean(performance["AUC"]), "std auc", np.std(performance["AUC"]), '\n', "min", performance["AUC"].min(), "max", performance["AUC"].max(), '\n'),
-    print("ave acc", np.mean(performance["ACC"]), "std acc", np.std(performance["ACC"]), '\n', "min", performance["ACC"].min(), "max", performance["ACC"].max(), '\n'),
-    print("patient acc", np.mean(performance["patient_ACC"]), "std acc", np.std(performance["patient_ACC"]), '\n', "min", performance["patient_ACC"].min(), "max", performance["patient_ACC"].max(), '\n')
-
-
 def get_data_from_certain_ids(certain_fns, mat_file="../data/lout40_train_val_data5.mat"):
     """
     Load data from previous certain examples
@@ -446,12 +366,14 @@ def get_scalar_performance_matrices_2classes(true_labels, pred_logits, if_with_l
     TP = confusion[1][1]
     FP = confusion[0][1]
     
+    # accuracy
+    accuracy = (TP + TN) / np.sum(confusion)
     # Sensitivity, hit rate, recall, or true positive rate
-    Sensitivity = TP / (TP + FN)
+    sensitivity = TP / (TP + FN)
     # Specificity or true negative rate
-    Specificity = TN / (TN + FP)
+    specificity = TN / (TN + FP)
     # Precision or positive predictive value
-    Precision = TP / (TP + FP)
+    precision = TP / (TP + FP)
     # Negative predictive value
     NPV = TN / (TN + FN)
     # Fall out or false positive rate
@@ -461,19 +383,19 @@ def get_scalar_performance_matrices_2classes(true_labels, pred_logits, if_with_l
     # False discovery rate
     FDR = FP / (TP + FP)
     # F1-score
-    F1_score = 2 * (Precision * Sensitivity) / (Precision + Sensitivity)
+    F1_score = 2 * (precision * sensitivity) / (precision + sensitivity)
     # get tpr, fpr
     fpr, tpr, _ = metrics.roc_curve(true_labels, pred_logits)
     # Matthews corrrelation coefficient
     MCC = metrics.matthews_corrcoef(true_labels, pred_labels)
 
-    return Sensitivity, Specificity, Precision, F1_score, auc, fpr, tpr, MCC
+    return accuracy, sensitivity, specificity, precision, F1_score, auc, fpr, tpr, MCC
 # ------------------------------------------------
 
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "indi_rating_with_model"
+plot_name = "get_performance_metrices"
 
 
 if plot_name == "indi_rating_with_model":
@@ -947,7 +869,94 @@ elif plot_name == "rename_files":
         os.rename(fn, os.path.join(os.path.dirname(fn), new_name))
 
 elif plot_name == "get_performance_metrices":
-    get_scaler_performance_metrices()
+    """
+        Get overall performance metrices across different cross-validation sets
+        :param pool_len:
+        :param task_id:
+        :return:
+        """
+    postfix = ""
+    # data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/"
+    data_dirs = [
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP/",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-new-Inception/",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-Res_ECG_CAM/",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-RNN/",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA-Inception/",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA-MLP/",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-RandomDA-MLP/",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA-RNN/",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Inception/",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-MLP/",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/"
+    ]
+    for data_dir in data_dirs:
+        for method in ["same", "both", "ops"]:
+            for fold in [1, 3, 5, 9]:
+                for alpha in [0.05, 0.2, 0.35, 0.5]:
+                    folders = find_folderes(data_dir, pattern="*{}*meanx{}*factor-{}*-test-0.*".format(method, fold, alpha))
+                    # folders = find_folderes(data_dir, pattern="2020-10-15T13-33-28--Res-ECG-CAM-both-meanx3-factor-0.05-from-data3-certainTrue-theta-0.25-s989-train-20201018T200145-on-data3-test-0.783")
+                    performance = {"ACC": np.empty((0,)), "patient_ACC": np.empty((0,)),
+                                   "AUC": np.empty((0,)), "SEN": np.empty((0,)),
+                                   "SPE": np.empty((0,)), "F1_score": np.empty((0,)),
+                                   "MCC": np.empty((0,))}
+                    performance_summary = []
+                    
+                    for fd in folders:
+                        file = find_files(fd, pattern="AUC_curve_step*.csv")
+                        num_patient = find_files(fd, pattern="*prob_distri_of*.png")
+                        # rat_id = os.path.basename(fn).split("-")[-3]
+                        values = pd.read_csv(file[0], header=0).values
+                        true_labels = values[:, 0]  # assign true-lbs and probs in aggregation
+                        pred_logits = values[:, 1]
+                        
+                        patient_acc = np.sum(["right" in name for name in num_patient]) / len(
+                            num_patient)
+                        # get summary of model performance's metrics
+                        accuracy, sensitivity, specificity, precision, F1_score, auc, fpr, tpr, mcc = get_scalar_performance_matrices_2classes(
+                            true_labels, pred_logits,
+                            if_with_logits=True)
+                        
+                        performance["ACC"] = np.append(performance["ACC"], accuracy)
+                        performance["SEN"] = np.append(performance["SEN"], sensitivity)
+                        performance["SPE"] = np.append(performance["SPE"], specificity)
+                        performance["AUC"] = np.append(performance["AUC"], auc)
+                        performance["F1_score"] = np.append(performance["F1_score"], F1_score)
+                        performance["MCC"] = np.append(performance["MCC"], mcc)
+                        performance["patient_ACC"] = np.append(performance["patient_ACC"],
+                                                               patient_acc)
+    
+                    performance_summary.append(["{}x{}-{}".format(method, fold, alpha), "Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SEN"]), np.std(performance["SEN"]))
+                                                + "specificity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SPE"]), np.std(performance["SPE"]))
+                                                +"AUC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["AUC"]),
+                                                                                                      np.std(performance["AUC"]))
+                                                +"ACC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["ACC"]),
+                                                                                                      np.std(performance["ACC"]))
+                                                +"F1-score: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["F1_score"]),
+                                                                                                           np.std(performance["F1_score"]))
+                                                +"MCC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["MCC"]),
+                                                                                                      np.std(performance["MCC"]))
+                                                +"patient acc: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["patient_ACC"]),
+                                                                                                              np.std(performance["patient_ACC"]))
+                                                ])
+                    np.savetxt(os.path.join(data_dir, "allCV-AUC-{:.4f}-performance-summarries-of-{}x{}-{}-{}-data.csv".format(np.mean(performance["AUC"]), method, fold, alpha, len(folders))), np.array(performance_summary), fmt="%s", delimiter=",")
+    
+                    print("{}x{}-{}-{}-data".format(method, fold, alpha, len(folders)))
+                    print("Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SEN"]),
+                                                                  np.std(performance["SEN"]))),
+                    print("specificity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SPE"]),
+                                                                  np.std(performance["SPE"]))),
+                    print("AUC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["AUC"]),
+                                                          np.std(performance["AUC"]))),
+                    print("ACC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["ACC"]),
+                                                          np.std(performance["ACC"]))),
+                    print("F1-score: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["F1_score"]),
+                                                               np.std(performance["F1_score"]))),
+                    print("MCC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["MCC"]),
+                                                          np.std(performance["MCC"]))),
+                    print("patient acc: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["patient_ACC"]),
+                                                                  np.std(performance["patient_ACC"])))
+    
 
 
 elif plot_name == "move_folder":

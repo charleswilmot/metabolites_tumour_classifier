@@ -27,7 +27,7 @@
     "if_single_runs": false,
     "from_clusterpy": false,
 
-    "model_name": "Res_ECG_CAM",
+    "model_name": "MLP",
     "new_folder": "3-certain-DA",
     "optimizer_type": "adam",
     "loss_type": "softmax_ce",

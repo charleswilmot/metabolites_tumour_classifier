@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
 #SBATCH --partition sleuths
-##SBATCH --reservation triesch-shared
+#SBATCH --reservation triesch-shared
 ##SBATCH --nodelist jetski
 ##SBATCH --nodelist speedboat
 ##SBATCH --nodes 1
