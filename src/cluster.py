@@ -7,9 +7,12 @@ class ClusterQueue:
     def __init__(self, dirs):
 
         self.output_path, self.exp_json_dir, self.model_json_dir = dirs[0], dirs[1], dirs[2]
-
+        
+        dir_root = os.path.basename(os.path.dirname(self.output_path)).split("-")
+        jobname = "".join([dir_root[-1]]+[dir_root[0]])
+        
         # output path for the experiment log
-        self.cmd_slurm = "sbatch --output {}/%N_%j.log".format(self.output_path)
+        self.cmd_slurm = "sbatch --job-name {} --output {}/%N_%j.log".format(jobname, self.output_path)
 
         # special treatment for the "description" param (for convevience)
         # self.cmd_slurm += " --job-name {}".format(kwargs["description"])
@@ -83,22 +86,29 @@ if __name__ == "__main__":
         commands += "\"{}\" ".format(cmds)
 
     active_num_job = 5
-    job_submit_mode = "sbatch_queue" #"srun_jobid" #"sbatch_array"   # , , True   #
+    job_submit_mode = "sbatch_array"   #"sbatch_queue" # "srun_jobid" # , , True   #
     
     if job_submit_mode == "sbatch_array":
         # os.system("sbatch --output {}/%N_%j.log cluster_test.sh {}".format(config_files[0], commands))
         # os.system("sbatch --output {}/%N_%j.log --array 0-{}%{} cluster_test.sh {}".format(config_files[0], len(config_dirs), min(5, len(config_dirs)), commands))
-        os.system("sbatch --jobid={} --output {}/%N_%j.log --array 0-{}%5 cluster_test.sh {}".format(config_files[0], len(config_dirs), commands))
+        dir_root = os.path.basename(os.path.dirname(config_files[0])).split("-")
+        jobname = "".join([dir_root[-1]] + ["-"] + [dir_root[0]])
+        os.system("sbatch --job-name={} --output {}/%N_%j.log --array 0-{}%5 cluster.sh {}".format(jobname, config_files[0], len(config_dirs), commands))
+        
     elif job_submit_mode == "sbatch_queue":
         for dirs in config_dirs:
             ClusterQueue(dirs)
+            
     elif job_submit_mode == "srun_jobid":
         import numpy as np
-        bash_jobids = [440644]# , 440645, 440648, 440744
+        bash_jobids = [440644, 440645, 440648, 440744]#
         num_jobs_per_bash = np.int(np.ceil(len(config_dirs) / len(bash_jobids)))
         for jj, jobid in enumerate(bash_jobids):
             for config_files in config_dirs[jj*num_jobs_per_bash : min((jj+1)*num_jobs_per_bash, len(config_dirs))]:  # three arguments
-                jobname = os.path.basename(os.path.dirname(config_files[0]))
+    
+                dir_root = os.path.basename(
+                    os.path.dirname(config_files[0])).split("-")
+                jobname = "".join([dir_root[-1]] + ["-"] + [dir_root[0]])
                 cmd_python = ""
                 for k, v in zip(["output_path", "exp_config", "model_config"],
                                 [config_files[0], config_files[1], config_files[2]]):

@@ -397,7 +397,7 @@ def get_scalar_performance_matrices_2classes(true_labels, pred_logits, if_with_l
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "move_folder"
+plot_name = "get_performance_metrices"
 
 if plot_name == "plot_random_auc":
     filename = "C:/Users/LDY/Desktop/1-all-experiment-results/Gk-patient-wise-classification/2021-01-06T22-46-36-classifier4-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex5/classifier4-spec51-CV9--ROC-AUC-[n_cv_folds,n_spec_per_pat].csv"
@@ -927,7 +927,7 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
 
 
 elif plot_name == "rename_test_folders":
-    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-Res_ECG_CAM"
+    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN"
     folders = find_folderes(results, pattern="*-test")
     pattern = "accuracy_step_0.0_acc_*"
     for fn in folders:
@@ -964,13 +964,20 @@ elif plot_name == "get_performance_metrices":
     postfix = ""
     # data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/"
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN"
     ]
+    average_all_data = False   # True  #
+    if average_all_data:
+        data_source = ""
+        prefix = "all-CVs"
+    else:
+        data_source = "data5"
+        prefix = "data5"
     for data_dir in data_dirs:
         for method in ["None", "same", "both", "ops"]:
             for fold in [5, 9, 0, 1, 3]:
                 for alpha in [0, 0.05, 0.2, 0.35, 0.5]:
-                    folders = find_folderes(data_dir, pattern="*{}*x{}*factor-{}*-test-0.*".format(method, fold, alpha))
+                    folders = find_folderes(data_dir, pattern="*{}*x{}*factor-{}*{}*-test-0.*".format(method, fold, alpha, data_source))
                     if len(folders) > 0:
                         print(os.path.basename(data_dir),
                               "{}x{}-{}-[{}]!".format(method, fold, alpha, [os.path.basename(fdn).split("-")[-3] for fdn in folders]))
@@ -1020,7 +1027,7 @@ elif plot_name == "get_performance_metrices":
                                                                                                           np.std(performance["ACC"]))
                                                     
                                                     ])
-                        np.savetxt(os.path.join(data_dir, "allCV-AUC-{:.4f}-performance-summarries-of-{}x{}-{}-num{}-CVs.csv".format(np.mean(performance["AUC"]), method, fold, alpha, len(folders))), np.array(performance_summary), fmt="%s", delimiter=",")
+                        np.savetxt(os.path.join(data_dir, "{}-AUC-{:.4f}-performance-summarries-of-{}x{}-{}-num{}-CVs.csv".format(prefix, np.mean(performance["AUC"]), method, fold, alpha, len(folders))), np.array(performance_summary), fmt="%s", delimiter=",")
         
                         print("{}-{}x{}-{}-data[{}]\n".format(os.path.basename(data_dir), method, fold, alpha, data_names))
                         print("Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SEN"]),
@@ -1045,10 +1052,6 @@ elif plot_name == "move_folder":
     import shutil
 
     dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-MLP",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-new-Inception",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-Res_ECG_CAM",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-RNN",
         "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA2-Res_ECG_CAM",
         "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA-Inception",
         "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA-MLP",
