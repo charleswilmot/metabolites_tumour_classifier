@@ -1,37 +1,4 @@
-$TF_CPP_MIN_LOG_LEVEL = 3
-rm -r /tmp/test*
 
-python3 classifier.py \
--d 288 4 \
--n true \
--p 0.95 \
--A None \
--b 450 \
--vvv train -L mse -S 50 -e 4000 -t 100 ../data/ /tmp/test0
-
-python3 classifier.py \
--d 288 288 4 \
--n true true \
--p 0 0 \
--A lrelu None \
--b 450 \
--vvv train -L mse -S 50 -e 4000 -t 100 ../data/ /tmp/test1
-
-python3 classifier.py \
--d 288 4 \
--n false \
--p 0.99 \
--A None \
--b 450 \
--vvv train -L mse -S 50 -e 4000 -t 100 ../data/ /tmp/test2
-
-python3 classifier.py \
--d 288 4 \
--n false \
--p 0.9 \
--A None \
--b 450 \
--vvv train -L mse -S 50 -e 4000 -t 100 ../data/ /tmp/test3
 
 "
 /home/epilepsy-data/data/metabolites/results/2020-04-23T11-52-04-class2-Res_ECG_CAM-new-aug_noisex5-0.1-train/  2
@@ -53,11 +20,24 @@ srun -p sleuths -w speedboat --mem=10000 --reservation triesch-shared python3 cl
 
 srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py train
 
+# successfully allocate space for runing wtih bash
+salloc -p sleuths -w speedboat --mem=20000 --reservation triesch-shared --gres gpu:rtx2070super:1 -t UNLIMITED
+salloc -p sleuths -w scuderi --mem=20000 --gres gpu:titanxp:1 -t UNLIMITED
+salloc -p sleuths -w turbine --mem=20000 --gres gpu:titanx:1 -t UNLIMITED
+salloc -p sleuths -w jetski --mem=20000 --reservation triesch-shared --gres gpu:rtx2080ti:1 -t UNLIMITED
+salloc -p sleuths -w vane --mem=20000 --gres gpu:rtx2080tirev.a:1 -t UNLIMITED
+
+
+# Usufull SLURM command
+scontrol show job 440644
 
 sinfo -p sleuths -n vane -o %e
 sinfo -p sleuths -n jetski -e
 sinfo -p sleuths -n turbine -o %e
 sinfo -p sleuths -n scuderi -o %e
+
+
+
 login jetski (ssh jetski) -- free
 scontrol show nodes | grep gpu -B 3 -A 3   # check GPU nodes, scuderi, turbine and vane
 srun -p sleuths -w jetski --mem=15000 --reservation triesch-shared --gres gpu:rtx2080ti:1 --pty bash -i

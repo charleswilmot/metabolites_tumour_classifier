@@ -54,10 +54,12 @@ if __name__ == "__main__":
     import generate_json_for_cluster as gen_dir
     config_dirs = gen_dir.config_dirs
 
-    # root_exp = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/testtesttest-MLP"
-    # config_dirs = [["exp1_path1", "exp1_path1/exp1_config1", "exp1_path1/exp1_config2"],
-    #                ["exp2_path1", "exp1_path2/exp2_config1", "exp1_path2/exp2_config2"],
-    #                ["exp3_path1", "exp1_path3/exp3_config1", "exp1_path3/exp3_config2"]]
+    # config_dirs = [["exp1_path", "exp1_path1/exp1_config", "exp1_path1/exp1_config"],
+    #                ["exp2_path", "exp1_path2/exp2_config", "exp1_path2/exp2_config"],
+    #                ["exp3_path", "exp1_path3/exp3_config", "exp1_path3/exp3_config"],
+    #                ["exp4_path", "exp1_path4/exp4_config", "exp1_path4/exp4_config"],
+    #                ["exp5_path", "exp1_path5/exp5_config", "exp1_path5/exp5_config"]
+    #                ]
 
 
     # Creating the flags to be passed to classifier.py
@@ -75,23 +77,37 @@ if __name__ == "__main__":
         # cmds_to_sh.append(cmd_python + " --output {}/%N_%j.log".format(config_files[0]))
         # cmd_python = "" --output {}/%N_%j.log".format(config_files[0])"
 
-    for i in range(len(cmds_to_sh)):
-        print("-----------------------------")
-        print(cmds_to_sh[i])
-        print("-----------------------------")
-        
+
     commands = ''
     for cmds in cmds_to_sh:
         commands += "\"{}\" ".format(cmds)
 
     active_num_job = 5
-    submit_array = False   #True   #
+    job_submit_mode = "sbatch_queue" #"srun_jobid" #"sbatch_array"   # , , True   #
     
-    if submit_array:
+    if job_submit_mode == "sbatch_array":
         # os.system("sbatch --output {}/%N_%j.log cluster_test.sh {}".format(config_files[0], commands))
         # os.system("sbatch --output {}/%N_%j.log --array 0-{}%{} cluster_test.sh {}".format(config_files[0], len(config_dirs), min(5, len(config_dirs)), commands))
-        os.system("sbatch --output {}/%N_%j.log --array 0-{}%5 cluster_test.sh {}".format(config_files[0], len(config_dirs), commands))
-    else:
+        os.system("sbatch --jobid={} --output {}/%N_%j.log --array 0-{}%5 cluster_test.sh {}".format(config_files[0], len(config_dirs), commands))
+    elif job_submit_mode == "sbatch_queue":
         for dirs in config_dirs:
             ClusterQueue(dirs)
+    elif job_submit_mode == "srun_jobid":
+        import numpy as np
+        bash_jobids = [440644]# , 440645, 440648, 440744
+        num_jobs_per_bash = np.int(np.ceil(len(config_dirs) / len(bash_jobids)))
+        for jj, jobid in enumerate(bash_jobids):
+            for config_files in config_dirs[jj*num_jobs_per_bash : min((jj+1)*num_jobs_per_bash, len(config_dirs))]:  # three arguments
+                jobname = os.path.basename(os.path.dirname(config_files[0]))
+                cmd_python = ""
+                for k, v in zip(["output_path", "exp_config", "model_config"],
+                                [config_files[0], config_files[1], config_files[2]]):
+                    # _key_to_flag transforms "something_stupid"   into   "--something-stupid"
+                    flag = _key_to_flag(k)
+                    # _to_arg transforms ("--something-stupid", a_value)   into   "--something-stupid a_value"
+                    arg = _to_arg(flag, v)
+                    # arg = _to_arg(flag, os.path.join(root_exp, v))
+                    cmd_python += arg
 
+                os.system("srun --jobid={} --ntasks=1 --job-name={} --error {}/{}.log python3 classifier.py {} > {}/{}.log &".format(jobid, jobname, config_files[0], jobid, cmd_python, config_files[0], jobid))
+    

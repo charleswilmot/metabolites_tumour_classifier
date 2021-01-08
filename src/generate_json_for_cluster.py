@@ -107,11 +107,16 @@ default_model_json_dir = os.path.join(default_json_dir, "model_parameters.json")
 args = utils.load_all_params(default_exp_json_dir, default_model_json_dir)
 
 data_source_dirs = [
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/5_fold_20190325-3class_pat_train_val_data0.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/5_fold_20190325-3class_pat_train_val_data1.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/5_fold_20190325-3class_pat_train_val_data2.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/5_fold_20190325-3class_pat_train_val_data3.mat",
-    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/5_fold_20190325-3class_pat_train_val_data4.mat"
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
+    "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data9.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data8.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data7.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data6.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data4.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data3.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data2.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data1.mat",
+    # "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data0.mat",
 ]
 
 # overwrite part of the parameters given for training with cluster.py
@@ -119,7 +124,7 @@ data_source_dirs = [
 
 config_dirs = []
 seed = np.random.randint(9999)
-mode = "aug_training"
+mode = "testing"
 
 
 if mode == "single_runs":
@@ -138,29 +143,34 @@ if mode == "single_runs":
                                        from_clusterpy=True
                                        )
 elif mode == "aug_training":
-    aug_method = "certain"
+    aug_method = "random"
     if aug_method == "random":
         certain_dirs = [None] * len(data_source_dirs)
         theta = 1
-    elif aug_method == "certain":
+        args.new_folder = "2-randomDA"
+    elif aug_method == "certain":  #1,2,3,5,7,9
         certain_dirs = [
-            "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-29-17--MLP-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train",
-            "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-29-18--MLP-nonex0-factor-0-from-data3-certainFalse-theta-0-s989-100rns-train",
-            "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-29-19--MLP-nonex0-factor-0-from-data1-certainFalse-theta-0-s989-100rns-train",
-            "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-30-52--MLP-nonex0-factor-0-from-data9-certainFalse-theta-0-s989-100rns-train",
-            "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-14--MLP-nonex0-factor-0-from-data2-certainFalse-theta-0-s789-100rns-train",
-            "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-15--MLP-nonex0-factor-0-from-data7-certainFalse-theta-0-s789-100rns-train"
-            
-,        ]
+            # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-37--Res_ECG_CAM-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train",
+            # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-38--Res_ECG_CAM-nonex0-factor-0-from-data3-certainFalse-theta-0-s989-100rns-train"
+            "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-39--Res_ECG_CAM-nonex0-factor-0-from-data1-certainFalse-theta-0-s989-100rns-train",
+            # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T23-08-12--Res_ECG_CAM-nonex0-factor-0-from-data9-certainFalse-theta-0-s989-100rns-train",
+            # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T23-08-13--Res_ECG_CAM-nonex0-factor-0-from-data7-certainFalse-theta-0-s989-100rns-train",
+            ## save for later
+            # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-12-18T13-50-31--Res_ECG_CAM-nonex0-factor-0-from-data6-certainFalse-theta-0-s899-100rns-train",
+            # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-12-18T13-50-32--Res_ECG_CAM-nonex0-factor-0-from-data8-certainFalse-theta-0-s899-100rns-train",
+            # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-12-18T13-51-29--Res_ECG_CAM-nonex0-factor-0-from-data2-certainFalse-theta-0-s899-100rns-train",
+            # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-12-18T13-51-30--Res_ECG_CAM-nonex0-factor-0-from-data4-certainFalse-theta-0-s899-100rns-train",
+            ]
         src_data = [os.path.basename(certain).split("-")[-7] for certain in certain_dirs]
         data_source_dirs = [
             "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_{}.mat".format(
                 src_dir) for src_dir in src_data]
         theta = 0.5
+        args.new_folder = "3-certain-DA"
     for dd, certain in zip(data_source_dirs, certain_dirs):   #, certain_dirs)
-        for method in ["same_mean" , "both_mean"]:  #, "ops_mean", "noise" #
-            for fold in [1,3,5,9]:  #, 7, 10, 9, 1, 5  #
-                for scale in [0.05, 0.2, 0.35, 0.5]:  # , 0.2, 0.3, 0.5#
+        for method in ["same_mean", "both_mean"]:  #, "ops_mean", "noise" #
+            for fold in [9, 5, 3, 1]:  #  , 7, 10, 9,  #
+                for scale in [0.5, 0.35, 0.2, 0.05]:  #  3, 0.5#
                     config_dirs = overwrite_params(args, config_dirs,
                                                    input_data=dd,  #data dir
                                                    certain_dir=certain,
@@ -168,7 +178,7 @@ elif mode == "aug_training":
                                                    aug_scale=scale,
                                                    aug_folds=fold,
                                                    theta_thr=theta,
-                                                   rand_seed=989,
+                                                   rand_seed=seed,
                                                    if_single_runs=False,
                                                    from_clusterpy=True)
 elif mode == "pure_training":  # without DA, without distillation
@@ -184,81 +194,192 @@ elif mode == "pure_training":  # without DA, without distillation
                                        rand_seed=seed,
                                        if_single_runs=False,
                                        from_clusterpy=True)
+        
+        
+        
 elif mode == "testing":
     pretrained_dirs = [
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-46-53--Res_ECG_CAM-same_meanx1-factor-0.05-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-46-54--Res_ECG_CAM-same_meanx1-factor-0.2-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-46-55--Res_ECG_CAM-same_meanx1-factor-0.35-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-46-57--Res_ECG_CAM-same_meanx1-factor-0.5-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-46-58--Res_ECG_CAM-same_meanx3-factor-0.05-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-46-59--Res_ECG_CAM-same_meanx3-factor-0.2-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-00--Res_ECG_CAM-same_meanx3-factor-0.35-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-01--Res_ECG_CAM-same_meanx3-factor-0.5-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-02--Res_ECG_CAM-same_meanx5-factor-0.05-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-04--Res_ECG_CAM-same_meanx5-factor-0.2-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-05--Res_ECG_CAM-same_meanx5-factor-0.35-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-06--Res_ECG_CAM-same_meanx5-factor-0.5-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-07--Res_ECG_CAM-same_meanx9-factor-0.05-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-08--Res_ECG_CAM-same_meanx9-factor-0.2-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-09--Res_ECG_CAM-same_meanx9-factor-0.35-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-11--Res_ECG_CAM-same_meanx9-factor-0.5-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-12--Res_ECG_CAM-both_meanx1-factor-0.05-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-13--Res_ECG_CAM-both_meanx1-factor-0.2-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-14--Res_ECG_CAM-both_meanx1-factor-0.35-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-15--Res_ECG_CAM-both_meanx1-factor-0.5-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-16--Res_ECG_CAM-both_meanx3-factor-0.05-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-17--Res_ECG_CAM-both_meanx3-factor-0.2-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-19--Res_ECG_CAM-both_meanx3-factor-0.35-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-20--Res_ECG_CAM-both_meanx3-factor-0.5-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-21--Res_ECG_CAM-both_meanx5-factor-0.05-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-22--Res_ECG_CAM-both_meanx5-factor-0.2-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-23--Res_ECG_CAM-both_meanx5-factor-0.35-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-24--Res_ECG_CAM-both_meanx5-factor-0.5-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-26--Res_ECG_CAM-both_meanx9-factor-0.05-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-27--Res_ECG_CAM-both_meanx9-factor-0.2-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-28--Res_ECG_CAM-both_meanx9-factor-0.35-from-data5-certainTrue-theta-0.75-s989-train/network",
-    "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM/2020-12-20T20-47-29--Res_ECG_CAM-both_meanx9-factor-0.5-from-data5-certainTrue-theta-0.75-s989-train/network"
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
-    # "network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2020-12-03T20-46-25--RNN-both_meanx5-factor-0.5-from-data5-certainTrue-theta-1-s3966-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2020-12-03T20-46-26--RNN-both_meanx5-factor-0.5-from-data1-certainTrue-theta-1-s3966-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2020-12-03T20-46-27--RNN-both_meanx5-factor-0.5-from-data2-certainTrue-theta-1-s3966-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2020-12-03T20-46-28--RNN-both_meanx5-factor-0.5-from-data7-certainTrue-theta-1-s3966-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-39--RNN-same_meanx1-factor-0.05-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-40--RNN-same_meanx1-factor-0.2-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-41--RNN-same_meanx1-factor-0.35-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-42--RNN-same_meanx1-factor-0.5-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-43--RNN-same_meanx3-factor-0.05-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-44--RNN-same_meanx3-factor-0.2-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-45--RNN-same_meanx3-factor-0.35-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-47--RNN-same_meanx3-factor-0.5-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-48--RNN-same_meanx5-factor-0.05-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-49--RNN-same_meanx5-factor-0.2-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-50--RNN-same_meanx5-factor-0.35-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-51--RNN-same_meanx5-factor-0.5-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-52--RNN-same_meanx9-factor-0.05-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-54--RNN-same_meanx9-factor-0.2-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-55--RNN-same_meanx9-factor-0.35-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-56--RNN-same_meanx9-factor-0.5-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-57--RNN-both_meanx1-factor-0.05-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-58--RNN-both_meanx1-factor-0.2-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-49-59--RNN-both_meanx1-factor-0.35-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-01--RNN-both_meanx1-factor-0.5-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-02--RNN-both_meanx3-factor-0.05-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-03--RNN-both_meanx3-factor-0.2-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-04--RNN-both_meanx3-factor-0.35-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-05--RNN-both_meanx3-factor-0.5-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-06--RNN-both_meanx5-factor-0.05-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-08--RNN-both_meanx5-factor-0.2-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-09--RNN-both_meanx5-factor-0.35-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-10--RNN-both_meanx5-factor-0.5-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-11--RNN-both_meanx9-factor-0.05-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-12--RNN-both_meanx9-factor-0.2-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-13--RNN-both_meanx9-factor-0.35-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-14--RNN-both_meanx9-factor-0.5-from-data2-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-16--RNN-same_meanx1-factor-0.05-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-17--RNN-same_meanx1-factor-0.2-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-18--RNN-same_meanx1-factor-0.35-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-19--RNN-same_meanx1-factor-0.5-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-20--RNN-same_meanx3-factor-0.05-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-21--RNN-same_meanx3-factor-0.2-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-23--RNN-same_meanx3-factor-0.35-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-24--RNN-same_meanx3-factor-0.5-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-25--RNN-same_meanx5-factor-0.05-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-26--RNN-same_meanx5-factor-0.2-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-27--RNN-same_meanx5-factor-0.35-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-28--RNN-same_meanx5-factor-0.5-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-29--RNN-same_meanx9-factor-0.05-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-31--RNN-same_meanx9-factor-0.2-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-32--RNN-same_meanx9-factor-0.35-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-33--RNN-same_meanx9-factor-0.5-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-34--RNN-both_meanx1-factor-0.05-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-35--RNN-both_meanx1-factor-0.2-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-36--RNN-both_meanx1-factor-0.35-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-38--RNN-both_meanx1-factor-0.5-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-39--RNN-both_meanx3-factor-0.05-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-40--RNN-both_meanx3-factor-0.2-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-41--RNN-both_meanx3-factor-0.35-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-42--RNN-both_meanx3-factor-0.5-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-43--RNN-both_meanx5-factor-0.05-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-44--RNN-both_meanx5-factor-0.2-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-46--RNN-both_meanx5-factor-0.35-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-47--RNN-both_meanx5-factor-0.5-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-48--RNN-both_meanx9-factor-0.05-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-49--RNN-both_meanx9-factor-0.2-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-50--RNN-both_meanx9-factor-0.35-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-51--RNN-both_meanx9-factor-0.5-from-data1-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-52--RNN-same_meanx1-factor-0.05-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-54--RNN-same_meanx1-factor-0.2-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-55--RNN-same_meanx1-factor-0.35-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-56--RNN-same_meanx1-factor-0.5-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-57--RNN-same_meanx3-factor-0.05-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-58--RNN-same_meanx3-factor-0.2-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-50-59--RNN-same_meanx3-factor-0.35-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-00--RNN-same_meanx3-factor-0.5-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-01--RNN-same_meanx5-factor-0.05-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-03--RNN-same_meanx5-factor-0.2-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-04--RNN-same_meanx5-factor-0.35-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-05--RNN-same_meanx5-factor-0.5-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-06--RNN-same_meanx9-factor-0.05-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-07--RNN-same_meanx9-factor-0.2-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-08--RNN-same_meanx9-factor-0.35-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-09--RNN-same_meanx9-factor-0.5-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-10--RNN-both_meanx1-factor-0.05-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-12--RNN-both_meanx1-factor-0.2-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-13--RNN-both_meanx1-factor-0.35-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-14--RNN-both_meanx1-factor-0.5-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-15--RNN-both_meanx3-factor-0.05-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-16--RNN-both_meanx3-factor-0.2-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-17--RNN-both_meanx3-factor-0.35-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-18--RNN-both_meanx3-factor-0.5-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-19--RNN-both_meanx5-factor-0.05-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-21--RNN-both_meanx5-factor-0.2-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-22--RNN-both_meanx5-factor-0.35-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-23--RNN-both_meanx5-factor-0.5-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-24--RNN-both_meanx9-factor-0.05-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-25--RNN-both_meanx9-factor-0.2-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-26--RNN-both_meanx9-factor-0.35-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-27--RNN-both_meanx9-factor-0.5-from-data9-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-29--RNN-same_meanx1-factor-0.05-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-30--RNN-same_meanx1-factor-0.2-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-31--RNN-same_meanx1-factor-0.35-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-32--RNN-same_meanx1-factor-0.5-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-33--RNN-same_meanx3-factor-0.05-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-34--RNN-same_meanx3-factor-0.2-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-35--RNN-same_meanx3-factor-0.35-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-36--RNN-same_meanx3-factor-0.5-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-38--RNN-same_meanx5-factor-0.05-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-39--RNN-same_meanx5-factor-0.2-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-40--RNN-same_meanx5-factor-0.35-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-41--RNN-same_meanx5-factor-0.5-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-42--RNN-same_meanx9-factor-0.05-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-43--RNN-same_meanx9-factor-0.2-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-45--RNN-same_meanx9-factor-0.35-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-46--RNN-same_meanx9-factor-0.5-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-47--RNN-both_meanx1-factor-0.05-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-48--RNN-both_meanx1-factor-0.2-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-49--RNN-both_meanx1-factor-0.35-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-50--RNN-both_meanx1-factor-0.5-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-51--RNN-both_meanx3-factor-0.05-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-52--RNN-both_meanx3-factor-0.2-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-54--RNN-both_meanx3-factor-0.35-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-55--RNN-both_meanx3-factor-0.5-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-56--RNN-both_meanx5-factor-0.05-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-57--RNN-both_meanx5-factor-0.2-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-58--RNN-both_meanx5-factor-0.35-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-51-59--RNN-both_meanx5-factor-0.5-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-00--RNN-both_meanx9-factor-0.05-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-02--RNN-both_meanx9-factor-0.2-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-03--RNN-both_meanx9-factor-0.35-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-04--RNN-both_meanx9-factor-0.5-from-data7-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-05--RNN-same_meanx1-factor-0.05-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-06--RNN-same_meanx1-factor-0.2-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-07--RNN-same_meanx1-factor-0.35-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-08--RNN-same_meanx1-factor-0.5-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-09--RNN-same_meanx3-factor-0.05-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-11--RNN-same_meanx3-factor-0.2-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-12--RNN-same_meanx3-factor-0.35-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-13--RNN-same_meanx3-factor-0.5-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-14--RNN-same_meanx5-factor-0.05-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-15--RNN-same_meanx5-factor-0.2-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-16--RNN-same_meanx5-factor-0.35-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-17--RNN-same_meanx5-factor-0.5-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-18--RNN-same_meanx9-factor-0.05-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-20--RNN-same_meanx9-factor-0.2-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-21--RNN-same_meanx9-factor-0.35-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-22--RNN-same_meanx9-factor-0.5-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-23--RNN-both_meanx1-factor-0.05-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-24--RNN-both_meanx1-factor-0.2-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-25--RNN-both_meanx1-factor-0.35-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-26--RNN-both_meanx1-factor-0.5-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-27--RNN-both_meanx3-factor-0.05-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-29--RNN-both_meanx3-factor-0.2-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-30--RNN-both_meanx3-factor-0.35-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-31--RNN-both_meanx3-factor-0.5-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-32--RNN-both_meanx5-factor-0.05-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-33--RNN-both_meanx5-factor-0.2-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-34--RNN-both_meanx5-factor-0.35-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-35--RNN-both_meanx5-factor-0.5-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-37--RNN-both_meanx9-factor-0.05-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-38--RNN-both_meanx9-factor-0.2-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-39--RNN-both_meanx9-factor-0.35-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-40--RNN-both_meanx9-factor-0.5-from-data3-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-41--RNN-same_meanx1-factor-0.05-from-data5-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-42--RNN-same_meanx1-factor-0.2-from-data5-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-43--RNN-same_meanx1-factor-0.35-from-data5-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-45--RNN-same_meanx1-factor-0.5-from-data5-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-46--RNN-same_meanx3-factor-0.05-from-data5-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-47--RNN-same_meanx3-factor-0.2-from-data5-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-48--RNN-same_meanx3-factor-0.35-from-data5-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-49--RNN-same_meanx3-factor-0.5-from-data5-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-50--RNN-same_meanx5-factor-0.05-from-data5-certainTrue-theta-0.5-s989-train/network",
+  "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN/2021-01-06T12-52-51--RNN-same_meanx5-factor-0.2-from-data5-certainTrue-theta-0.5-s989-train/network"
     ]
     src_data = [os.path.basename(os.path.dirname(pre_train)).split("-")[-6] for pre_train in pretrained_dirs]
     data_source_dirs = [
         "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_{}.mat".format(src_dir) for src_dir in src_data]
-
     for dd, res_from in zip(data_source_dirs, pretrained_dirs):  #
+        args.model_name = os.path.basename(os.path.dirname(res_from)).split("-")[6] if os.path.basename(os.path.dirname(res_from)).split("-")[6] != "Res" else "Res_ECG_CAM"
+        
         config_dirs = overwrite_params(args, config_dirs,
                                        input_data=dd,  # data dir
                                        certain_dir=None,

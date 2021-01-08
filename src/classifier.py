@@ -17,8 +17,11 @@ import datetime
 import logging
 from tensorflow.python.client import device_lib
 tf.compat.v1.disable_v2_behavior()
+import tracemalloc
+
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
+    print("Using GPU, set memory growth to True")
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
@@ -42,7 +45,9 @@ parser.add_argument(
 )
 logger = log.getLogger("classifier")
 
-# args = argument.params
+# track the memory usage while running the script
+tracemalloc.start()
+
 params = parser.parse_args()
 
 args = utils.load_all_params(params.exp_config, params.model_config)
@@ -92,3 +97,6 @@ graph = graph.get_graph(args, data_tensors)
 
 with tf.compat.v1.Session() as sess:
     output_data = procedure.main_train(sess, args, graph)
+
+snapshot = tracemalloc.take_snapshot()
+utils.display_top(snapshot, key_type='lineno', limit=20)

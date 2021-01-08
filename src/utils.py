@@ -154,8 +154,8 @@ def generate_output_path(args):
         args.data_dim = "1d"
         # TODO, cluster and param.json all give this parameter
 
-    if args.new_folder: #is not None
-        args.output_path = os.path.join(args.output_root, args.new_folder+"-{}".format(args.model_name))
+    if args.new_folder: #is not None  args.input_data.split("-")[-1].split(".")[0]
+        args.output_path = os.path.join(args.output_root, args.new_folder+"-{}".format(args.model_name))  # , args.new_folder+"-{}-{}".format(args.model_name, args.input_data.split("-")[-1].split(".")[0])
 
     if args.restore_from is None:  # and args.output_path is None:  #cluster.py
         time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
@@ -182,3 +182,32 @@ def generate_output_path(args):
     print("output dir: ", args.output_path)
 
     return args
+
+
+def display_top(snapshot, key_type='lineno', limit=3):
+    import tracemalloc
+    import linecache
+    
+    snapshot = snapshot.filter_traces((
+        tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
+        tracemalloc.Filter(False, "<unknown>"),
+    ))
+    top_stats = snapshot.statistics(key_type)
+
+    print("Top %s lines" % limit)
+    for index, stat in enumerate(top_stats[:limit], 1):
+        frame = stat.traceback[0]
+        # replace "/path/to/module/file.py" with "module/file.py"
+        filename = os.sep.join(frame.filename.split(os.sep)[-2:])
+        print("#%s: %s:%s: %.1f KiB"
+              % (index, filename, frame.lineno, stat.size / 1024))
+        line = linecache.getline(frame.filename, frame.lineno).strip()
+        if line:
+            print('    %s' % line)
+
+    other = top_stats[limit:]
+    if other:
+        size = sum(stat.size for stat in other)
+        print("%s other: %.1f KiB" % (len(other), size / 1024))
+    total = sum(stat.size for stat in top_stats)
+    print("Total allocated size: %.1f KiB" % (total / 1024))
