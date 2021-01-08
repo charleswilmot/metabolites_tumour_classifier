@@ -85,7 +85,7 @@ if __name__ == "__main__":
     for cmds in cmds_to_sh:
         commands += "\"{}\" ".format(cmds)
 
-    active_num_job = 5
+    active_num_job = 8
     job_submit_mode = "sbatch_array"   #"sbatch_queue" # "srun_jobid" # , , True   #
     
     if job_submit_mode == "sbatch_array":
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         # os.system("sbatch --output {}/%N_%j.log --array 0-{}%{} cluster_test.sh {}".format(config_files[0], len(config_dirs), min(5, len(config_dirs)), commands))
         dir_root = os.path.basename(os.path.dirname(config_files[0])).split("-")
         jobname = "".join([dir_root[-1]] + ["-"] + [dir_root[0]])
-        os.system("sbatch --job-name={} --output {}/%N_%j.log --array 0-{}%5 cluster.sh {}".format(jobname, config_files[0], len(config_dirs), commands))
+        os.system("sbatch --job-name={} --mem={} --output {}/%N_%j.log --array 0-{}%{} cluster.sh {}".format(jobname, 7000, config_files[0], len(config_dirs), min(active_num_job, len(config_dirs)), commands))
         
     elif job_submit_mode == "sbatch_queue":
         for dirs in config_dirs:
