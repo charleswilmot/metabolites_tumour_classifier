@@ -15,6 +15,10 @@
 
 # parse the output folder from a set of arguments
 # because that's the value after --output_path
+
+config_array=("$@")
+
+
 function get_output_folder() {
     local config_array=($1)
     local n=0
@@ -33,25 +37,15 @@ JOB_ID=$((SLURM_JOB_ID))
 ARRAY_JOB_ID=$((SLURM_ARRAY_JOB_ID))
 ARRAY_TASK_ID=$((SLURM_ARRAY_TASK_ID))
 
-for i in "$@";
+for i in `seq 1 1 1`
   do
-    echo "----------------------------------------------------------"
-    echo cluster job $i
-    echo "11111111111111111111111111111111111111111111111111111111111"
-    output_path="$(get_output_folder "$i")"
-    echo "output_path: ${output_path}/$JOB_ID-$ARRAY_TASK_ID-$j.log"
-    echo "22222222222222222222222222222222222222222222222222222222222"
-#    echo "python3 classifier.py $i > ${output_path}/$JOB_ID-$ARRAY_JOB_ID-$ARRAY_TASK_ID-${j}.log"
-    srun python3 classifier.py $i > "$output_path/$JOB_ID-$ARRAY_TASK_ID-${j}.log" 2>&1  &
+    echo "job $j"
+    echo "config_array[j]" ${config_array[$i]}
+    output_path="$(get_output_folder "${config_array[$i]}")"
+    echo "--error $output_path/$JOB_ID-$ARRAY_TASK_ID-${j}.log"
+    echo "python classifier.py" ${config_array[$i]}
+    echo "output log fn $output_path/$JOB_ID-$ARRAY_TASK_ID-${j}.log"
+    srun --error "$output_path/$JOB_ID-$ARRAY_TASK_ID-${j}.log" python3 classifier.py ${config_array[$i]} > "$output_path/$JOB_ID-$ARRAY_TASK_ID-${j}.log" &
       # ^ don't wait for the job to finish, but continue the for loop instead
   done
 
-
-##SBATCH --partition sleuths
-##SBATCH --job-name meta
-##SBATCH --mem 4G
-###SBATCH --reservation triesch-shared
-##SBATCH --mincpus 2
-##SBATCH --gres gpu:1
-#
-#srun -u python3 classifier.py test "$@"
