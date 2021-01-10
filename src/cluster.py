@@ -16,7 +16,7 @@ class ClusterQueue:
 		
 		# special treatment for the "description" param (for convevience)
 		# self.cmd_slurm += " --job-name {}".format(kwargs["description"])
-		self.cmd_slurm += " cluster2.sh"
+		self.cmd_slurm += " cluster_queue.sh"
 		# self.cmd_slurm = "python3 classifier.py "
 		
 		# Creating the flags to be passed to classifier.py
@@ -93,17 +93,16 @@ if __name__ == "__main__":
 	for cmds in cmds_to_sh:
 		commands += "\"{}\" ".format(cmds)
 	
-	active_num_job = 8
+	active_num_job = 10
 	job_submit_mode = "sbatch_array"  # "sbatch_queue" # "srun_jobid" # , , True   #
 	
 	if job_submit_mode == "sbatch_array":
-		# os.system("sbatch --output {}/%N_%j.log cluster_test.sh {}".format(config_files[0], commands))
-		# os.system("sbatch --output {}/%N_%j.log --array 0-{}%{} cluster_test.sh {}".format(config_files[0], len(config_dirs), min(5, len(config_dirs)), commands))
+
 		dir_root = os.path.basename(os.path.dirname(config_files[0])).split("-")
-		jobname = "".join([dir_root[-1]] + ["-"] + [dir_root[0]])
+		jobname = "".join([dir_root[0]+ ["-"] +[dir_root[-1]] ])
 		os.system(
-			"sbatch --job-name={} --mem={} --output {}/%N_%j.log --array 0-{}%{} cluster.sh {}".format(
-				jobname, 7000, config_files[0], len(config_dirs),
+			"sbatch --job-name={} --mem=9000 --output {}/%N_%j.log --array 0-{}%{} cluster_array.sh {}".format(
+				jobname, config_files[0], len(config_dirs),
 				min(active_num_job, len(config_dirs)), commands))
 	
 	elif job_submit_mode == "sbatch_queue":
@@ -122,7 +121,7 @@ if __name__ == "__main__":
 				
 				dir_root = os.path.basename(
 					os.path.dirname(config_files[0])).split("-")
-				jobname = "".join([dir_root[-1]] + ["-"] + [dir_root[0]])
+				jobname = "".join([dir_root[0]+ ["-"] +[dir_root[-1]] ])
 				cmd_python = ""
 				for k, v in zip(["output_path", "exp_config", "model_config"],
 				                [config_files[0], config_files[1],

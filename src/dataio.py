@@ -59,7 +59,7 @@ def get_val_data(labels, ids, num_val, spectra, train_test, validate, class_id=0
     return train_test, validate
 
 
-def pick_lout_ids(ids, count, num_lout=1, start=0):
+def pick_lout_ids(lout_ids, count, num_lout=1, start=0):
     """
     Leave out several subjects for validation
     :param labels:
