@@ -99,7 +99,7 @@ if __name__ == "__main__":
 	if job_submit_mode == "sbatch_array":
 
 		dir_root = os.path.basename(os.path.dirname(config_files[0])).split("-")
-		jobname = "".join([dir_root[0]+ ["-"] +[dir_root[-1]] ])
+		jobname = "".join([dir_root[0]]+ ["-"] +[dir_root[-1]])
 		os.system(
 			"sbatch --job-name={} --mem=9000 --output {}/%N_%j.log --array 0-{}%{} cluster_array.sh {}".format(
 				jobname, config_files[0], len(config_dirs),
@@ -121,7 +121,7 @@ if __name__ == "__main__":
 				
 				dir_root = os.path.basename(
 					os.path.dirname(config_files[0])).split("-")
-				jobname = "".join([dir_root[0]+ ["-"] +[dir_root[-1]] ])
+				jobname = "".join([dir_root[0]] + ["-"] + [dir_root[-1]])
 				cmd_python = ""
 				for k, v in zip(["output_path", "exp_config", "model_config"],
 				                [config_files[0], config_files[1],

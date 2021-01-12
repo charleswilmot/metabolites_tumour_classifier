@@ -100,3 +100,6 @@ with tf.compat.v1.Session() as sess:
 
 snapshot = tracemalloc.take_snapshot()
 utils.display_top(snapshot, key_type='lineno', limit=20)
+
+if args.train_or_test == "test":
+    dataio.rename_test_fold_on_the_fly(args)

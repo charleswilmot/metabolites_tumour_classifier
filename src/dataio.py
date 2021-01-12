@@ -915,3 +915,13 @@ def introduce_label_noisy(original_lbs, noisy_ratio=0.2, num_classes=10, save_di
     return noisy_lbs
 
 
+def rename_test_fold_on_the_fly(args):
+    pattern = "accuracy_step_0.0_acc_*"
+    test_result = find_files(args.output_path, pattern=pattern)
+    
+    if len(test_result) >= 1:
+        splits = os.path.basename(test_result[0]).split("_")
+        new_name = os.path.basename(args.output_path).replace("_", "-")
+        auc = splits[-2]
+        # os.rename(fn, os.path.join(os.path.dirname(fn), new_name))
+        os.rename(args.output_path, os.path.join(os.path.dirname(args.output_path), new_name + "-{}".format(auc)))

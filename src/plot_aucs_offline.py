@@ -448,9 +448,9 @@ def split_data_for_lout_val(data):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "re_split_data_0_9_except_5_patient_wise"
+plot_name = "get_performance_metrices"
 
-if plot_name == "plot_random_auc":
+if plot_name == "plot_random_roc":
     filename = "C:/Users/LDY/Desktop/1-all-experiment-results/Gk-patient-wise-classification/2021-01-06T22-46-36-classifier4-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex5/classifier4-spec51-CV9--ROC-AUC-[n_cv_folds,n_spec_per_pat].csv"
     
     values = pd.read_csv(filename, header=None).values
@@ -978,7 +978,7 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
 
 
 elif plot_name == "rename_test_folders":
-    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA-MLP"
+    results = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-RNN"
     folders = find_folderes(results, pattern="*-test")
     pattern = "accuracy_step_0.0_acc_*"
     for fn in folders:
@@ -1015,15 +1015,15 @@ elif plot_name == "get_performance_metrices":
     postfix = ""
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA-Res_ECG_CAM"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-new-Inception",
     ]
 
     for data_source, prefix in zip(["", "data5"], ["all-CVs","data5"]):
         for data_dir in data_dirs:
-            for method in ["None", "same", "both", "ops"]:
-                for fold in [5, 9, 0, 1, 3]:
-                    for alpha in [0, 0.05, 0.2, 0.35, 0.5]:
-                        folders = find_folderes(data_dir, pattern="*{}*x{}*factor-{}*{}*-test-0.*".format(method, fold, alpha, data_source))
+            for method in ["same", "both", "ops"]: #"None", "same"
+                for fold in [9, 5, 0, 1, 3]: #
+                    for alpha in [0.5, 0, 0.05, 0.2, 0.35]:
+                        folders = find_folderes(data_dir, pattern="*{}*x{}-factor-{}-from-{}*-test-0.*".format(method, fold, alpha, data_source))
                         if len(folders) > 0:
                             print(os.path.basename(data_dir),
                                   "{}x{}-{}-[{}]!".format(method, fold, alpha, [os.path.basename(fdn).split("-")[-3] for fdn in folders]))
@@ -1037,42 +1037,43 @@ elif plot_name == "get_performance_metrices":
                                 file = find_files(fd, pattern="AUC_curve_step*.csv")
                                 num_patient = find_files(fd, pattern="*prob_distri_of*.png")
                                 # rat_id = os.path.basename(fn).split("-")[-3]
-                                data_names.append("{}-{}".format(os.path.basename(fd).split("-")[-3], os.path.basename(fd).split("-")[-1]))
-                                values = pd.read_csv(file[0], header=0).values
-                                true_labels = values[:, 0]  # assign true-lbs and probs in aggregation
-                                pred_logits = values[:, 1]
-                                
-                                patient_acc = np.sum(["right" in name for name in num_patient]) / len(
-                                    num_patient)
-                                # get summary of model performance's metrics
-                                accuracy, sensitivity, specificity, precision, F1_score, auc, fpr, tpr, mcc = get_scalar_performance_matrices_2classes(
-                                    true_labels, pred_logits,
-                                    if_with_logits=True)
-                                
-                                performance["ACC"] = np.append(performance["ACC"], accuracy)
-                                performance["SEN"] = np.append(performance["SEN"], sensitivity)
-                                performance["SPE"] = np.append(performance["SPE"], specificity)
-                                performance["AUC"] = np.append(performance["AUC"], auc)
-                                performance["F1_score"] = np.append(performance["F1_score"], F1_score)
-                                performance["MCC"] = np.append(performance["MCC"], mcc)
-                                performance["patient_ACC"] = np.append(performance["patient_ACC"],
-                                                                       patient_acc)
-            
-                            performance_summary.append(["{}-{}x{}-{}-data[{}]\n".format(os.path.basename(data_dir), method, fold, alpha, data_names),
-                                                        "Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SEN"]), np.std(performance["SEN"]))
-                                                        + "specificity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SPE"]), np.std(performance["SPE"]))
-                                                        +"AUC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["AUC"]),
-                                                                                                              np.std(performance["AUC"]))
-                                                        + "patient acc: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["patient_ACC"]),
-                                                                                                          np.std(performance["patient_ACC"]))
-                                                        +"F1-score: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["F1_score"]),
-                                                                                                                   np.std(performance["F1_score"]))
-                                                        +"MCC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["MCC"]),
-                                                                                                              np.std(performance["MCC"]))
-                                                        +"ACC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["ACC"]),
-                                                                                                              np.std(performance["ACC"]))
-                                                        
-                                                        ])
+                                data_names.append("{}-{}-{}\n".format(os.path.basename(fd).split("-")[-3], os.path.basename(fd).split("-")[-5], os.path.basename(fd).split("-")[-1]))
+                                if len(file) > 0:
+                                    values = pd.read_csv(file[0], header=0).values
+                                    true_labels = values[:, 0]  # assign true-lbs and probs in aggregation
+                                    pred_logits = values[:, 1]
+                                    
+                                    patient_acc = np.sum(["right" in name for name in num_patient]) / len(
+                                        num_patient)
+                                    # get summary of model performance's metrics
+                                    accuracy, sensitivity, specificity, precision, F1_score, auc, fpr, tpr, mcc = get_scalar_performance_matrices_2classes(
+                                        true_labels, pred_logits,
+                                        if_with_logits=True)
+                                    
+                                    performance["ACC"] = np.append(performance["ACC"], accuracy)
+                                    performance["SEN"] = np.append(performance["SEN"], sensitivity)
+                                    performance["SPE"] = np.append(performance["SPE"], specificity)
+                                    performance["AUC"] = np.append(performance["AUC"], auc)
+                                    performance["F1_score"] = np.append(performance["F1_score"], F1_score)
+                                    performance["MCC"] = np.append(performance["MCC"], mcc)
+                                    performance["patient_ACC"] = np.append(performance["patient_ACC"],
+                                                                           patient_acc)
+                
+                                    performance_summary.append(["{}-{}x{}-{}-data[{}]\n".format(os.path.basename(data_dir), method, fold, alpha, data_names),
+                                                                "Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SEN"]), np.std(performance["SEN"]))
+                                                                + "specificity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SPE"]), np.std(performance["SPE"]))
+                                                                +"AUC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["AUC"]),
+                                                                                                                      np.std(performance["AUC"]))
+                                                                + "patient acc: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["patient_ACC"]),
+                                                                                                                  np.std(performance["patient_ACC"]))
+                                                                +"F1-score: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["F1_score"]),
+                                                                                                                           np.std(performance["F1_score"]))
+                                                                +"MCC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["MCC"]),
+                                                                                                                      np.std(performance["MCC"]))
+                                                                +"ACC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["ACC"]),
+                                                                                                                      np.std(performance["ACC"]))
+                                                                
+                                                                ])
                             np.savetxt(os.path.join(data_dir, "{}-AUC-{:.4f}-performance-summarries-of-{}x{}-{}-num{}-CVs.csv".format(prefix, np.mean(performance["AUC"]), method, fold, alpha, len(folders))), np.array(performance_summary), fmt="%s", delimiter=",")
             
                             print("{}-{}x{}-{}-data[{}]\n".format(os.path.basename(data_dir), method, fold, alpha, data_names))
@@ -1113,22 +1114,22 @@ elif plot_name == "move_folder":
     # dirs = ["C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier/results/1-Pure-new-Inception"]
 
     for dd in dirs:
-        folders = find_folderes(dd, pattern=os.path.basename(dd)+"-data*")
-        for fd in folders:
-            test_folders = find_folderes(fd, pattern="*-test-0.*")
-            os.rename(fd, fd+"-len{}".format(len(test_folders)))
- 
-                    
-            # data_cv = os.path.basename(fd).split("-")[-3]
-            # new_dest_root = os.path.join(dd, os.path.basename(dd)+"-{}".format(data_cv, len(folders)))
-            #
-            # if not os.path.isdir(new_dest_root):
-            #     os.mkdir(new_dest_root)
-            # else:
-            #     print("Move {} to {}".format(os.path.basename(fd),
-            #                                  os.path.join(new_dest_root,
-            #                                               os.path.basename(fd))))
-            #     shutil.move(fd, os.path.join(new_dest_root, os.path.basename(fd)))
+        sub_folders = find_folderes(dd, pattern=os.path.basename(dd)+"-data*")
+        for sub_fd in sub_folders:
+            # test_folders = find_folderes(fd, pattern="*-test-0.*")
+            # os.rename(fd, fd+"-len{}".format(len(test_folders)))
+            test_folders = find_folderes(sub_fd, pattern="*-train")
+            for t_fd in test_folders:
+                print("sub folders", test_folders)
+                data_cv = os.path.basename(t_fd).split("-")[-3]
+                new_dest_root = dd
+    
+                if not os.path.isdir(new_dest_root):
+                    os.mkdir(new_dest_root)
+                else:
+                    print("Move {} to {}".format(os.path.basename(t_fd),
+                                                 os.path.join(new_dest_root, os.path.basename(t_fd))))
+                    shutil.move(t_fd, os.path.join(new_dest_root, os.path.basename(t_fd)))
                 
             
 elif plot_name == "generate_empty_folders":
@@ -1654,11 +1655,9 @@ elif plot_name == "100_single_ep_corr_classification_rate":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-5-fold-data-Res_ECG_CAM/2020-12-20T21-35-57--Res_ECG_CAM-nonex0-factor-0-from-data0-certainFalse-theta-0-s989-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-5-fold-data-Res_ECG_CAM/2020-12-20T21-35-58--Res_ECG_CAM-nonex0-factor-0-from-data1-certainFalse-theta-0-s989-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-5-fold-data-Res_ECG_CAM/2020-12-20T21-35-59--Res_ECG_CAM-nonex0-factor-0-from-data2-certainFalse-theta-0-s989-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-5-fold-data-Res_ECG_CAM/2020-12-20T21-36-00--Res_ECG_CAM-nonex0-factor-0-from-data3-certainFalse-theta-0-s989-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-5-fold-data-Res_ECG_CAM/2020-12-20T21-36-01--Res_ECG_CAM-nonex0-factor-0-from-data4-certainFalse-theta-0-s989-100rns-train"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2021-01-12T11-03-06--MLP-nonex0-factor-0-from-data8-certainFalse-theta-0-s989-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2021-01-12T11-03-07--MLP-nonex0-factor-0-from-data6-certainFalse-theta-0-s989-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2021-01-12T11-03-09--MLP-nonex0-factor-0-from-data4-certainFalse-theta-0-s989-100rns-train",
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,
@@ -1989,9 +1988,9 @@ elif plot_name == "re_split_data_0_9_except_5":
 
 elif plot_name == "re_split_data_0_9_except_5_patient_wise":
     src_data = ["data{}".format(jj) for jj in [0,1,2,3,4,6,7,8,9]]
-    data_source_dirs = [
-        "../data/20190325/20190325-3class_lout40_train_val_{}.mat".format(
-            src_dir) for src_dir in src_data]
+    data_dir_root = "../data/20190325"
+    data_source_dirs = [os.path.join(data_dir_root, "20190325-3class_lout40_test_{}.mat".format(
+                src_dir)) for src_dir in src_data]
 
     # each cross_validation set
     coll_mat = np.empty((0, 290))
@@ -1999,24 +1998,28 @@ elif plot_name == "re_split_data_0_9_except_5_patient_wise":
         ## load original .mat data and split train_val
         mat = scipy.io.loadmat(dd)["DATA"]
         coll_mat = np.vstack((coll_mat, mat))
+    #------------------------------------------------------------------------------------------------------
 
     # collect spectra for each patient
-    whole_set =  coll_mat
     per_pat_spectra= {}
-    for i in range(len(whole_set)):
-        if whole_set[i, 1] == 2:
+    per_pat_spectra_inds= {}
+    for i in range(len(coll_mat)):
+        if coll_mat[i, 1] == 2:
             continue
-        pat_id = whole_set[i,0]
+        pat_id = coll_mat[i,0]
         if pat_id in per_pat_spectra:
-            per_pat_spectra[pat_id] = np.vstack((per_pat_spectra[pat_id], whole_set[i]))
+            per_pat_spectra[pat_id] = np.vstack((per_pat_spectra[pat_id], coll_mat[i]))
+            per_pat_spectra_inds[pat_id].append(i)
         else:
-            per_pat_spectra.update({pat_id : whole_set[i]})
+            per_pat_spectra.update({pat_id : coll_mat[i]})
+            per_pat_spectra_inds.update({pat_id : [i]})
     pat_ids = [[x, len(per_pat_spectra[x])] for x in per_pat_spectra.keys()]
+    pat_ids_inds = [[x, len(per_pat_spectra_inds[x])] for x in per_pat_spectra_inds.keys()]
+    # ------------------------------------------------------------------------------------------------------
     
     n_cv_folds = 5
     n_percentile_folds = 4
     percentile_threshold = []
-    
     # get thresholds for different percentiles
     percentiles = (100 // n_percentile_folds)*np.arange(n_percentile_folds+1)
     for perc_fold in percentiles:
@@ -2031,11 +2034,11 @@ elif plot_name == "re_split_data_0_9_except_5_patient_wise":
         for i in range(n_percentile_folds):
             if num >= percentile_threshold[i] and num < percentile_threshold[i+1]:
                 pat_perc_split[i].append([pt_id, num, i])
-    print("ok")
+
+    # ------------------------------------------------------------------------------------------------------
     
-    new_CV_fold_train_val = {key: np.empty((0,3)) for key in np.arange(n_cv_folds)}
-    new_CV_fold_test = {key: np.empty((0,3)) for key in np.arange(n_cv_folds)}
-    
+    new_CV_fold_train_val_ids = {key: np.empty((0, 3)) for key in np.arange(n_cv_folds)}
+    new_CV_fold_test_ids = {key: np.empty((0, 3)) for key in np.arange(n_cv_folds)}
     ## check whether the patient split is clean -- YES
     for ii in range(n_percentile_folds):
         for jj in range(n_percentile_folds):
@@ -2046,91 +2049,65 @@ elif plot_name == "re_split_data_0_9_except_5_patient_wise":
     
     for percentile_fold in range(n_percentile_folds):
         np.random.shuffle(pat_perc_split[percentile_fold])
-        
+    # ------------------------------------------------------------------------------------------------------
+    print("----------------------------")
+    
+    # split each percentile fold into n_cv_folds and assign to different n_cv_folds
     for percentile_fold in range(n_percentile_folds):
-        num_per_cv_fold = 0
         for cv_fold in range(n_cv_folds):
             num2pick = len(pat_perc_split[percentile_fold]) // n_cv_folds
-            if percentile_fold != n_percentile_folds:
-                new_CV_fold_train_val[cv_fold] = np.vstack((new_CV_fold_train_val[cv_fold], pat_perc_split[percentile_fold][cv_fold*num2pick: (cv_fold+1)*num2pick]))
-                num_per_cv_fold += num2pick
+            if cv_fold != n_cv_folds-1:
+                new_CV_fold_train_val_ids[cv_fold] = np.vstack((new_CV_fold_train_val_ids[cv_fold], pat_perc_split[percentile_fold][cv_fold * num2pick: (cv_fold + 1) * num2pick]))
+                print("{} cv-fold get {} samples from {} percentile-fold".format(cv_fold, num2pick, percentile_fold))
             else:
-                new_CV_fold_train_val[cv_fold] = np.vstack((new_CV_fold_train_val[cv_fold], pat_perc_split[percentile_fold][cv_fold*num2pick: ]))
-                num_per_cv_fold += len(pat_perc_split[percentile_fold][cv_fold*num2pick: ])
-
+                new_CV_fold_train_val_ids[cv_fold] = np.vstack((new_CV_fold_train_val_ids[cv_fold], pat_perc_split[percentile_fold][cv_fold * num2pick:]))
+                print("{} cv-fold get {} samples from {} percentile-fold".format(
+                    cv_fold, len(pat_perc_split[percentile_fold][cv_fold*num2pick: ]), percentile_fold))
+    # ------------------------------------------------------------------------------------------------------
                 
     ## check whether the CV fold patient-wise split is clean -- YES
     for ii in range(n_cv_folds):
         for jj in range(n_cv_folds):
-            S_ii = set(np.array(new_CV_fold_train_val[ii])[:, 0])
-            S_jj = set(np.array(new_CV_fold_train_val[jj])[:, 0])
+            S_ii = set(np.array(new_CV_fold_train_val_ids[ii])[:, 0])
+            S_jj = set(np.array(new_CV_fold_train_val_ids[jj])[:, 0])
             if ii != jj:
-                print("fold {} and fold {} has interaction {}".format(ii, jj, S_ii.intersection(S_jj)))
+                print("fold {} has {} samples\n".format(ii, len(new_CV_fold_train_val_ids[ii])))
+                print("fold {} and fold {} has interaction {}\n".format(ii, jj, S_ii.intersection(S_jj)))
+    # ------------------------------------------------------------------------------------------------------
     
-    
+    # merge other folds to get the train_val data and test data
     for cv_fold in range(n_cv_folds):
         train_folds = list(np.arange(n_cv_folds))
         del train_folds[cv_fold]
         print(cv_fold, "train ", train_folds)
         
-        # combine data and save
-        trian_val_part = {"DATA": np.empty((0, coll_mat.shape[1]))}
+        # combine patient ids for train_val and test set AND check if there is overlap
+        trian_val_pat_ids = np.empty((0, 3))
         for train_index in train_folds:
-            trian_val_part["DATA"] = np.vstack((trian_val_part["DATA"], new_CV_fold_train_val[train_index]))
+            trian_val_pat_ids = np.vstack((trian_val_pat_ids, new_CV_fold_train_val_ids[train_index]))
             
-        scipy.io.savemat(os.path.join(os.path.dirname(dd),"5_fold_pat_split_20190325-3class_train_val_data{}.mat".format(cv_fold)), trian_val_part)
-        scipy.io.savemat(os.path.join(os.path.dirname(dd),"5_fold_pat_split_20190325-3class_test_data{}.mat".format(cv_fold)), new_CV_fold_train_val[cv_fold])
+        test_pat_ids = new_CV_fold_train_val_ids[cv_fold]
+
+        S_ii = set(np.array(test_pat_ids)[:, 0])
+        S_jj = set(np.array(trian_val_pat_ids)[:, 0])
+        print("cv-{}-fold interaction {}\n".format(cv_fold, S_ii.intersection(S_jj)))
+
+        new_CV_fold_train_val_data = {"DATA": np.empty((0, 290))}  #np.empty((0, 290))
+        for pat_id in trian_val_pat_ids[:, 0]:
+            new_CV_fold_train_val_data["DATA"] = np.vstack((new_CV_fold_train_val_data["DATA"], coll_mat[per_pat_spectra_inds[pat_id]]))
+        np.savetxt(os.path.join(data_dir_root,"{}_fold_pat_split_20190325-2class_train_val_data{}_patient_ids_{}.csv".format(n_cv_folds, cv_fold, len(trian_val_pat_ids))), trian_val_pat_ids, header="pat_id,count,percentile{}".format(n_percentile_folds), fmt="%.3f", delimiter=",")
+        np.savetxt(os.path.join(data_dir_root,"{}_fold_pat_split_20190325-2class_test_data{}_patient_ids_{}.csv".format(n_cv_folds, cv_fold, len(test_pat_ids))), test_pat_ids, header="pat_id,count,percentile{}".format(n_percentile_folds), fmt="%.3f", delimiter=",")
         
-        print(cv_fold, "train {}, test {}".format(len(trian_val_part["DATA"]), len(new_CV_fold_train_val[cv_fold])))
+        new_CV_fold_test_data = {"DATA": np.empty((0, 290))}  #np.empty((0, 290))
+        for pat_id in test_pat_ids[:, 0]:
+            new_CV_fold_test_data["DATA"] = np.vstack((new_CV_fold_test_data["DATA"], coll_mat[per_pat_spectra_inds[pat_id]]))
+
+        scipy.io.savemat(os.path.join(data_dir_root,"{}_fold_pat_split_20190325-2class_train_val_data{}.mat".format(n_cv_folds, cv_fold)), new_CV_fold_train_val_data)
+        scipy.io.savemat(os.path.join(data_dir_root, "{}_fold_pat_split_20190325-2class_test_data{}.mat".format(n_cv_folds, cv_fold)), new_CV_fold_test_data)
+        print(os.path.join(data_dir_root, "5_fold_pat_split_20190325-2class_test_data{}.mat".format(cv_fold)))
+
     print("ok")
-    
-    
-    
-    
-    print("ok")
-    for cc in range(3):
-        print("class ", cc, np.sum(coll_mat[:, 1] == cc))
-    total_pat_ids = Counter(coll_mat[:, 1])
-
-    trian_val_part = {key: {} for key in range(5)}
-    part_len = len(coll_mat) // 5
-    for ii in range(4):
-        trian_val_part[ii]["DATA"] = coll_mat[ii * part_len: (ii + 1) * part_len]
-        num_pat = len(Counter(trian_val_part[ii]["DATA"][:, 0]))
-        scipy.io.savemat(
-            os.path.join(os.path.dirname(dd),
-                         "5_fold_20190325-3class_lout[{}-{}-{}]_pat_{}_test_data{}.mat".format(
-                             np.sum(trian_val_part[ii]["DATA"][:, 1] == 0),
-                             np.sum(trian_val_part[ii]["DATA"][:, 1] == 1),
-                             np.sum(trian_val_part[ii]["DATA"][:, 1] == 2), num_pat, ii)), trian_val_part[ii])
-
-    trian_val_part[4]["DATA"] = coll_mat[4 * part_len:]
-    num_pat = len(Counter(trian_val_part[4]["DATA"][:, 0]))
-    ii = 4
-    scipy.io.savemat(
-        os.path.join(os.path.dirname(dd),
-                     "5_fold_20190325-3class[{}-{}-{}]_pat_{}_test_data{}.mat".format(
-                         np.sum(trian_val_part[ii]["DATA"][:, 1] == 0),
-                         np.sum(trian_val_part[ii]["DATA"][:, 1] == 1),
-                         np.sum(trian_val_part[ii]["DATA"][:, 1] == 2), num_pat, ii)), trian_val_part[ii])
-
-
-    # merge the other 4 sets to form train_validation set
-    for jj in range(5):
-        train_inds = list(np.arange(5))
-        del train_inds[jj]
-        train_coll = {"DATA": np.empty((0, 290))}
-        for ii in train_inds:
-            train_coll["DATA"] = np.vstack((train_coll["DATA"], trian_val_part[ii]["DATA"]))
-        num_pat = len(Counter(train_coll["DATA"][:, 0]))
-        print("ok")
-        scipy.io.savemat(
-            os.path.join(os.path.dirname(dd),
-                         "5_fold_20190325-3class[{}-{}-{}]_pat_{}_train_val_data{}.mat".format(
-                             np.sum(train_coll["DATA"][:, 1] == 0),
-                             np.sum(train_coll["DATA"][:, 1] == 1),
-                             np.sum(train_coll["DATA"][:, 1] == 2), num_pat, jj)), train_coll)
-
+    # -------------------------------------------------------------------------
 
 elif plot_name == "get_d_prime":
     """

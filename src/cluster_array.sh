@@ -8,7 +8,7 @@
 ##SBATCH --ntasks-per-node=1
 ##SBATCH --cpus-per-task=4
 ##SBATCH --mem=9GB
-##SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:1
 
 
 config_array=("$@")
