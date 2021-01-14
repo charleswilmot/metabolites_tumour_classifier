@@ -27,7 +27,7 @@
     "if_single_runs": false,
     "from_clusterpy": false,
 
-    "model_name": "MLP",
+    "model_name": "Inception",
     "new_folder": "1-new",
     "optimizer_type": "adam",
     "loss_type": "softmax_ce",

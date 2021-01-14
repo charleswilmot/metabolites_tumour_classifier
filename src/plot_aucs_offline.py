@@ -448,7 +448,7 @@ def split_data_for_lout_val(data):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "get_performance_metrices"
+plot_name = "indi_rating_with_model"
 
 if plot_name == "plot_random_roc":
     filename = "C:/Users/LDY/Desktop/1-all-experiment-results/Gk-patient-wise-classification/2021-01-06T22-46-36-classifier4-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex5/classifier4-spec51-CV9--ROC-AUC-[n_cv_folds,n_spec_per_pat].csv"
@@ -463,34 +463,30 @@ if plot_name == "plot_random_roc":
 
     
 elif plot_name == "indi_rating_with_model":
+    """
+    Get performance of doctors, model_without_aug and model_with_aug on individual chuncks
+    give individual doctors' ratings, model logits
+    """
     data_dir = "../data/20190325"
-
-
     # Get individual rater's prediction
     human_indi_rating = "../data/20190325/20190325-3class_lout40_test_data5-2class_doctor_ratings_individual_new.mat"
-    true_indi_doctor_lbs = {}
-    true_indi_model_lbs = {}
-    indi_doctor_logits = {}
-    indi_model_logits1 = {}
+
     indi_mat = scipy.io.loadmat(human_indi_rating)['a']
     indi_ratings = np.array(indi_mat)
 
-
     # Get model's prediction
     true_data = scipy.io.loadmat("../data/20190325/20190325-3class_lout40_test_data5-2class_human_performance844_with_labels.mat")["DATA"]
-    model_res_with_aug = "../data/20190325/AUC_curve_step_0.00-auc_0.7579-data5-test.csv"
     true_label = true_data[:, 1].astype(np.int)
-    model_auc_with_aug = pd.read_csv(model_res_with_aug, header=0).values
-    true_model_label = model_auc_with_aug[:, 0].astype(np.int)
-    pred_logits = model_auc_with_aug[:, 1]
-
-    inds = np.where(true_model_label == 0)[0]
-    pred_logits[inds] = pred_logits[inds] - 0.003
-    inds = np.where(true_model_label == 1)[0]
-    pred_logits[inds] = pred_logits[inds] + 0.003
     
-    pred_lb = np.argmax(pred_logits, axis=0)
-    model_fpr, model_tpr, _ = metrics.roc_curve(true_model_label, pred_logits)
+    model_res_wo_aug_fn = "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/with-randDA-AUC_curve_step_0.00-auc_0.7198-data5-test.csv"
+    model_auc_wo_aug = pd.read_csv(model_res_wo_aug_fn, header=0).values
+    true_model_label_wo_aug = model_auc_wo_aug[:, 0].astype(np.int)
+    pred_logits_wo_aug = model_auc_wo_aug[:, 1]
+    
+    model_res_with_aug_fn = "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/with-DA-dist-AUC_curve_step_0.00-auc_0.7672-data5-test.csv"
+    model_auc_with_aug = pd.read_csv(model_res_with_aug_fn, header=0).values
+    true_model_label_with_aug = model_auc_with_aug[:, 0].astype(np.int)
+    pred_logits_with_aug = model_auc_with_aug[:, 1]
 
     # Get human's cumulative labels
     human_rating = "../data/20190325/20190325-3class_lout40_test_data5-2class_human-ratings.mat"
@@ -505,154 +501,198 @@ elif plot_name == "indi_rating_with_model":
     mean_tpr = []
     mean_score = []
     base_fpr = np.linspace(0, 1, 20)
-    tpr_model = []
+    coll_tpr_model_wo_aug = []
+    coll_tpr_model_with_aug = []
     start = 0
     
     colors = pylab.cm.cool(np.linspace(0, 1, 8))
-    coll_doctor_aucs = []
-    coll_doctor_d_prime_aucs = []
-    coll_doctor_f1_scores = []
-    coll_doctor_MCCs = []
-    coll_doctor_SEN = []
-    coll_doctor_SPEC = []
-    coll_doctor_ACC = []
+    coll_indiv_doctor_AUCs = []
+    coll_indiv_doctor_d_prime_aucs = []
+    coll_indiv_doctor_f1_scores = []
+    coll_indiv_doctor_MCCs = []
+    coll_indiv_doctor_SEN = []
+    coll_indiv_doctor_SPEC = []
+    coll_indiv_doctor_ACC = []
     doctor_performance_str = []
     
-    coll_model_aucs = []
-    coll_model_d_prime_aucs = []
-    coll_model_f1_scores = []
-    coll_model_MCCs = []
-    coll_model_SEN = []
-    coll_model_SPEC = []
-    coll_model_ACC = []
-    model_performance_str = []
+    coll_indiv_model_AUCs_wo_aug = []
+    coll_indiv_model_d_prime_aucs_wo_aug = []
+    coll_indiv_model_f1_scores_wo_aug = []
+    coll_indiv_model_MCCs_wo_aug = []
+    coll_indiv_model_SEN_wo_aug = []
+    coll_indiv_model_SPEC_wo_aug = []
+    coll_indiv_model_ACC_wo_aug = []
+    model_performance_str_wo_aug = []
     
-    plt.figure()
+    coll_indiv_model_AUCs_with_aug = []
+    coll_indiv_model_d_prime_AUCs_with_aug = []
+    coll_indiv_model_f1_scores_with_aug = []
+    coll_indiv_model_MCCs_with_aug = []
+    coll_indiv_model_SEN_with_aug = []
+    coll_indiv_model_SPEC_with_aug = []
+    coll_indiv_model_ACC_with_aug = []
+    model_performance_str_with_aug = []
+    
+    plt.figure(figsize=[8, 8])
+    true_indi_doctor_lbs = {}
+    true_indi_model_lbs_wo_aug = {}
+    true_indi_model_lbs_with_aug = {}
+
+    indi_doctor_logits = {}
+    indi_model_logits_wo_aug = {}
+    indi_model_logits_with_aug = {}
     for i in range(indi_ratings.shape[1]):
         key = "{}".format(i)
         print(key)
-        end = start + min(len(indi_ratings[0, i]), len(true_model_label) - start)
+        end = start + min(len(indi_ratings[0, i]), len(true_model_label_wo_aug) - start)
         true_indi_doctor_lbs[key] = true_label[start: start + len(indi_ratings[0, i])]
-        true_indi_model_lbs[key] = true_model_label[start: end]
+        true_indi_model_lbs_wo_aug[key] = true_model_label_wo_aug[start: end]
+        true_indi_model_lbs_with_aug[key] = true_model_label_with_aug[start: end]
 
         indi_doctor_logits[key] = indi_ratings[0, i][:, 0]
-        indi_model_logits1[key] = pred_logits[start: end]
+        indi_model_logits_wo_aug[key] = pred_logits_wo_aug[start: end]
+        indi_model_logits_with_aug[key] = pred_logits_with_aug[start: end]
        
         # get all summary of performance metrics of doctor's performance
         indi_doctor_acc, indi_doctor_sensitivity, indi_doctor_specificity, indi_doctor_precision, indi_doctor_F1_score, indi_doctor_auc, indi_doctor_fpr, indi_doctor_tpr, indi_doctor_mcc =  get_scalar_performance_matrices_2classes(true_indi_doctor_lbs[key], indi_doctor_logits[key], if_with_logits=False)
-
-        # get summary of model performance's metrics
-        indi_model_acc, indi_model_sensitivity, indi_model_specificity, indi_model_precision, indi_model_F1_score, indi_model_auc, indi_model_fpr, indi_model_tpr, indi_model_mcc = get_scalar_performance_matrices_2classes(true_indi_model_lbs[key], indi_model_logits1[key], if_with_logits=True)
-
-
-        # collect individual corresponding model performance
-        coll_model_aucs.append(np.int(indi_model_auc*1000)/1000)
-        coll_model_f1_scores.append(np.int(indi_model_F1_score*1000)/1000)
-        coll_model_MCCs.append(np.int(indi_model_mcc*1000)/1000)
-        coll_model_SEN.append(np.int(indi_model_sensitivity*1000)/1000)
-        coll_model_SPEC.append(np.int(indi_model_specificity*1000)/1000)
-        coll_model_ACC.append(np.int(indi_model_acc*1000)/1000)
-        
         # collect individual doctor performance
-        coll_doctor_aucs.append(np.int(indi_doctor_auc*1000)/1000)
-        coll_doctor_d_prime_aucs.append(get_auc_from_d_prime(tpr=indi_doctor_tpr[1], fpr=indi_doctor_fpr[1]))
-        coll_doctor_f1_scores.append(np.int(indi_doctor_F1_score*1000)/1000)
-        coll_doctor_MCCs.append(np.int(indi_doctor_mcc*1000)/1000)
-        coll_doctor_SEN.append(np.int(indi_doctor_sensitivity*1000)/1000)
-        coll_doctor_SPEC.append(np.int(indi_doctor_specificity*1000)/1000)
-        coll_doctor_ACC.append(np.int(indi_doctor_acc*1000)/1000)
+        coll_indiv_doctor_AUCs.append(np.int(indi_doctor_auc*1000)/1000)
+        coll_indiv_doctor_d_prime_aucs.append(get_auc_from_d_prime(tpr=indi_doctor_tpr[1], fpr=indi_doctor_fpr[1]))
+        coll_indiv_doctor_f1_scores.append(np.int(indi_doctor_F1_score*1000)/1000)
+        coll_indiv_doctor_MCCs.append(np.int(indi_doctor_mcc*1000)/1000)
+        coll_indiv_doctor_SEN.append(np.int(indi_doctor_sensitivity*1000)/1000)
+        coll_indiv_doctor_SPEC.append(np.int(indi_doctor_specificity*1000)/1000)
+        coll_indiv_doctor_ACC.append(np.int(indi_doctor_acc*1000)/1000)
 
-        tpr_temp = np.interp(base_fpr, indi_model_fpr, indi_model_tpr)
-        tpr_model.append(tpr_temp)
-        mean_fpr.append(indi_doctor_fpr)
-        mean_tpr.append(indi_doctor_tpr)
-        mean_score.append(indi_doctor_auc)
+        # get summary of without_aug_model performance's metrics
+        indi_model_acc_wo_aug, \
+        indi_model_sensitivity_wo_aug, \
+        indi_model_specificity_wo_aug, \
+        indi_model_precision_wo_aug, \
+        indi_model_F1_score_wo_aug, \
+        indi_model_AUC_wo_aug, \
+        indi_model_fpr_wo_aug, \
+        indi_model_tpr_wo_aug, \
+        indi_model_MCC_wo_aug = get_scalar_performance_matrices_2classes(true_indi_model_lbs_wo_aug[key], indi_model_logits_wo_aug[key], if_with_logits=True)
+        # collect individual corresponding model_WO_AUG performance
+        coll_indiv_model_AUCs_wo_aug.append(np.int(indi_model_AUC_wo_aug * 1000) / 1000)
+        coll_indiv_model_f1_scores_wo_aug.append(np.int(indi_model_F1_score_wo_aug * 1000) / 1000)
+        coll_indiv_model_MCCs_wo_aug.append(np.int(indi_model_MCC_wo_aug * 1000) / 1000)
+        coll_indiv_model_SEN_wo_aug.append(np.int(indi_model_sensitivity_wo_aug * 1000) / 1000)
+        coll_indiv_model_SPEC_wo_aug.append(np.int(indi_model_specificity_wo_aug * 1000) / 1000)
+        coll_indiv_model_ACC_wo_aug.append(np.int(indi_model_acc_wo_aug * 1000) / 1000)
+        
+        # get summary of dist+da+model performance
+        indi_model_acc_with_aug, \
+        indi_model_sensitivity_with_aug, \
+        indi_model_specificity_with_aug, \
+        indi_model_precision_with_aug, \
+        indi_model_F1_score_with_aug, \
+        indi_model_AUC_with_aug, \
+        indi_model_fpr_with_aug, \
+        indi_model_tpr_with_aug, \
+        indi_model_MCC_with_aug = get_scalar_performance_matrices_2classes(true_indi_model_lbs_with_aug[key], indi_model_logits_with_aug[key], if_with_logits=True)
+        # collect individual corresponding model_WITH_AUG performance
+        coll_indiv_model_AUCs_with_aug.append(np.int(indi_model_AUC_with_aug * 1000) / 1000)
+        coll_indiv_model_f1_scores_with_aug.append(np.int(indi_model_F1_score_with_aug * 1000) / 1000)
+        coll_indiv_model_MCCs_with_aug.append(np.int(indi_model_MCC_with_aug * 1000) / 1000)
+        coll_indiv_model_SEN_with_aug.append(np.int(indi_model_sensitivity_with_aug * 1000) / 1000)
+        coll_indiv_model_SPEC_with_aug.append(np.int(indi_model_specificity_with_aug * 1000) / 1000)
+        coll_indiv_model_ACC_with_aug.append(np.int(indi_model_acc_with_aug * 1000) / 1000)
+        
+        # collect the interpolated tpr
+        tpr_temp_wo_aug = np.interp(base_fpr, indi_model_fpr_wo_aug, indi_model_tpr_wo_aug)
+        coll_tpr_model_wo_aug.append(tpr_temp_wo_aug)
 
-        plt.scatter(indi_doctor_fpr[1], indi_doctor_tpr[1], color="r", marker="o", s=20, alpha=0.65)
-        plt.xlim([0, 1])
-        plt.ylim([0, 1])
+        tpr_temp_with_aug = np.interp(base_fpr, indi_model_fpr_with_aug, indi_model_tpr_with_aug)
+        coll_tpr_model_with_aug.append(tpr_temp_with_aug)
+        
+        # plot scatter and ROC curve
+        plt.scatter(indi_doctor_fpr[1], indi_doctor_tpr[1], color="r", marker="o", s=40, alpha=0.65)
+
         start = end
 
 
-    print("doctors Sensitivity {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_SEN,
-        np.mean(coll_doctor_SEN),
-        np.std(coll_doctor_SEN)))
-    print("Model Sensitivity {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_model_SEN,
-        np.mean(coll_model_SEN),
-        np.std(coll_model_SEN)))
-    print("doctors specificity {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_SPEC,
-        np.mean(coll_doctor_SPEC),
-        np.std(coll_doctor_SPEC)))
-    print("Model specificity {}\n: mean-{:.3f}, std-{:.3f}\n".format(
-        coll_model_SPEC,
-        np.mean(coll_model_SPEC),
-        np.std(coll_model_SPEC)))
-    print("doctors AUC {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_aucs, np.mean(coll_doctor_aucs),
-                                                  np.std(coll_doctor_aucs)))
-    print("Model AUC {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_model_aucs,
-                                                             np.mean(
-                                                                 coll_model_aucs),
-                                                             np.std(
-                                                                 coll_model_aucs)))
-    print("doctors acc {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_ACC,
-        np.mean(coll_doctor_ACC),
-        np.std(coll_doctor_ACC)))
-    print("Model acc {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_model_ACC,
-                                                             np.mean(
-                                                                 coll_model_ACC),
-                                                             np.std(
-                                                                 coll_model_ACC)))
-    print("doctors F1-score {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_f1_scores,
-        np.mean(coll_doctor_f1_scores),
-        np.std(coll_doctor_f1_scores)))
-    print("Model F1-score {}\n: mean-{:.3f}, std-{:.3f}\n".format(
-        coll_model_f1_scores,
-        np.mean(coll_model_f1_scores),
-        np.std(coll_model_f1_scores)))
-    print("doctors MCC {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_MCCs, np.mean(coll_doctor_MCCs),
-                                                  np.std(coll_doctor_MCCs)))
-    print("Model MCC {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_model_MCCs, np.mean(coll_model_MCCs),
-                                                  np.std(coll_model_MCCs)))
+    # print("doctors Sensitivity {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_SEN,
+    #     np.mean(coll_doctor_SEN),
+    #     np.std(coll_doctor_SEN)))
+    # print("Model Sensitivity {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_model_SEN_wo_aug,
+    #                                                                  np.mean(coll_model_SEN_wo_aug),
+    #                                                                  np.std(coll_model_SEN_wo_aug)))
+    # print("doctors specificity {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_SPEC,
+    #     np.mean(coll_doctor_SPEC),
+    #     np.std(coll_doctor_SPEC)))
+    # print("Model specificity {}\n: mean-{:.3f}, std-{:.3f}\n".format(
+    #     coll_model_SPEC_wo_aug,
+    #     np.mean(coll_model_SPEC_wo_aug),
+    #     np.std(coll_model_SPEC_wo_aug)))
+    # print("doctors AUC {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_aucs, np.mean(coll_doctor_aucs),
+    #                                               np.std(coll_doctor_aucs)))
+    # print("Model AUC {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_model_aucs_wo_aug,
+    #                                                          np.mean(
+    #                                                              coll_model_aucs_wo_aug),
+    #                                                          np.std(
+    #                                                              coll_model_aucs_wo_aug)))
+    # print("doctors acc {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_ACC,
+    #     np.mean(coll_doctor_ACC),
+    #     np.std(coll_doctor_ACC)))
+    # print("Model acc {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_model_ACC_wo_aug,
+    #                                                          np.mean(
+    #                                                              coll_model_ACC_wo_aug),
+    #                                                          np.std(
+    #                                                              coll_model_ACC_wo_aug)))
+    # print("doctors F1-score {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_f1_scores,
+    #     np.mean(coll_doctor_f1_scores),
+    #     np.std(coll_doctor_f1_scores)))
+    # print("Model F1-score {}\n: mean-{:.3f}, std-{:.3f}\n".format(
+    #     coll_model_f1_scores_wo_aug,
+    #     np.mean(coll_model_f1_scores_wo_aug),
+    #     np.std(coll_model_f1_scores_wo_aug)))
+    # print("doctors MCC {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_MCCs, np.mean(coll_doctor_MCCs),
+    #                                               np.std(coll_doctor_MCCs)))
+    # print("Model MCC {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_model_MCCs_wo_aug, np.mean(coll_model_MCCs_wo_aug),
+    #                                                          np.std(coll_model_MCCs_wo_aug)))
 
-    mean_model_tpr = np.mean(np.array(tpr_model), axis=0)
-    std_model_tpr = np.std(np.array(tpr_model), axis=0)
-    mean_model_score = metrics.auc(base_fpr, mean_model_tpr)
+    
+    mean_model_tpr_wo_aug = np.mean(np.array(coll_tpr_model_wo_aug), axis=0)
+    mean_model_tpr_wo_aug = np.insert(mean_model_tpr_wo_aug, 0, 0)
+    std_model_tpr_wo_aug = np.std(np.array(coll_tpr_model_wo_aug), axis=0)
+    
+    mean_model_tpr_with_aug = np.mean(np.array(coll_tpr_model_with_aug), axis=0)
+    mean_model_tpr_with_aug = np.insert(mean_model_tpr_with_aug, 0, 0)
+    std_model_tpr_with_aug = np.std(np.array(coll_tpr_model_with_aug), axis=0)
+    
+    mean_model_score_with_aug = np.mean(coll_indiv_model_AUCs_with_aug)
+    mean_model_score_wo_aug = np.mean(coll_indiv_model_AUCs_wo_aug)
 
-    plt.scatter(indi_doctor_fpr[1], indi_doctor_tpr[1], alpha=0.65, color="r", marker="o", s=10, label="individual radiologists")
-    plt.scatter(np.mean(np.array(mean_fpr)[:, 1]), np.mean(np.array(mean_tpr)[:, 1]), color="purple", marker="d", s=25, label='human average F1-score: {:.2f} - MCC: {:.2f}'.format(np.mean(coll_doctor_f1_scores), np.mean(coll_doctor_MCCs)))
-    plt.plot(model_fpr, model_tpr, color="royalblue", linewidth=3.0, label='model AUC:  {:.2f} - F1-score: {:.2f}'.format(mean_model_score, np.mean(coll_model_f1_scores)))
-
-    plt.title("Receiver Operating Characteristic")
+    plt.scatter(indi_doctor_fpr[1], indi_doctor_tpr[1], alpha=0.65, color="r", marker="o", s=40, label="individual radiologists")
+    plt.scatter(hum_fpr[1], hum_tpr[1], color="purple", marker="*", s=120, label='cumulative radiologists performance(F1: {:.2f}, MCC: {:.2f})'.format(np.mean(coll_indiv_doctor_f1_scores), np.mean(coll_indiv_doctor_MCCs)))  #  label='cumulative radiologists performance'
+    plt.plot(np.insert(base_fpr, 0, 0), mean_model_tpr_wo_aug, linestyle=":",
+             linewidth=3.0, color="royalblue",
+             label='model AUC:  {:.2f} (F1: {:.2f}, MCC: {:.2f})'.format(np.mean(coll_indiv_model_AUCs_wo_aug), np.mean(coll_indiv_model_f1_scores_wo_aug), np.mean(coll_indiv_model_MCCs_wo_aug)))  # 'model average'
+    plt.plot(np.insert(base_fpr, 0, 0), mean_model_tpr_with_aug, linewidth=3.0, color="crimson", label='model+DA+dist AUC:  {:.2f} (F1: {:.2f}, MCC: {:.2f})'.format(np.mean(coll_indiv_model_AUCs_with_aug), np.mean(coll_indiv_model_f1_scores_with_aug), np.mean(coll_indiv_model_MCCs_with_aug)))#  ,label='model + DA + dist'
+    
     plt.xlim([-0.02, 1.02])
     plt.ylim([-0.02, 1.02])
-    plt.legend(loc=4)
+    plt.legend(loc=4, frameon=False)
     plt.ylabel('true positive rate')
     plt.xlabel('false positive rate')
+    plt.tight_layout()
     
-    plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.png"), format='png')
-    plt.savefig(os.path.join(data_dir, "Model_with_human_rating_individual_on_certain_0.15_indi_roc.pdf"), format='pdf')
+    plt.savefig(os.path.join(data_dir, "Model_with_indi_human_rating.png"), format='png')
+    plt.savefig(os.path.join(data_dir, "Model_with_indi_human_rating.pdf"), format='pdf')
     plt.close()
     
-    filename = "C:/Users/LDY/Desktop/1-all-experiment-results/Gk-patient-wise-classification/2021-01-04T01-17-45-classifier3-20-gentest-non-overlap/classifier3-31-CV9--ROC-AUC-[n_cv_folds,n_spec_per_pat].csv"
-    data = pd.read_csv(filename, header=None).values
-    plt_x = np.arange(1, 32, 5)
-    for i in range(10):
-        plt.plot(plt_x, data[i], label="CV fold {}".format(i))
-    plt.legend(bbox_to_anchor=(1.05, 1))
-    plt.xlabel("# of spectra per patient"),
-    plt.ylabel("ROC AUC")
-    plt.tight_layout()
-
 
 elif plot_name == "human_whole_with_model":
     data_dir = "../data/20190325"
-    original = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
+    original = "../data/20190325/20190325-3class_lout40_test_data5-2class_human_performance844_with_labels.mat"
     ori = scipy.io.loadmat(original)["DATA"]
     true_label = ori[:, 1]
 
     # Get model's prediction
-    model_res_with_aug = "/home/epilepsy-data/data/metabolites/results/2019-10-09T13-47-36-data-lout40-datas-1d-class2-Res_ECG_CAM-0.766certainEp3-aug_ops_meanx10-0.3-test-auc0.79/AUCs/AUC_curve_step_0.00-auc_0.7905-lout40-datas.csv"
-    model_res_wo_aug = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/results/2019-10-30T16-00-14-data-lout40-datas-1d-class2-Res_ECG_CAM-0.900-aug_ops_meanx0-0-test-0.714/AUCs/AUC_curve_step_0.00-auc_0.7246-lout40-datas.csv"
+    model_res_with_aug = "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/with-DA-dist-AUC_curve_step_0.00-auc_0.7672-data5-test.csv"
+    model_res_wo_aug = "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/with-randDA-AUC_curve_step_0.00-auc_0.7198-data5-test.csv"
     model_auc_with_aug = pd.read_csv(model_res_with_aug, header=0).values
     label_with_aug = model_auc_with_aug[:, 0].astype(np.int)
     pred_logits_with_aug = model_auc_with_aug[:, 1]
@@ -660,19 +700,18 @@ elif plot_name == "human_whole_with_model":
     model_auc_wo_aug = pd.read_csv(model_res_wo_aug, header=0).values
     label_wo_aug = model_auc_wo_aug[:, 0].astype(np.int)
     pred_logits_wo_aug = model_auc_wo_aug[:, 1]
-    # pred_lb = np.argmax(pred_logits, axis=0)
 
     # Get human's total labels
-    human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
+    human_rating = "../data/20190325/20190325-3class_lout40_test_data5-2class_human-ratings.mat"
     hum_whole = scipy.io.loadmat(human_rating)["data_ratings"]
     human_lb = hum_whole[:, 0]
     human_features = hum_whole[:, 1:]
     hum_fpr, hum_tpr, _ = metrics.roc_curve(true_label, human_lb)
     hum_score = metrics.roc_auc_score(true_label, human_lb)
-
+    
     # PLot human average rating
     plt.figure(figsize=[10, 7])
-    plt.plot(hum_fpr[1], hum_tpr[1], 'purple', marker="*", s=10, label='human AUC: {:.2f}'.format(hum_score))
+    plt.scatter(hum_fpr[1], hum_tpr[1], color='purple', marker="*", s=50, label='cumulative performance'.format(hum_score))
 
     # Plot trained model prediction
     fpr_with_aug, tpr_with_aug, _ = metrics.roc_curve(label_with_aug, pred_logits_with_aug)
@@ -680,7 +719,7 @@ elif plot_name == "human_whole_with_model":
     score_with_aug = metrics.roc_auc_score(label_with_aug, pred_logits_with_aug)
     score_wo_aug = metrics.roc_auc_score(label_wo_aug, pred_logits_wo_aug)
 
-    plt.plot(fpr_with_aug, tpr_with_aug, 'royalblue', linestyle="-", linewidth=2, label='With aug. AUC: {:.2f}'.format(score_with_aug))
+    plt.plot(fpr_with_aug, tpr_with_aug, 'royalblue', linestyle="-", linewidth=2, label='With aug. AUC: {:.2f}'.format(score_with_aug))  #, label='With aug. AUC: {:.2f}'.format(score_with_aug)
     plt.plot(fpr_wo_aug, tpr_wo_aug, 'violet', linestyle="-.", linewidth=2, label='Without aug. AUC: {:.2f}'.format(score_wo_aug))
     plt.title("Receiver Operating Characteristic", fontsize=20)
     plt.xlim([-0.02, 1.02])
@@ -763,7 +802,7 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
         model = os.path.basename(data_dir).split("-")[-1]
         exp_mode = os.path.basename(data_dir).split("-")[-2]
 
-        for data_source in ["data5", "data1", "data2", "data3", "data4", "data5", "data6", "data7", "data8", "data9"]:  #, "data7", "data9", "data1", "data3"
+        for data_source in ["data1", "data2", "data3", "data4", "data5", "data6", "data7", "data8", "data9"]:  #, "data7", "data9", "data1", "data3"
             # data_source = "data7"
             pattern = "*-{}-test-*".format(data_source)
             folders = find_folderes(data_dir, pattern=pattern)
@@ -772,7 +811,6 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
 
             configs = []  # "aug_method": [], "aug_factor": [], "aug_fold": [], "from_epoch":
             indplus2 = 2 if "CAM" in model else 0
-            # indplus2 = 0
 
             aug_name_encode = {"same":0, "ops":1, "both":2}
             for fn in folders:
@@ -818,7 +856,6 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             plt.savefig(os.path.join(data_dir, "new-{}-with-{}-on-{}.pdf".format(exp_mode, model, data_source)), format="pdf")
             plt.close()
             
-            
             # plot each fold and aug-method w.r.t augmentation factor alpha
             # plt.figure(figsize=[12, 8])
             # for res, method in zip([aug_same, aug_ops, aug_both], ["same", "ops", "both"]):
@@ -842,20 +879,23 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             np.savetxt(os.path.join(data_dir, 'new-model_{}_all_different_config_theta{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same),exp_mode, model, data_source)), configs, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s")
     else:
         file_dirs = [
-            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta47-DA+DA-with-Res_ECG_CAM-on-data5.txt"
-            # "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data1.txt",
-            # "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data2.txt",
-            # "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data3.txt",
-            # "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data4.txt",
-            # "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data6.txt",
-            # "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data7.txt",
-            # "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data8.txt",
-            # "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data9.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta39-DA+DA-with-Res_ECG_CAM-on-data5.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data1.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data2.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data3.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data4.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data6.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data7.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data8.txt",
+            "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta16-DA+DA-with-Res_ECG_CAM-on-data9.txt"
         ]
         
+        aug_name_encode = {"same": 0, "ops": 1,"both": 2}
+        model_name = "Res_ECG_CAM"
+        data_source = "all-CVs"  #os.path.basename(fn).split("-")[-1].split(".")[0]
         
+        configs = np.empty((0, 5))
         for fn in file_dirs:
-            configs = np.empty((0, 5))
             load_data = pd.read_csv(fn, header=0).values
             configs = np.vstack((configs, load_data))
             #
@@ -863,118 +903,115 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             load_data = load_data[load_data[:, 1].argsort(kind='mergesort')]
             load_data = load_data[load_data[:, 2].argsort(kind='mergesort')]
             # np.savetxt(fn, np.array(load_data), delimiter=",", fmt="%.3f")
-
-            aug_name_encode = {"same": 0, "ops": 1,"both": 2}
-            model_name = "Res_ECG_CAM"
-            data_source = os.path.basename(fn).split("-")[-1].split(".")[0]
     
-            configs = np.array(configs)
-            aug_same = configs[np.where(configs[:, 0] == aug_name_encode["same"])[0]]
-            aug_ops = configs[np.where(configs[:, 0] == aug_name_encode["ops"])[0]]
-            aug_both = configs[np.where(configs[:, 0] == aug_name_encode["both"])[0]]
+        configs = np.array(configs)
+        aug_same = configs[np.where(configs[:, 0] == aug_name_encode["same"])[0]]
+        aug_ops = configs[np.where(configs[:, 0] == aug_name_encode["ops"])[0]]
+        aug_both = configs[np.where(configs[:, 0] == aug_name_encode["both"])[0]]
     
-            scale_style = {0.05: "-", 0.2: "-.", 0.35: "--", 0.5: ":"}
-            meth_color = {"other":"tab:orange", "same":"tab:green", "both":"tab:brown"}
-            fold_markers = {1: "d", 3: "*", 5: "o", 9: "^"}
-            styles = {1:":", 3:"-.", 5:"--", 9:"-"}
-            
-            # plot aug. method with boxplot and error bar
-            plot_style = "imshow"   #"boxplot"  #
-            if plot_style == "boxplot":
-                plt.figure(figsize=[8, 5.5])
-                for res, method, case in zip([aug_same, aug_ops, aug_both], ["same", "other", "both"], np.arange(3)):
-                    value_per_scale, names, xs = [], [], []
-                    for ind, scale in enumerate([0.05, 0.2, 0.35, 0.5]):
-                        scale_configs = np.array(res[np.where(res[:,2] == scale)[0]])
-                        vals = np.empty((0))
-                        if len(scale_configs) > 0:
-                            for jj, fold in enumerate([1,3,5,9]) :
-                                fold_inds = np.where(scale_configs[:,1] == fold)[0]
-                                fd_configs = np.array(scale_configs[fold_inds])
-                                print("method_{}-scale_{}-fold_{} num {}".format(method, scale, fold, len(fold_inds)))
-                                if len(fold_inds) >= 1:
-                                    plt.scatter(np.ones(len(fold_inds)) * ind * 4 + 1 + case, fd_configs[:,-1], color=meth_color[method], marker=fold_markers[fold], s=100)
-                                    vals = np.append(vals, fd_configs[:,-1])
-                        value_per_scale.append(vals)
-                        names.append(scale)
-                        xs.append(np.random.normal(ind, 0.04, len(vals)))
-                    
-                    bp_positions = [jj*4+1+case for jj in range(4)]
-                    bplot = plt.boxplot(value_per_scale, labels=names, positions=bp_positions, widths = 0.85)
-                    
-                    for bpind in range(len(bplot["boxes"])):
-                        plt.setp(bplot["boxes"][bpind], color=meth_color[method]),
-                        plt.setp(bplot['caps'][bpind*2], color=meth_color[method]),
-                        plt.setp(bplot['caps'][bpind*2+1], color=meth_color[method]),
-                        plt.setp(bplot['whiskers'][bpind*2], color=meth_color[method]),
-                        plt.setp(bplot['whiskers'][bpind*2+1], color=meth_color[method]),
-                        plt.setp(bplot['fliers'][bpind], color=meth_color[method]),
-                        plt.setp(bplot['medians'][bpind], color=meth_color[method])
-                    print("{} Done!".format(method))
-                    
-                for fold in [1,3,5,9]:
-                    hide_pts = plt.scatter(1 + case, 0.6, color=meth_color[method], marker=fold_markers[fold], s=100, label="$\Phi$={}".format(fold))
-                    
-                meth_color = {"other":"tab:orange", "same":"tab:green", "both":"tab:brown"}
-                for jj, method in enumerate(["same", "other", "both"]):
-                    hide_line, = plt.plot([0.6,0.6], color=meth_color[method], label="aug-with-{}".format(method))
-                plt.legend(scatterpoints=3, ncol=2, frameon=False)
-                plt.xlabel(r"mixing weight $\alpha$")
-                plt.ylabel("ROC-AUC")
-                print("ok")
-                
-                plt.title("\n".join(wrap("{} with {} on {}".format(method, model_name, data_source), 60)))
-                plt.savefig(os.path.join(os.path.dirname(fn), "{}-all-methods-in-one-{}-with-{}-on-{}.png".format(plot_style, method, model_name, data_source))),
-                plt.savefig(os.path.join(os.path.dirname(fn), "{}-all-methods-in-one-{}-with-{}-on-{}.pdf".format(plot_style, method, model_name, data_source)), format="pdf")
-                plt.close()
-            elif plot_style == "imshow":
-                fig, axes = plt.subplots(1, 3, figsize=(21, 7))
-                from mpl_toolkits.axes_grid1 import make_axes_locatable
-                for res, method, md_case in zip([aug_same, aug_ops, aug_both], ["same", "other", "both"], np.arange(3)):
-                    # each one is for each scale case
-                    matrix_values = np.zeros((len(scale_style), len(fold_markers)))
-                    matrix_stds = np.zeros((len(scale_style), len(fold_markers)))
-                    temp_coll = np.empty((0, 5))
-                    for scl_ind, scale in enumerate([0.05, 0.2, 0.35, 0.5]):
-                        scale_configs = np.array(res[np.where(res[:,2] == scale)[0]])
-                        scale_values = []
-                        for fd_ind, fold in enumerate([1,3,5,9]) :
+        scale_style = {0.05: "-", 0.2: "-.", 0.35: "--", 0.5: ":"}
+        meth_color = {"other":"tab:orange", "same":"tab:green", "both":"tab:brown"}
+        fold_markers = {1: "d", 3: "*", 5: "o", 9: "^"}
+        styles = {1:":", 3:"-.", 5:"--", 9:"-"}
+        
+        # plot aug. method with boxplot and error bar
+        plot_style = "imshow"   #"boxplot"  #
+        if plot_style == "boxplot":
+            plt.figure(figsize=[8, 5.5])
+            for res, method, case in zip([aug_same, aug_ops, aug_both], ["same", "other", "both"], np.arange(3)):
+                value_per_scale, names, xs = [], [], []
+                for ind, scale in enumerate([0.05, 0.2, 0.35, 0.5]):
+                    scale_configs = np.array(res[np.where(res[:,2] == scale)[0]])
+                    vals = np.empty((0))
+                    if len(scale_configs) > 0:
+                        for jj, fold in enumerate([1,3,5,9]) :
                             fold_inds = np.where(scale_configs[:,1] == fold)[0]
-                            fd_configs = np.array(scale_configs[fold_inds]).reshape(-1, 5)
+                            fd_configs = np.array(scale_configs[fold_inds])
                             print("method_{}-scale_{}-fold_{} num {}".format(method, scale, fold, len(fold_inds)))
-                            matrix_values[fd_ind, scl_ind] = np.mean([fd_configs[:,-1]])
-                            matrix_stds[fd_ind, scl_ind] = np.std([fd_configs[:,-1]])
-                            temp_coll = np.vstack((temp_coll, fd_configs))
-                        print("folds done")
-    
-                    im = axes[md_case].imshow(matrix_values, interpolation='none', vmin=matrix_values.min(), vmax=matrix_values.max(), aspect='equal', cmap="Blues")
-                    axes[md_case].set_xlabel(r"mixing weight $\alpha$")
-                    axes[md_case].set_ylabel(r"augmentation factor $\Phi$")
-                    divider = make_axes_locatable(axes[md_case])
-                    cax = divider.append_axes('right', size='5%', pad=0.05)
-                    clb = fig.colorbar(im, cax=cax)   #, orientation='horizontal'
-                    clb.set_label('AUC', labelpad=-40, y=1.05, rotation=0)
-    
-                    axes[md_case].set_xticks(np.arange(0, 4, 1), [0.05, 0.2, 0.35, 0.5]),
-                    axes[md_case].set_yticks(np.arange(0, 4, 1), [1,3,5,9])
+                            if len(fold_inds) >= 1:
+                                plt.scatter(np.ones(len(fold_inds)) * ind * 4 + 1 + case, fd_configs[:,-1], color=meth_color[method], marker=fold_markers[fold], s=100)
+                                vals = np.append(vals, fd_configs[:,-1])
+                    value_per_scale.append(vals)
+                    names.append(scale)
+                    xs.append(np.random.normal(ind, 0.04, len(vals)))
+                
+                bp_positions = [jj*4+1+case for jj in range(4)]
+                bplot = plt.boxplot(value_per_scale, labels=names, positions=bp_positions, widths = 0.85)
+                
+                for bpind in range(len(bplot["boxes"])):
+                    plt.setp(bplot["boxes"][bpind], color=meth_color[method]),
+                    plt.setp(bplot['caps'][bpind*2], color=meth_color[method]),
+                    plt.setp(bplot['caps'][bpind*2+1], color=meth_color[method]),
+                    plt.setp(bplot['whiskers'][bpind*2], color=meth_color[method]),
+                    plt.setp(bplot['whiskers'][bpind*2+1], color=meth_color[method]),
+                    plt.setp(bplot['fliers'][bpind], color=meth_color[method]),
+                    plt.setp(bplot['medians'][bpind], color=meth_color[method])
+                print("{} Done!".format(method))
+                
+            for fold in [1,3,5,9]:
+                hide_pts = plt.scatter(1 + case, 0.6, color=meth_color[method], marker=fold_markers[fold], s=100, label="$\Phi$={}".format(fold))
+                
+            meth_color = {"other":"tab:orange", "same":"tab:green", "both":"tab:brown"}
+            for jj, method in enumerate(["same", "other", "both"]):
+                hide_line, = plt.plot([0.6,0.6], color=meth_color[method], label="aug-with-{}".format(method))
+            plt.legend(scatterpoints=3, ncol=2, frameon=False)
+            plt.xlabel(r"mixing weight $\alpha$")
+            plt.ylabel("ROC-AUC")
+            print("ok")
+            
+            plt.title("\n".join(wrap("{} with {} on {}".format(method, model_name, data_source), 60)))
+            plt.savefig(os.path.join(os.path.dirname(fn), "{}-all-methods-in-one-{}-with-{}-on-{}.png".format(plot_style, method, model_name, data_source))),
+            plt.savefig(os.path.join(os.path.dirname(fn), "{}-all-methods-in-one-{}-with-{}-on-{}.pdf".format(plot_style, method, model_name, data_source)), format="pdf")
+            plt.close()
+        elif plot_style == "imshow":
+            fig, axes = plt.subplots(1, 3, figsize=(21, 7))
+            from mpl_toolkits.axes_grid1 import make_axes_locatable
+            for res, method, md_case in zip([aug_same, aug_ops, aug_both], ["same", "other", "both"], np.arange(3)):
+                # each one is for each scale case
+                matrix_values = np.zeros((len(scale_style), len(fold_markers)))
+                matrix_stds = np.zeros((len(scale_style), len(fold_markers)))
+                temp_coll = np.empty((0, 5))
+                for scl_ind, scale in enumerate([0.05, 0.2, 0.35, 0.5]):
+                    scale_configs = np.array(res[np.where(res[:,2] == scale)[0]])
+                    scale_values = []
+                    for fd_ind, fold in enumerate([1,3,5,9]) :
+                        fold_inds = np.where(scale_configs[:,1] == fold)[0]
+                        fd_configs = np.array(scale_configs[fold_inds]).reshape(-1, 5)
+                        print("method_{}-scale_{}-fold_{} num {}".format(method, scale, fold, len(fold_inds)))
+                        matrix_values[fd_ind, scl_ind] = np.mean([fd_configs[:,-1]])
+                        matrix_stds[fd_ind, scl_ind] = np.std([fd_configs[:,-1]])
+                        temp_coll = np.vstack((temp_coll, fd_configs))
+                    print("folds done")
                     
-                    threshold = np.mean(matrix_values)
-                    for scl_ind in range(4):
-                        for fd_inds in range(4):
-                            color = "black" if matrix_values[scl_ind, fd_inds] < threshold else "white"
-                            axes[md_case].text(fd_inds, scl_ind,r'${:.2f} \pm {:.2f}$'.format(matrix_values[scl_ind, fd_inds], matrix_stds[scl_ind, fd_inds]), color=color, horizontalalignment='center', fontsize=15)
-                    md = "other" if method=="ops" else method
-                    axes[md_case].set_title("\n".join(wrap("Aug-with-{}".format(md), 60)))
-                    print("oki")
-                    
-                    
-                plt.tight_layout()
-                plt.setp(axes, xticks=np.arange(0, 4, 1), xticklabels=[0.05, 0.2, 0.35, 0.5],
-                        yticks=np.arange(0, 4, 1), yticklabels=[1,3,5,9])
-    
-                plt.savefig(os.path.join(os.path.dirname(fn), "{}-3-in-1-method_{}-in-one-with-{}-on-{}.png".format(plot_style, md, model_name, data_source)), bbox_inches='tight'),
-                # plt.savefig(os.path.join(os.path.dirname(fn), "{}-3-in-1-method_{}-in-one-with-{}-on-{}.pdf".format(plot_style, md, model_name, data_source)), format="pdf")
-                plt.close()
+
+                im = axes[md_case].imshow(matrix_values, interpolation='none', vmin=matrix_values.min(), vmax=matrix_values.max(), aspect='equal', cmap="Blues")
+                axes[md_case].set_xlabel(r"mixing weight $\alpha$")
+                axes[md_case].set_ylabel(r"augmentation factor $\Phi$")
+                divider = make_axes_locatable(axes[md_case])
+                cax = divider.append_axes('right', size='5%', pad=0.05)
+                clb = fig.colorbar(im, cax=cax)   #, orientation='horizontal'
+                clb.set_label('AUC', labelpad=-40, y=1.05, rotation=0)
+
+                axes[md_case].set_xticks(np.arange(0, 4, 1), [0.05, 0.2, 0.35, 0.5]),
+                axes[md_case].set_yticks(np.arange(0, 4, 1), [1,3,5,9])
+                
+                threshold = np.mean(matrix_values)
+                for scl_ind in range(4):
+                    for fd_inds in range(4):
+                        color = "black" if matrix_values[scl_ind, fd_inds] < threshold else "white"
+                        axes[md_case].text(fd_inds, scl_ind,r'${:.2f} \pm {:.2f}$'.format(matrix_values[scl_ind, fd_inds], matrix_stds[scl_ind, fd_inds]), color=color, horizontalalignment='center', fontsize=15)
+                md = "other" if method=="ops" else method
+                axes[md_case].set_title("\n".join(wrap("Aug-with-{}".format(md), 60)))
+                print("oki")
+                
+                
+            plt.tight_layout()
+            plt.setp(axes, xticks=np.arange(0, 4, 1), xticklabels=[0.05, 0.2, 0.35, 0.5],
+                    yticks=np.arange(0, 4, 1), yticklabels=[1,3,5,9])
+
+            plt.savefig(os.path.join(os.path.dirname(fn), "{}-3-in-1-method_{}-in-one-with-{}-on-{}.png".format(plot_style, md, model_name, data_source)), bbox_inches='tight'),
+            plt.savefig(os.path.join(os.path.dirname(fn), "{}-3-in-1-method_{}-in-one-with-{}-on-{}.pdf".format(plot_style, md, model_name, data_source)), format="pdf")
+            plt.close()
 
 
 elif plot_name == "rename_test_folders":
@@ -1014,13 +1051,9 @@ elif plot_name == "get_performance_metrices":
         """
     postfix = ""
 
-    data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-Pure-new-Inception",
-    ]
-
     for data_source, prefix in zip(["", "data5"], ["all-CVs","data5"]):
         for data_dir in data_dirs:
-            for method in ["same", "both", "ops"]: #"None", "same"
+            for method in ["same"]: # "None","same", "both", "ops"
                 for fold in [9, 5, 0, 1, 3]: #
                     for alpha in [0.5, 0, 0.05, 0.2, 0.35]:
                         folders = find_folderes(data_dir, pattern="*{}*x{}-factor-{}-from-{}*-test-0.*".format(method, fold, alpha, data_source))
@@ -1655,9 +1688,12 @@ elif plot_name == "100_single_ep_corr_classification_rate":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2021-01-12T11-03-06--MLP-nonex0-factor-0-from-data8-certainFalse-theta-0-s989-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2021-01-12T11-03-07--MLP-nonex0-factor-0-from-data6-certainFalse-theta-0-s989-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2021-01-12T11-03-09--MLP-nonex0-factor-0-from-data4-certainFalse-theta-0-s989-100rns-train",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2021-01-12T11-47-50--Inception-nonex0-factor-0-from-data9-certainFalse-theta-0-s989-100rns-train",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2021-01-12T11-47-51--Inception-nonex0-factor-0-from-data8-certainFalse-theta-0-s989-100rns-train",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2021-01-12T11-47-52--Inception-nonex0-factor-0-from-data7-certainFalse-theta-0-s989-100rns-train",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2021-01-12T11-47-54--Inception-nonex0-factor-0-from-data6-certainFalse-theta-0-s989-100rns-train",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2021-01-12T11-47-55--Inception-nonex0-factor-0-from-data4-certainFalse-theta-0-s989-100rns-train",
+       "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2021-01-12T11-47-56--Inception-nonex0-factor-0-from-data3-certainFalse-theta-0-s989-100rns-train"
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,
