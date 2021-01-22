@@ -397,13 +397,13 @@ def load_original_mat_train_val(args):
         sub_mat = whole_set[sub_inds]
     else:
         sub_mat = whole_set
-    np.random.shuffle(sub_mat)
     print("data labels: ", sub_mat[:, 2])
     if args.test_ratio == 1:  # test_only
         X_train, X_test, Y_train, Y_test = [], sub_mat, [], sub_mat[:, 2]
     elif args.if_single_runs:   # use all data for single-epoch training
         X_train, X_test, Y_train, Y_test = sub_mat, sub_mat[0:5,:], sub_mat[:, 2], sub_mat[0:5,2]
     else:
+        np.random.shuffle(sub_mat)
         X_train, X_test, Y_train, Y_test = train_test_split(sub_mat, sub_mat[:, 2], test_size=args.test_ratio)
     return X_test, X_train, Y_test, Y_train
 
@@ -523,7 +523,8 @@ def get_single_ep_data(args):
     """
     train_data = {}
     test_data = {}
-    X_test, X_train, Y_test, Y_train = load_original_mat_train_val(args)
+    if args.data_mode == "metabolites" or args.data_mode == "metabolite":
+        X_test, X_train, Y_test, Y_train = load_original_mat_train_val(args)
 
     test_data = put_values_in_test_data_dict(X_test, Y_test, test_data, args)
 
@@ -541,52 +542,108 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
     :param certain_fns: list of filenames, from train and validation
     :return:
     """
-    mat = scipy.io.loadmat(args.input_data)["DATA"]
-    labels = mat[:, 1]
-
-    whole_set = np.zeros((mat.shape[0], mat.shape[1] + 1))
-    whole_set[:, 0] = np.arange(mat.shape[0])  # tag every sample
-    whole_set[:, 1:] = mat
-    train_data = {}
-    test_data = {}
-
-    # certain_mat = np.empty((0, new_mat.shape[1]))
-    sort_data = pd.read_csv(certain_fns, header=0).values
-    total_2_class_num = np.int(certain_fns.split("_")[-1].split("(")[1].split("-")[0])
-    # total_3_class_num = np.int(certain_fns.split("_")[-1].split(")")[1].split("-")[-1])
-    sort_samp_ids = sort_data[:, 0].astype(np.int)
-    sort_rate= sort_data[:, 1].astype(np.float32)
-    picked_ids = sort_samp_ids[-np.int(args.theta_thr*total_2_class_num):]
-    print(os.path.basename(certain_fns), len(picked_ids), "samples\n")
-    certain_mat = whole_set[picked_ids]
-
-    np.savetxt(os.path.join(args.output_path, "selected_top_{}percent_total_{}_samples.csv".format(args.theta_thr*100, len(picked_ids))), np.concatenate((picked_ids.reshape(-1,1),whole_set[picked_ids,1:3], sort_rate[-np.int(args.theta_thr*total_2_class_num):].reshape(-1,1)), axis=1), fmt='%.4f', header="samp_id,pat_id,lb,clf_rate", delimiter=',')
-
-    ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
-    if args.num_classes - 1 < np.max(labels):
-        sub_inds = np.empty((0))
-        for class_id in range(args.num_classes):
-            sub_inds = np.append(sub_inds, np.where(labels == class_id)[0])
-        sub_inds = sub_inds.astype(np.int32)
-        sub_mat = whole_set[sub_inds]
-    else:
-        sub_mat = whole_set
-
-    np.random.shuffle(sub_mat)
-    print("data labels: ", sub_mat[:, 2])
-
-    print("top", args.theta_thr*100, "% as distill, certain samples 0: ", len(np.where(certain_mat[:, 2] == 0)[0]),
-          "\ncertain samples 1: ", len(np.where(certain_mat[:, 2] == 1)[0]))
-
-    if args.train_or_test == 'train':
-        temp_rand = np.arange(len(sub_mat))
-        np.random.shuffle(temp_rand)
-        sub_mat_shuflle = sub_mat[temp_rand]
-    elif args.train_or_test == 'test':  # In test, don't shuffle
-        sub_mat_shuflle = sub_mat
-        print("data labels: ", sub_mat_shuflle[:, 2])
-    X_train, X_test, Y_train, Y_test = train_test_split(sub_mat_shuflle, sub_mat_shuflle[:, 2],
-                                                        test_size=args.test_ratio)
+    if args.data_mode == "metabolite" or args.data_mode == "metabolites":
+        mat = scipy.io.loadmat(args.input_data)["DATA"]
+        labels = mat[:, 1]
+    
+        whole_set = np.zeros((mat.shape[0], mat.shape[1] + 1))
+        whole_set[:, 0] = np.arange(mat.shape[0])  # tag every sample
+        whole_set[:, 1:] = mat
+        train_data = {}
+        test_data = {}
+    
+        # certain_mat = np.empty((0, new_mat.shape[1]))
+        sort_data = pd.read_csv(certain_fns, header=0).values
+        total_2_class_num = np.int(certain_fns.split("_")[-1].split("(")[1].split("-")[0])
+        # total_3_class_num = np.int(certain_fns.split("_")[-1].split(")")[1].split("-")[-1])
+        sort_samp_ids = sort_data[:, 0].astype(np.int)
+        sort_rate= sort_data[:, 1].astype(np.float32)
+        picked_ids = sort_samp_ids[-np.int(args.theta_thr*total_2_class_num):]
+        print(os.path.basename(certain_fns), len(picked_ids), "samples\n")
+        certain_mat = whole_set[picked_ids]
+    
+        np.savetxt(os.path.join(args.output_path, "selected_top_{}percent_total_{}_samples.csv".format(args.theta_thr*100, len(picked_ids))), np.concatenate((picked_ids.reshape(-1,1),whole_set[picked_ids,1:3], sort_rate[-np.int(args.theta_thr*total_2_class_num):].reshape(-1,1)), axis=1), fmt='%.4f', header="samp_id,pat_id,lb,clf_rate", delimiter=',')
+    
+        ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
+        if args.num_classes - 1 < np.max(labels):
+            sub_inds = np.empty((0))
+            for class_id in range(args.num_classes):
+                sub_inds = np.append(sub_inds, np.where(labels == class_id)[0])
+            sub_inds = sub_inds.astype(np.int32)
+            sub_mat = whole_set[sub_inds]
+        else:
+            sub_mat = whole_set
+    
+        np.random.shuffle(sub_mat)
+        print("data labels: ", sub_mat[:, 2])
+    
+        print("top", args.theta_thr*100, "% as distill, certain samples 0: ", len(np.where(certain_mat[:, 2] == 0)[0]),
+              "\ncertain samples 1: ", len(np.where(certain_mat[:, 2] == 1)[0]))
+    
+        if args.train_or_test == 'train':
+            temp_rand = np.arange(len(sub_mat))
+            np.random.shuffle(temp_rand)
+            sub_mat_shuflle = sub_mat[temp_rand]
+        elif args.train_or_test == 'test':  # In test, don't shuffle
+            sub_mat_shuflle = sub_mat
+            print("data labels: ", sub_mat_shuflle[:, 2])
+        X_train, X_test, Y_train, Y_test = train_test_split(sub_mat_shuflle,
+                                                            sub_mat_shuflle[:, 2],
+                                                            test_size=args.test_ratio)
+        
+    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+        whole_set  = load_concat_mnist_clean(args)  # sample_id,true_label,true_label,features
+        
+        train_data = {}
+        test_data = {}
+    
+        # certain_mat = np.empty((0, new_mat.shape[1]))
+        sort_data = pd.read_csv(certain_fns, header=0).values
+        total_2_class_num = np.int(
+            certain_fns.split("_")[-1].split("(")[1].split("-")[0])
+        # total_3_class_num = np.int(certain_fns.split("_")[-1].split(")")[1].split("-")[-1])
+        sort_samp_ids = sort_data[:, 0].astype(np.int)
+        sort_rate = sort_data[:, 1].astype(np.float32)
+        picked_ids = sort_samp_ids[-np.int(args.theta_thr * total_2_class_num):]
+        print(os.path.basename(certain_fns), len(picked_ids), "samples\n")
+        certain_mat = whole_set[picked_ids]
+    
+        np.savetxt(os.path.join(args.output_path,
+                                "selected_top_{}percent_total_{}_samples.csv".format(
+                                    args.theta_thr * 100, len(picked_ids))),
+        np.concatenate((picked_ids.reshape(-1, 1),
+                        whole_set[picked_ids, 1:3], sort_rate[-np.int(args.theta_thr *total_2_class_num):].reshape(-1, 1)),
+                       axis=1), fmt='%.4f',
+                   header="samp_id,pat_id,lb,clf_rate", delimiter=',')
+    
+        ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
+        if args.num_classes - 1 < np.max(labels):
+            sub_inds = np.empty((0))
+            for class_id in range(args.num_classes):
+                sub_inds = np.append(sub_inds, np.where(labels == class_id)[0])
+            sub_inds = sub_inds.astype(np.int32)
+            sub_mat = whole_set[sub_inds]
+        else:
+            sub_mat = whole_set
+    
+        np.random.shuffle(sub_mat)
+        print("data labels: ", sub_mat[:, 2])
+    
+        print("top", args.theta_thr * 100, "% as distill, certain samples 0: ",
+              len(np.where(certain_mat[:, 2] == 0)[0]),
+              "\ncertain samples 1: ", len(np.where(certain_mat[:, 2] == 1)[0]))
+    
+        if args.train_or_test == 'train':
+            temp_rand = np.arange(len(sub_mat))
+            np.random.shuffle(temp_rand)
+            sub_mat_shuflle = sub_mat[temp_rand]
+        elif args.train_or_test == 'test':  # In test, don't shuffle
+            sub_mat_shuflle = sub_mat
+            print("data labels: ", sub_mat_shuflle[:, 2])
+        X_train, X_test, Y_train, Y_test = train_test_split(sub_mat_shuflle,
+                                                            sub_mat_shuflle[:, 2],
+                                                            test_size=args.test_ratio)
+    
     test_data = put_values_in_test_data_dict(X_test, Y_test, test_data, args)
 
     if args.train_or_test == 'train':
@@ -659,7 +716,7 @@ def get_single_ep_training_data_tensors(args, certain_fns=None):
     return data, args
 
 
-def get_noisy_mnist_data(args):
+def get_noisy_mnist_data(args, certain_fns=None):
     """
     Get batches of data in tf.dataset
 
@@ -669,8 +726,11 @@ def get_noisy_mnist_data(args):
     :return:
     """
     data = {}
-    train_data, test_data = load_mnist_with_noise(args)
-
+    if certain_fns is None:  # get data from origal array
+        train_data, test_data = load_mnist_with_noise(args)
+    else:  # Get certain AND mix original un-distilled samples
+        train_data, test_data = get_data_from_certain_ids(args, certain_fns=certain_fns)
+        
     test_spectra, test_labels, test_ids, test_sample_ids = tf.constant(test_data["spectra"]), tf.constant(
         test_data["labels"]), tf.constant(test_data["ids"]), tf.constant(test_data["sample_ids"])
     test_ds = tf.compat.v1.data.Dataset.from_tensor_slices(
@@ -716,35 +776,27 @@ def load_mnist_with_noise(args):
     :param args: Param object with path to the data
     :return:
     """
-    from tensorflow.keras.datasets import mnist
-    from tensorflow.keras.datasets import fashion_mnist as fashion_mnist
+    # TODO: Still need this. Generate new noisy mnist set
+    new_mat  = load_concat_mnist_clean(args)  # sample_id,true_label,true_label,features
+    Y_tot_noisy = introduce_label_noisy(new_mat[:, 1], noisy_ratio=args.noise_ratio, num_classes=args.num_classes, save_dir=args.output_path)
+    new_mat[:, 1] = Y_tot_noisy  # noisy labels
+    np.savetxt(os.path.join(args.output_path, "{}_noisy_whole_mnist_[samp_id,true,noise,feature].csv".format(args.noise_ratio)), new_mat, fmt="%.3f", delimiter=",")
+    # load pre-generated noisy mnist set from .csv
+    # new_mat = pd.read_csv(args.noisy_mnist_file, header=None).values
 
-    if "fashion" in args.data_mode:
-        (X_train, Y_train), (X_test, Y_test) = fashion_mnist.load_data()
-    else:
-        (X_train, Y_train), (X_test, Y_test) = mnist.load_data()
-    X_train, X_test = X_train / 255.0, X_test / 255.0
-    args.num_classes = 10
-
-    whole_set = np.concatenate((np.append(Y_train, Y_test).reshape(-1, 1), np.vstack(
-        (X_train.reshape(X_train.shape[0], -1), X_test.reshape(X_test.shape[0], -1)))), axis=1)
-    new_mat = np.zeros((whole_set.shape[0], whole_set.shape[1] + 2))
-    new_mat[:, 0] = np.arange(whole_set.shape[0])  # tag every sample
-    new_mat[:, 2:] = whole_set
-    new_mat = new_mat.astype(np.float32)
     train_data = {}
     test_data = {}
-
-    Y_tot_noisy = introduce_label_noisy(whole_set[:, 0], noisy_ratio=args.noise_ratio, num_classes=args.num_classes, save_dir=args.output_path)
-    new_mat[:, 1] = Y_tot_noisy  # noisy labels
 
     np.random.shuffle(new_mat)
     print("data labels: ", new_mat[:, 2])
 
-    if args.test_ratio == 1:
-        X_train, X_test, Y_train, Y_test = [], new_mat, [], new_mat[:, 2]
-    else:
-        X_train, X_test, Y_train, Y_test = train_test_split(new_mat, new_mat[:, 2], test_size=args.test_ratio)
+    if args.test_ratio == 1 and args.train_or_test == "test":
+        X_train, X_test, Y_train, Y_test = [], new_mat, [], new_mat[:, 2]  # test gets all data
+    elif args.train_or_test == "train":
+        if args.if_single_runs:
+            X_train, X_test, Y_train, Y_test = new_mat,new_mat[0:5], new_mat[:, 2], new_mat[0:5, 2]  # train gets all data. Just need to make sure test is not empty.
+        else:
+            X_train, X_test, Y_train, Y_test = train_test_split(new_mat, new_mat[:, 2], test_size=args.test_ratio)
 
     test_data["spectra"] = X_test[:, 3:]
     test_data["labels"] = Y_test.astype(np.int32)
@@ -789,6 +841,32 @@ def load_mnist_with_noise(args):
                    np.array(sorted_count), fmt='%d', delimiter=',')
 
     return train_data, test_data
+
+
+def load_concat_mnist_clean(args):
+    """
+    Load the whole mnist while concatenating the training and test set
+    :param args:
+    :return:
+    """
+    from tensorflow.keras.datasets import mnist
+    from tensorflow.keras.datasets import fashion_mnist as fashion_mnist
+    if "fashion" in args.data_mode:
+        (X_train, Y_train), (X_test, Y_test) = fashion_mnist.load_data()
+    else:
+        (X_train, Y_train), (X_test, Y_test) = mnist.load_data()
+    X_train, X_test = X_train / 255.0, X_test / 255.0
+    args.num_classes = 10
+    whole_set = np.concatenate(
+        (np.append(Y_train, Y_test).reshape(-1, 1), np.vstack(
+            (X_train.reshape(X_train.shape[0], -1),
+             X_test.reshape(X_test.shape[0], -1)))), axis=1)
+    whole_clean_set = np.zeros((whole_set.shape[0], whole_set.shape[1] + 2))
+    whole_clean_set[:, 0] = np.arange(whole_set.shape[0])  # tag every sample with a sample ID
+    whole_clean_set[:, 2:] = whole_set
+    whole_clean_set[:, 1] = whole_set[:, 0]  # true label
+    whole_clean_set = whole_clean_set.astype(np.float32)
+    return whole_clean_set
 
 
 def make_output_dir(args, sub_folders=["CAMs"]):
@@ -889,7 +967,7 @@ def introduce_label_noisy(original_lbs, noisy_ratio=0.2, num_classes=10, save_di
     count_noise = []
     noisy_lbs = original_lbs.copy()
 
-    all_classes = np.arange(10)
+    all_classes = np.arange(num_classes)
     for c in range(num_classes):
         c_inds = np.where(original_lbs == c)[0]
         rest_lbs = all_classes[all_classes != c]
@@ -900,6 +978,7 @@ def introduce_label_noisy(original_lbs, noisy_ratio=0.2, num_classes=10, save_di
         noisy_lbs[noisy_c_inds] = flipped_lbs
 
         count_noise.append([c, len(c_inds), np.sum(original_lbs[c_inds] != noisy_lbs[c_inds])])
+    print("digit, total_num, total_noise_num")
     print(np.array(count_noise))
 
     plt.figure()
@@ -911,6 +990,8 @@ def introduce_label_noisy(original_lbs, noisy_ratio=0.2, num_classes=10, save_di
     plt.title("Noisy labeling ratio {}%".format(noisy_ratio*100)),
     plt.savefig(save_dir + '/distribution of noisy labels in mnist.png', format='png')
     plt.close()
+    
+    
 
     return noisy_lbs
 

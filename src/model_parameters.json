@@ -26,8 +26,8 @@
                 },
                 "MLP":{
                     "model_name": "MLP",
-                    "layer_dims": [320, 512, 400, 256],
-                    "drop_fc": [0.50, 0.50, 0.50, 0.50],
+                    "layer_dims": [128, 32],
+                    "drop_fc": [0.50, 0.50],
                     "batch_norm": true
 
                 },

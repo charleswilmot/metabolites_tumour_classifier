@@ -36,11 +36,11 @@ parser.add_argument(
     help="output dir"
 )
 parser.add_argument(
-    '--exp_config', default="./exp_parameters.json",
+    '--exp_config', default="./exp_parameters.yaml",
     help="Json file path for experiment parameters"
 )
 parser.add_argument(
-    '--model_config', default="./model_parameters.json",
+    '--model_config', default="./model_parameters.yaml",
     help="Json file path for model parameters"
 )
 logger = log.getLogger("classifier")
@@ -50,7 +50,7 @@ tracemalloc.start()
 
 params = parser.parse_args()
 
-args = utils.load_all_params(params.exp_config, params.model_config)
+args = utils.load_all_params_yaml(params.exp_config, params.model_config)
 
 # if the job is NOT submitted with cluster.py, only locally, then
 if not args.from_clusterpy:
@@ -69,6 +69,28 @@ np.random.seed(seed=np.int(args.rand_seed))
 tf.compat.v1.set_random_seed(np.int(args.rand_seed))
 
 
+if args.if_single_runs:  ## 100 single-epoch training
+    if args.data_mode == "metabolites" or args.data_mode == "metabolite":
+        data_tensors, args = dataio.get_single_ep_training_data_tensors(args)
+    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+        data_tensors, args = dataio.get_noisy_mnist_data(args)
+        
+elif args.if_from_certain and args.train_or_test == "train":  # use distillation to augment data
+    certain_files = dataio.find_files(args.certain_dir,
+                                      pattern="full_summary*.csv")
+    print("certain_files", certain_files)
+    
+    if args.data_mode == "metabolites" or args.data_mode == "metabolite":
+        data_tensors, args = dataio.get_data_tensors(args,
+                                                     certain_fns=certain_files[0])
+    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+        data_tensors, args = dataio.get_noisy_mnist_data(args, certain_fns=certain_files[0])
+else:                # normal training
+    if args.data_mode == "metabolites" or args.data_mode == "metabolite":
+        data_tensors, args = dataio.get_data_tensors(args)
+    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+        data_tensors, args = dataio.get_noisy_mnist_data(args)
+
 # Get augmentation of the data
 if args.if_from_certain and args.train_or_test == 'train':
     if args.distill_old:
@@ -83,14 +105,6 @@ if args.if_from_certain and args.train_or_test == 'train':
         certain_files = dataio.find_files(args.certain_dir, pattern="full_summary*.csv")
         print("certain_files", certain_files)
         data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files[0])
-else:
-    if args.data_mode == "mnist" or args.data_mode == "MNIST":
-        data_tensors, args = dataio.get_noisy_mnist_data(args)
-    elif args.if_single_runs:
-        data_tensors, args = dataio.get_single_ep_training_data_tensors(args)
-    else:
-        data_tensors, args = dataio.get_data_tensors(args)
-
 logger.info("------------Successfully get data tensors----------------------")
 
 graph = graph.get_graph(args, data_tensors)

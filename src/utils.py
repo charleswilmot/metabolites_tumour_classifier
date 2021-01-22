@@ -5,42 +5,6 @@ import os
 import logging
 import datetime
 
-
-# class Params():
-#     """Class that loads hyperparameters from a json file.
-#
-#     Example:
-#     ```
-#     params = Params(json_path)
-#     print(params.learning_rate)
-#     params.learning_rate = 0.5  # change the value of learning_rate in params
-#     ```
-#     """
-#
-#     def __init__(self, json_path):
-#         # type: (object) -> object
-#         self.update(json_path)
-#
-#     def save(self, json_path):
-#         """Saves parameters to json file"""
-#         with open(json_path, 'w') as f:
-#             json.dump(self.__dict__, f, indent=4)
-#
-#     def update(self, json_path, model_key=None):
-#         """Loads parameters from json file. if specify a modelkey, only load the params under thta modelkey"""
-#         with open(json_path) as f:
-#             params = json.load(f)
-#             if not model_key:
-#                 self.__dict__.update(params)
-#             else:
-#                 model_params = params["model"][model_key]
-#                 self.__dict__.update(model_params)
-#
-#     @property
-#     def dict(self):
-#         """Gives dict-like access to Params instance by `params.dict['learning_rate']`"""
-#         return self.__dict__
-
 class Params():
     """Class that loads hyperparameters from a json file.
     https://github.com/cs230-stanford/cs230-code-examples/blob/master/tensorflow/vision/model/utils.py
@@ -78,6 +42,7 @@ class Params():
     def dict(self):
         """Gives dict-like access to Params instance by `params.dict['learning_rate']`"""
         return self.__dict__
+
 
 def set_logger(log_path):
     """Sets the logger to log info in terminal and file `log_path`.
@@ -121,7 +86,7 @@ def save_dict_to_json(d, json_path):
         json.dump(d, f, indent=4)
 
 
-def load_all_params(exp_json_dir, model_json_dir):
+def load_all_params_json(exp_json_dir, model_json_dir):
     """
     Load exp. params and model params given the dirs
     :param args:
@@ -137,6 +102,48 @@ def load_all_params(exp_json_dir, model_json_dir):
     args.update(model_json_dir, mode=args.model_name)
 
     return args
+
+
+def load_all_params_yaml(exp_param_dir, model_param_dir):
+    """
+    Load exp. params and model params given the dirs
+    :param args:
+    :return:
+    """
+    ## Load experiment parameters and model parameters
+    assert os.path.isfile(exp_param_dir), "No json configuration file found at {}".format(exp_param_dir)
+    exp_dict = load_parameters(exp_param_dir, mode="train_or_test")
+
+    # load model specific parameters
+    assert os.path.isfile(model_param_dir), "No json file found at {}".format(model_param_dir)
+    modal_args_dict = load_parameters(model_param_dir, mode=exp_dict["model_name"])
+    exp_dict.update(modal_args_dict)
+    args = Struct(**exp_dict)
+    return args
+
+
+class Struct:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+
+
+def load_parameters(filename, mode="train_or_test"):
+    """
+    Load yaml file into dicts
+    :param filename:
+    :param mode:
+    :return: ym_dict
+    """
+    import yaml
+    if mode == "train_or_test":
+        with open(filename) as f:
+            ym_dicts = yaml.load(f, Loader=yaml.FullLoader)
+            
+    else:
+        with open(filename) as f:
+            temp_dicts = yaml.load(f, Loader=yaml.FullLoader)
+            ym_dicts = temp_dicts["model"][mode]
+    return  ym_dicts
 
 
 def generate_output_path(args):
@@ -161,11 +168,11 @@ def generate_output_path(args):
         time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
         args.postfix = "100rns-" + args.train_or_test if args.if_single_runs else args.train_or_test
         args.output_path = os.path.join(args.output_path,
-                                        "{}-{}-{}x{}-factor-{}-from-{}-certain{}-theta-{}-s{}-{}".format(
+                                        "{}-{}-{}x{}-factor-{}-from-{}-certain{}-theta-{}-s{}-{}-noise-{}-with".format(
                                             time_str, args.model_name, args.aug_method, args.aug_folds,
                                             args.aug_scale, args.data_source,
                                             args.if_from_certain, args.theta_thr,
-                                            args.rand_seed, args.postfix))
+                                            args.rand_seed, args.noise_ratio, args.postfix))
     elif args.restore_from is not None and args.resume_training:  # restore a model
         args.train_or_test = "train"
         args.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(args.data_source, "resume_train")
@@ -211,3 +218,4 @@ def display_top(snapshot, key_type='lineno', limit=3):
         print("%s other: %.1f KiB" % (len(other), size / 1024))
     total = sum(stat.size for stat in top_stats)
     print("Total allocated size: %.1f KiB" % (total / 1024))
+

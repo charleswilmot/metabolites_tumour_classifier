@@ -103,6 +103,79 @@ class MLP:
             return net
 
 
+class MLP_simple:
+    ## Constructor
+    #  @param args arguments passed to the command line
+    def __init__(self, args):
+        print("-------Building {} network-----------".format(args.model_name))
+        self.layer_dims = args.layer_dims
+        self.drop_fc = args.drop_fc
+        self.batch_norm = args.batch_norm
+        self.num_classes = args.num_classes
+    
+    def __call__(self, features, training=False):
+        out = {}
+        net = features
+        for ind, dim in enumerate(self.layer_dims):
+            net = self._make_layer(net, ind, self.drop_fc[ind], training)
+        activity = net
+        
+        with tf.compat.v1.variable_scope("logits", reuse=tf.compat.v1.AUTO_REUSE):
+            net = tf.compat.v1.layers.dense(net, self.num_classes,
+                                            kernel_initializer=initializer,
+                                            activation=None)
+            net = tf.compat.v1.layers.batch_normalization(net,
+                                                          training=training) if self.batch_norm else net
+            logits = tf.nn.softmax(net)
+        
+        ##### track all variables
+        all_trainable_vars = tf.compat.v1.get_collection(
+            tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES)
+        out["total_trainables"] = np.sum(
+            [np.product([xi.value for xi in x.get_shape()]) for x in
+             all_trainable_vars])
+        print("MLP total_trainables {} during training={}".format(
+            out["total_trainables"], training))
+        
+        out["logits"] = logits
+        out["activity"] = activity
+        return out
+    
+    def _make_layer(self, inp, layer_number, dropout, training):
+        """
+        Make dense layer
+        :param inp:
+        :param layer_number:
+        :param dropout:
+        :param training:
+        :return:
+        """
+        out_size = self.layer_dims[layer_number]
+        
+        _to_format = [out_size, dropout, training]
+        layer_name = "layer_{}".format(layer_number)
+        logger.debug("Creating new layer:")
+        string = "Output size = {}\tDropout prob = {}\t(training = {})"
+        logger.debug(string.format(*_to_format))
+        
+        print("-------Building network-----------")
+        with tf.compat.v1.variable_scope(layer_name,
+                                         reuse=tf.compat.v1.AUTO_REUSE):
+            net = tf.compat.v1.layers.dense(inp, out_size,
+                                            kernel_initializer=initializer,
+                                            activation=None)
+            net = tf.compat.v1.layers.batch_normalization(net,
+                                                          training=training) if self.batch_norm else net
+            net = tf.nn.relu(net)
+            net = tf.compat.v1.layers.dropout(net, rate=dropout,
+                                              training=training) if dropout != 0 else net
+            print("layer: {}, in_size:{}, out_size:{}".format(layer_name,
+                                                              inp.get_shape().as_list(),
+                                                              net.get_shape().as_list()))
+            return net
+
+
+
 class CNN:
     ## Constructor
     # construct a CNN: cnn 8*3*1-pool2*1-cnn 16*3*1-pool2*1-cnn 32 3*1-pool2*1-fnn--softmax(class)

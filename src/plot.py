@@ -118,18 +118,21 @@ def all_figures(sess, args, data, training=False, epoch=0):
     accuracy_figure(args, data, training=training, epoch=epoch)
     # accuracy_loss_figure(args, data, training=training, epoch=epoch)
     # plot_confusion_matrix(args, data, ifnormalize=True, training=training)
-    auc = plot_auc_curve(args, data, epoch=epoch)
-    plot_wrong_examples(args, data, training=training)
-    print("accuracy: ", data["test_accuracy"],
-          "auc: ", auc)
+    if args.num_classes == 2:
+        auc = plot_auc_curve(args, data, epoch=epoch)
+        print("accuracy: ", data["test_accuracy"], "auc: ", auc)
+    else:
+        print("accuracy: ", data["test_accuracy"])
+        auc = np.Inf
+    # plot_wrong_examples(args, data, training=training)
 
     if not training:
         if 'CAM' in args.model_name:
             class_maps, rand_inds = get_class_map(data["test_labels"], data["test_conv"], data["test_gap_w"], args.height, 1, number2use=1000)
 
             plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], data["test_logits"][rand_inds], epoch, args, auc=auc)
-        plot_wrong_examples(args, data, training=training)
-        plot_prob_distr_on_ids(data, args.output_path)
+        # plot_wrong_examples(args, data, training=training)
+        # plot_prob_distr_on_ids(data, args.output_path)
 
     # plot_tsne(args, data)
     # plot_hierarchy_cluster(args, data)

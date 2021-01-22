@@ -448,7 +448,7 @@ def split_data_for_lout_val(data):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "indi_rating_with_model"
+plot_name = "100_single_ep_corr_classification_rate_mnist"
 
 if plot_name == "plot_random_roc":
     filename = "C:/Users/LDY/Desktop/1-all-experiment-results/Gk-patient-wise-classification/2021-01-06T22-46-36-classifier4-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex5/classifier4-spec51-CV9--ROC-AUC-[n_cv_folds,n_spec_per_pat].csv"
@@ -533,7 +533,7 @@ elif plot_name == "indi_rating_with_model":
     coll_indiv_model_ACC_with_aug = []
     model_performance_str_with_aug = []
     
-    plt.figure(figsize=[8, 8])
+    plt.figure(figsize=[8, 5.8])
     true_indi_doctor_lbs = {}
     true_indi_model_lbs_wo_aug = {}
     true_indi_model_lbs_with_aug = {}
@@ -611,8 +611,8 @@ elif plot_name == "indi_rating_with_model":
         plt.scatter(indi_doctor_fpr[1], indi_doctor_tpr[1], color="r", marker="o", s=40, alpha=0.65)
 
         start = end
-
-
+        
+    ### one by one compare the metrix of doctors and the model
     # print("doctors Sensitivity {}\n: mean-{:.3f}, std-{:.3f}\n".format(coll_doctor_SEN,
     #     np.mean(coll_doctor_SEN),
     #     np.std(coll_doctor_SEN)))
@@ -666,11 +666,16 @@ elif plot_name == "indi_rating_with_model":
     mean_model_score_wo_aug = np.mean(coll_indiv_model_AUCs_wo_aug)
 
     plt.scatter(indi_doctor_fpr[1], indi_doctor_tpr[1], alpha=0.65, color="r", marker="o", s=40, label="individual radiologists")
-    plt.scatter(hum_fpr[1], hum_tpr[1], color="purple", marker="*", s=120, label='cumulative radiologists performance(F1: {:.2f}, MCC: {:.2f})'.format(np.mean(coll_indiv_doctor_f1_scores), np.mean(coll_indiv_doctor_MCCs)))  #  label='cumulative radiologists performance'
+    # plt.scatter(hum_fpr[1], hum_tpr[1], color="purple", marker="*", s=120, label='cumulative radiologists performance(F1: {:.2f}, MCC: {:.2f})'.format(np.mean(coll_indiv_doctor_f1_scores), np.mean(coll_indiv_doctor_MCCs)))  #  label='cumulative radiologists performance'
+    # plt.plot(np.insert(base_fpr, 0, 0), mean_model_tpr_wo_aug, linestyle=":",
+    #          linewidth=3.0, color="royalblue",
+    #          label='model AUC:  {:.2f} (F1: {:.2f}, MCC: {:.2f})'.format(np.mean(coll_indiv_model_AUCs_wo_aug), np.mean(coll_indiv_model_f1_scores_wo_aug), np.mean(coll_indiv_model_MCCs_wo_aug)))  # 'model average'
+    # plt.plot(np.insert(base_fpr, 0, 0), mean_model_tpr_with_aug, linewidth=3.0, color="crimson", label='model+DA+dist AUC:  {:.2f} (F1: {:.2f}, MCC: {:.2f})'.format(np.mean(coll_indiv_model_AUCs_with_aug), np.mean(coll_indiv_model_f1_scores_with_aug), np.mean(coll_indiv_model_MCCs_with_aug)))#  ,label='model + DA + dist'
+    plt.scatter(hum_fpr[1], hum_tpr[1], color="purple", marker="*", s=120, label='cumulative radiologists performance')  #  label='cumulative radiologists performance'
     plt.plot(np.insert(base_fpr, 0, 0), mean_model_tpr_wo_aug, linestyle=":",
              linewidth=3.0, color="royalblue",
-             label='model AUC:  {:.2f} (F1: {:.2f}, MCC: {:.2f})'.format(np.mean(coll_indiv_model_AUCs_wo_aug), np.mean(coll_indiv_model_f1_scores_wo_aug), np.mean(coll_indiv_model_MCCs_wo_aug)))  # 'model average'
-    plt.plot(np.insert(base_fpr, 0, 0), mean_model_tpr_with_aug, linewidth=3.0, color="crimson", label='model+DA+dist AUC:  {:.2f} (F1: {:.2f}, MCC: {:.2f})'.format(np.mean(coll_indiv_model_AUCs_with_aug), np.mean(coll_indiv_model_f1_scores_with_aug), np.mean(coll_indiv_model_MCCs_with_aug)))#  ,label='model + DA + dist'
+             label='model AUC:  {:.2f}'.format(np.mean(coll_indiv_model_AUCs_wo_aug)))  # 'model average'
+    plt.plot(np.insert(base_fpr, 0, 0), mean_model_tpr_with_aug, linewidth=3.0, color="crimson", label='model+DA+dist AUC:  {:.2f}'.format(np.mean(coll_indiv_model_AUCs_with_aug)))#  ,label='model + DA + dist'
     
     plt.xlim([-0.02, 1.02])
     plt.ylim([-0.02, 1.02])
@@ -679,8 +684,8 @@ elif plot_name == "indi_rating_with_model":
     plt.xlabel('false positive rate')
     plt.tight_layout()
     
-    plt.savefig(os.path.join(data_dir, "Model_with_indi_human_rating.png"), format='png')
-    plt.savefig(os.path.join(data_dir, "Model_with_indi_human_rating.pdf"), format='pdf')
+    plt.savefig(os.path.join(data_dir, "Model_with_indi_human_rating_only_AUC.png"), format='png')
+    plt.savefig(os.path.join(data_dir, "Model_with_indi_human_rating_only_AUC.pdf"), format='pdf')
     plt.close()
     
 
@@ -1588,8 +1593,7 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T15-14-50-MLP-nonex0-factor-0-from-ep-0-from-lout40-mnist-theta-None-s129-100rns-noise-ratio0.2-train/certains",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-10T15-52-32-MLP-nonex0-factor-0-from-ep-0-from-lout40-mnist-theta-None-s129-100rns-noise-ratio0.8-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-runs-on-mnist-MLP/2021-01-22T09-50-20--MLP-noisex0-factor-0-from-mnist-certainFalse-theta-1-s798-0.5-noise-100rns-train-with"
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,
