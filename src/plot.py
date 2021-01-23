@@ -676,7 +676,7 @@ def plot_train_samples(samples, true_labels, args, postfix="samples", data_dim="
                 plt.savefig(args.output_path + '/augmented_samples-class-{}-{}-{}.pdf'.format(class_id, args.aug_method, postfix), format = 'pdf')
 
                 plt.close()
-    elif data_dim == "2d":
+    elif data_dim == "2d" or args.data_mode == "mnist":
         row, col = 6, 6
         for class_id in range(args.num_classes):
             f, axs = plt.subplots(row, col, sharex=True, figsize=[12, 12])

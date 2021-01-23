@@ -558,13 +558,13 @@ if __name__ == "__main__":
                                 x0=default_params)
 
     plot_convergence(search_result)
-    plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.png'.format(time_str)),
+    plt.savefig(os.path.join("../../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.png'.format(time_str)),
                 format='png')
-    plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.pdf'.format(time_str)),
+    plt.savefig(os.path.join("../../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.pdf'.format(time_str)),
                 format='pdf')
     plt.close()
     results = sorted(zip(search_result.func_vals, search_result.x_iters))
     print(results)
-    np.savetxt(os.path.join("../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.txt'.format(time_str)),
+    np.savetxt(os.path.join("../../results/Hyperparameter_Optimize", '{}_rnn_convergence_plot.txt'.format(time_str)),
                results, fmt="%s", delimiter=",")
 

@@ -297,11 +297,15 @@ def augment_data(aug_target, augs, args):
     :return: train_aug: dict
     """
     train_data_aug = {}
-    # X_train_aug = aug_target
-    if "mean" in args.aug_method:
-        aug_target = augment_with_batch_mean(args, aug_target, augs)
-    # aug_target = augment_with_random_noise(args, aug_target)
-    #
+    
+    if args.data_mode == "metabolite" or args.data_mode == "metabolites":
+        if "mean" in args.aug_method:
+            aug_target = augment_with_batch_mean(args, aug_target, augs)
+        elif "noise" in args.aug_method:
+            aug_target = augment_with_random_noise(args, aug_target)
+    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+        aug_target = mixup_noisy_mnist(args, aug_target, augs)
+
     # print("Augmentation number of class 0", np.where(X_train_aug[:, 2] == 0)[0].size, "number of class 1", np.where(X_train_aug[:, 2] == 1)[0].size)
     train_data_aug["spectra"] = aug_target[:, 3:].astype(np.float32)
     train_data_aug["labels"] = aug_target[:, 2].astype(np.int32)
@@ -349,6 +353,43 @@ def augment_with_batch_mean(args, aug_target, augs):
                                 data_dim=args.data_dim)
 
     print("original spec total shape", class_id, aug_target[:, 3:].shape, "augment spec shape: ",
+          X_train_aug[:, 3:].shape)
+    np.random.shuffle(X_train_aug)
+    np.random.shuffle(X_train_aug)
+    np.savetxt(os.path.join(args.output_path, "augmented_labels_check_shuffle.csv"), X_train_aug[:, 2], fmt="%d",
+               delimiter=",")
+    return X_train_aug
+
+
+def mixup_noisy_mnist(args, aug_target, augs):
+    """
+    Augment noisy mnist with mixing each other
+    :param aug_target: 2d array, samples need to be augmented (certain or whole)
+    :param augs: 2d array, samples used to augment (certain)
+    :return:
+    train_data_aug: 2d array
+    """
+    num2average = 1
+    X_train_aug = np.empty((0, aug_target.shape[1]))
+    X_train_aug = np.vstack((X_train_aug, aug_target))  # the first fold is the original data
+
+    inds = np.arange(len(augs[:, 2]))  # use all labels to augment
+    aug_inds = np.random.choice(inds, args.aug_folds * len(inds) * num2average, replace=True).reshape(-1, num2average)
+    target_inds = np.random.choice(inds, args.aug_folds * len(
+        inds) * num2average).reshape(-1, num2average)
+    mean_batch = np.mean(augs[:, 3:][aug_inds], axis=1)  # get a batch of spectra to get the mean
+    noise_aug_scale = np.random.uniform(args.aug_scale - 0.05, args.aug_scale + 0.05, size=[len(mean_batch), 1])
+
+    aug_zspec = (1 - args.aug_scale) * aug_target[:, 3:][np.squeeze(target_inds)] + mean_batch * noise_aug_scale
+    combine = np.concatenate((aug_target[:, 0][target_inds].reshape(-1, 1),
+                              aug_target[:, 1][target_inds].reshape(-1, 1),
+                              aug_target[:, 2][target_inds].reshape(-1, 1), aug_zspec), axis=1)
+    X_train_aug = np.vstack((X_train_aug, combine))
+
+    Plot.plot_train_samples(aug_zspec, aug_target[:, 2][target_inds], args, postfix="samples",
+                            data_dim=args.data_dim)
+
+    print(aug_target[:, 3:].shape, "augment spec shape: ",
           X_train_aug[:, 3:].shape)
     np.random.shuffle(X_train_aug)
     np.random.shuffle(X_train_aug)
@@ -546,9 +587,9 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
         mat = scipy.io.loadmat(args.input_data)["DATA"]
         labels = mat[:, 1]
     
-        whole_set = np.zeros((mat.shape[0], mat.shape[1] + 1))
-        whole_set[:, 0] = np.arange(mat.shape[0])  # tag every sample
-        whole_set[:, 1:] = mat
+        whole_noisy_set = np.zeros((mat.shape[0], mat.shape[1] + 1))
+        whole_noisy_set[:, 0] = np.arange(mat.shape[0])  # tag every sample
+        whole_noisy_set[:, 1:] = mat
         train_data = {}
         test_data = {}
     
@@ -560,9 +601,10 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
         sort_rate= sort_data[:, 1].astype(np.float32)
         picked_ids = sort_samp_ids[-np.int(args.theta_thr*total_2_class_num):]
         print(os.path.basename(certain_fns), len(picked_ids), "samples\n")
-        certain_mat = whole_set[picked_ids]
-    
-        np.savetxt(os.path.join(args.output_path, "selected_top_{}percent_total_{}_samples.csv".format(args.theta_thr*100, len(picked_ids))), np.concatenate((picked_ids.reshape(-1,1),whole_set[picked_ids,1:3], sort_rate[-np.int(args.theta_thr*total_2_class_num):].reshape(-1,1)), axis=1), fmt='%.4f', header="samp_id,pat_id,lb,clf_rate", delimiter=',')
+        certain_mat = whole_noisy_set[picked_ids]
+        
+        concat_data = np.concatenate((picked_ids.reshape(-1,1),whole_noisy_set[picked_ids,1:3], sort_rate[-np.int(args.theta_thr*total_2_class_num):].reshape(-1,1)), axis=1)
+        np.savetxt(os.path.join(args.output_path, "selected_top_{}percent_total_{}_samples.csv".format(args.theta_thr*100, len(picked_ids))), concat_data , fmt='%.4f', header="samp_id,pat_id,lb,clf_rate", delimiter=',')
     
         ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
         if args.num_classes - 1 < np.max(labels):
@@ -570,9 +612,9 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
             for class_id in range(args.num_classes):
                 sub_inds = np.append(sub_inds, np.where(labels == class_id)[0])
             sub_inds = sub_inds.astype(np.int32)
-            sub_mat = whole_set[sub_inds]
+            sub_mat = whole_noisy_set[sub_inds]
         else:
-            sub_mat = whole_set
+            sub_mat = whole_noisy_set
     
         np.random.shuffle(sub_mat)
         print("data labels: ", sub_mat[:, 2])
@@ -592,7 +634,7 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
                                                             test_size=args.test_ratio)
         
     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
-        whole_set  = load_concat_mnist_clean(args)  # sample_id,true_label,true_label,features
+        whole_noisy_set  = pd.read_csv(args.noisy_mnist_file, header=None).values  # sample_id,true_label,true_label,features
         
         train_data = {}
         test_data = {}
@@ -606,42 +648,23 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
         sort_rate = sort_data[:, 1].astype(np.float32)
         picked_ids = sort_samp_ids[-np.int(args.theta_thr * total_2_class_num):]
         print(os.path.basename(certain_fns), len(picked_ids), "samples\n")
-        certain_mat = whole_set[picked_ids]
-    
+        certain_mat = whole_noisy_set[picked_ids]
+        concat_data = np.concatenate((picked_ids.reshape(-1, 1),
+                                whole_noisy_set[picked_ids, 1:3], sort_rate[-np.int(args.theta_thr *total_2_class_num):].reshape(-1, 1)), axis=1)
         np.savetxt(os.path.join(args.output_path,
                                 "selected_top_{}percent_total_{}_samples.csv".format(
-                                    args.theta_thr * 100, len(picked_ids))),
-        np.concatenate((picked_ids.reshape(-1, 1),
-                        whole_set[picked_ids, 1:3], sort_rate[-np.int(args.theta_thr *total_2_class_num):].reshape(-1, 1)),
-                       axis=1), fmt='%.4f',
+                                    args.theta_thr * 100, len(picked_ids))),concat_data, fmt='%.4f',
                    header="samp_id,pat_id,lb,clf_rate", delimiter=',')
-    
-        ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
-        if args.num_classes - 1 < np.max(labels):
-            sub_inds = np.empty((0))
-            for class_id in range(args.num_classes):
-                sub_inds = np.append(sub_inds, np.where(labels == class_id)[0])
-            sub_inds = sub_inds.astype(np.int32)
-            sub_mat = whole_set[sub_inds]
-        else:
-            sub_mat = whole_set
-    
-        np.random.shuffle(sub_mat)
-        print("data labels: ", sub_mat[:, 2])
     
         print("top", args.theta_thr * 100, "% as distill, certain samples 0: ",
               len(np.where(certain_mat[:, 2] == 0)[0]),
               "\ncertain samples 1: ", len(np.where(certain_mat[:, 2] == 1)[0]))
     
         if args.train_or_test == 'train':
-            temp_rand = np.arange(len(sub_mat))
-            np.random.shuffle(temp_rand)
-            sub_mat_shuflle = sub_mat[temp_rand]
-        elif args.train_or_test == 'test':  # In test, don't shuffle
-            sub_mat_shuflle = sub_mat
-            print("data labels: ", sub_mat_shuflle[:, 2])
-        X_train, X_test, Y_train, Y_test = train_test_split(sub_mat_shuflle,
-                                                            sub_mat_shuflle[:, 2],
+            np.random.shuffle(whole_noisy_set)
+            print("data labels: ", whole_noisy_set[:, 2])
+        X_train, X_test, Y_train, Y_test = train_test_split(whole_noisy_set,
+                                                            whole_noisy_set[:, 2],
                                                             test_size=args.test_ratio)
     
     test_data = put_values_in_test_data_dict(X_test, Y_test, test_data, args)
@@ -716,7 +739,7 @@ def get_single_ep_training_data_tensors(args, certain_fns=None):
     return data, args
 
 
-def get_noisy_mnist_data(args, certain_fns=None):
+def get_noisy_mnist_data_tensors(args, certain_fns=None):
     """
     Get batches of data in tf.dataset
 
@@ -727,12 +750,14 @@ def get_noisy_mnist_data(args, certain_fns=None):
     """
     data = {}
     if certain_fns is None:  # get data from origal array
-        train_data, test_data = load_mnist_with_noise(args)
+        train_data, test_data = load_noisy_mnist_data(args)
     else:  # Get certain AND mix original un-distilled samples
         train_data, test_data = get_data_from_certain_ids(args, certain_fns=certain_fns)
         
-    test_spectra, test_labels, test_ids, test_sample_ids = tf.constant(test_data["spectra"]), tf.constant(
-        test_data["labels"]), tf.constant(test_data["ids"]), tf.constant(test_data["sample_ids"])
+    test_spectra = tf.constant(test_data["spectra"], dtype=tf.float32)
+    test_labels = tf.constant(test_data["labels"], dtype=tf.int32)
+    test_ids = tf.constant(test_data["ids"], dtype=tf.int32)
+    test_sample_ids =  tf.constant(test_data["sample_ids"], dtype=tf.int32)
     test_ds = tf.compat.v1.data.Dataset.from_tensor_slices(
         (test_spectra, test_labels, test_ids, test_sample_ids)).batch(args.test_bs).repeat()
     if test_data["num_samples"] < args.test_bs:
@@ -769,7 +794,7 @@ def get_noisy_mnist_data(args, certain_fns=None):
     return data, args
 
 
-def load_mnist_with_noise(args):
+def generate_mnist_with_noise(args):
     """
     Load self_saved data. A dict, data["features"], data["labels"]. See the save function in split_data_for_val()
     # First time preprocess data functions are needed: split_data_for_val(args),split_data_for_lout_val(args)
@@ -781,9 +806,14 @@ def load_mnist_with_noise(args):
     Y_tot_noisy = introduce_label_noisy(new_mat[:, 1], noisy_ratio=args.noise_ratio, num_classes=args.num_classes, save_dir=args.output_path)
     new_mat[:, 1] = Y_tot_noisy  # noisy labels
     np.savetxt(os.path.join(args.output_path, "{}_noisy_whole_mnist_[samp_id,true,noise,feature].csv".format(args.noise_ratio)), new_mat, fmt="%.3f", delimiter=",")
-    # load pre-generated noisy mnist set from .csv
-    # new_mat = pd.read_csv(args.noisy_mnist_file, header=None).values
-
+    np.savetxt(os.path.join(args.output_path, "{}_noisy_whole_mnist_[samp_id,true,noise].csv".format(args.noise_ratio)), new_mat[:, 0:3], fmt="%.3f", delimiter=",")
+    print(new_mat[0:100, 0:3])
+    
+    
+def load_noisy_mnist_data(args):
+    # # load pre-generated noisy mnist set from .csv
+    new_mat = pd.read_csv(args.noisy_mnist_file, header=None).values   # change path with testing
+    
     train_data = {}
     test_data = {}
 
@@ -791,54 +821,62 @@ def load_mnist_with_noise(args):
     print("data labels: ", new_mat[:, 2])
 
     if args.test_ratio == 1 and args.train_or_test == "test":
-        X_train, X_test, Y_train, Y_test = [], new_mat, [], new_mat[:, 2]  # test gets all data
+        X_train, X_test, Y_train_noise, Y_test = [], new_mat, [], new_mat[:, 2]  # test gets all data
     elif args.train_or_test == "train":
         if args.if_single_runs:
-            X_train, X_test, Y_train, Y_test = new_mat,new_mat[0:5], new_mat[:, 2], new_mat[0:5, 2]  # train gets all data. Just need to make sure test is not empty.
+            X_train_val, X_test, Y_train_val, Y_test = new_mat, new_mat[0:5], new_mat[:, 2], new_mat[0:5, 2]  # train gets all data. Just need to make sure test is not empty.
+            X_val = X_test
+            Y_val = Y_test
+            X_train = X_train_val
+            Y_train = Y_train_val
         else:
-            X_train, X_test, Y_train, Y_test = train_test_split(new_mat, new_mat[:, 2], test_size=args.test_ratio)
+            X_train_val, X_test, Y_train_val, Y_test = train_test_split(
+                new_mat, new_mat[:, 2], test_size=args.test_ratio)
+            # split train_val and test
+            np.savetxt(os.path.join(args.output_path,
+                                    "Leave_out_random_{}.csv".format(
+                                        args.test_ratio)),
+                       np.array(X_test), fmt='%d',
+                       delimiter=',')
+            
+            X_train, X_val, Y_train_noise, Y_val = train_test_split(X_train_val, X_train_val[:, 2], test_size=args.test_ratio)
 
-    test_data["spectra"] = X_test[:, 3:]
-    test_data["labels"] = Y_test.astype(np.int32)
-    assert np.sum(Y_test.astype(np.int32) == X_test[:, 2].astype(np.int32)) == len(
-        X_test), "train_test_split messed up the data!"
-    test_data["ids"] = X_test[:, 1].astype(np.int32)
-    test_data["sample_ids"] = X_test[:, 0].astype(np.int32)
+    test_data["spectra"] = X_val[:, 3:]
+    test_data["labels"] = Y_val.astype(np.int32)
+    assert np.sum(Y_val.astype(np.int32) == X_val[:, 2].astype(np.int32)) == len(
+        X_val), "train_test_split messed up the data!"
+    test_data["ids"] = X_val[:, 1].astype(np.int32)
+    test_data["sample_ids"] = X_val[:, 0].astype(np.int32)
     test_data["num_samples"] = len(test_data["labels"])
     print("num_samples: ", test_data["num_samples"])
     #
-    test_count = dict(Counter(list(test_data["ids"])))  # count the num of samples of each id
-    sorted_count = sorted(test_count.items(), key=lambda kv: kv[1])
-    np.savetxt(os.path.join(args.output_path, "test_ids_count_{}.csv".format(args.data_source)), np.array(sorted_count), fmt='%d', delimiter=',')
-    np.savetxt(os.path.join(args.output_path, "original_labels_{}.csv".format(args.data_source)),
-               np.array(test_data["labels"]), fmt='%d',
+  
+    np.savetxt(os.path.join(args.output_path, "train_id_noisy_labels_count_{}.csv".format(args.data_source)), X_train[:, 0:4], fmt='%d', delimiter=',')
+    np.savetxt(os.path.join(args.output_path, "val_id_noisy_labels_count_{}.csv".format(args.data_source)), X_val[:, 0:4], fmt='%d', delimiter=',')
+    np.savetxt(os.path.join(args.output_path, "leave_out_test_ids_noisy_labels_{}.csv".format(args.data_source)),
+               X_test[:, 0:4], fmt='%d',
                delimiter=',')
 
     ## oversample the minority samples ONLY in training data
     if args.train_or_test == 'train':
         if args.aug_folds != 0:
             train_data = augment_data(X_train, X_train, args)
-            print("After augmentation--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]),
+            print("Use X_train augment X_train class 0: ", len(np.where(train_data["labels"] == 0)[0]),
                   "num of train class 1: ",
                   len(np.where(train_data["labels"] == 1)[0]))
         else:
             train_data["spectra"] = X_train[:, 3:]
             train_data["labels"] = Y_train
-            true_lables = X_train[:, 2]
-            train_data["ids"] = X_train[:, 1]
+            
+            train_data["ids"] = X_train[:, 1]  # id is the true label
             train_data["sample_ids"] = X_train[:, 0]
         args.num_train = train_data["spectra"].shape[0]
         train_data["num_samples"] = len(Y_train)
-        train_data["spectra"] = zscore(train_data["spectra"], axis=1).astype(np.float32)
+        train_data["spectra"] = train_data["spectra"].astype(np.float32)
         train_data["labels"] = train_data["labels"].astype(np.int32)
 
         train_data["ids"] = train_data["ids"].astype(np.int32)
         train_data["sample_ids"] = train_data["sample_ids"].astype(np.int32)
-
-        train_count = dict(Counter(list(train_data["ids"])))  # count the num of samples of each id
-        sorted_count = sorted(train_count.items(), key=lambda kv: kv[1])
-        np.savetxt(os.path.join(args.output_path, "train_ids_count_{}.csv".format(args.data_source)),
-                   np.array(sorted_count), fmt='%d', delimiter=',')
 
     return train_data, test_data
 

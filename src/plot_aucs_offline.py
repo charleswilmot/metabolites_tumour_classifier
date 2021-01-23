@@ -448,7 +448,7 @@ def split_data_for_lout_val(data):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "100_single_ep_corr_classification_rate_mnist"
+plot_name = "delete_folders"
 
 if plot_name == "plot_random_roc":
     filename = "C:/Users/LDY/Desktop/1-all-experiment-results/Gk-patient-wise-classification/2021-01-06T22-46-36-classifier4-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex5/classifier4-spec51-CV9--ROC-AUC-[n_cv_folds,n_spec_per_pat].csv"
@@ -1593,7 +1593,7 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-runs-on-mnist-MLP/2021-01-22T09-50-20--MLP-noisex0-factor-0-from-mnist-certainFalse-theta-1-s798-0.5-noise-100rns-train-with"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-on-MNIST-MLP/2021-01-23T08-16-30--MLP-learned-on-pregenerated-noisy-MNIST-0.5-noise-100rns-train-with"
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,
@@ -1678,10 +1678,11 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
         plt.close()
 
     concat_data = np.concatenate((
-                                 np.array(sort_inds).reshape(-1, 1), rates.reshape(-1, 1)), axis=1)
+                                 np.array(sort_inds).reshape(-1, 1),
+                                 rates.reshape(-1, 1)), axis=1)
     np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
         files[0]).split("_")[7], total_num), concat_data, fmt="%.5f", delimiter=",",
-               header="ori_sort_rate_id,ori_sort_rate,true_lbs,noisy_lbs")
+               header="ori_id,sort_rate,true_lbs,noisy_lbs")
 
 
 elif plot_name == "100_single_ep_corr_classification_rate":
@@ -2181,9 +2182,21 @@ elif plot_name == "get_d_prime":
 
     get_auc_from_d_prime(tpr, fpr)
     
+elif plot_name == "delete_folders":
+    import shutil
+    target_dirs = [
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-on-MNIST-MLP",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randDA-on-MNIST-MLP",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA-on-MNIST-MLP"
+    ]
+    for dd in target_dirs:
+        print("Deleting ", dd)
+        shutil.rmtree(dd)
+        print("Done")
+    print("All Done")
+    
     
 
-    
     
     
 

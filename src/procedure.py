@@ -599,7 +599,7 @@ def single_epo_runs(sess, args, graph):
                                     np.array(ret_train["train_one_ep_labels"]).reshape(-1, 1),
                                     ret_train["train_one_ep_logits"]), axis=1)
         np.savetxt(os.path.join(args.output_path, "certains",
-                                "one_ep_data_{}_epoch_{}_num_{}-{}_{}_theta_{}_s{}.csv".format("train", epoch, ret_train[
+                                "one_ep_data_{}_epoch_{}_num_{}-{}_{}_theta_{}_s{}[sample_id,true_id,label,logits].csv".format("train", epoch, ret_train[
                                     "train_one_ep_sample_ids"].size, ret_train["train_one_ep_sample_ids"].max(), args.data_source, args.theta_thr, args.rand_seed)),
                    one_ep_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
 
@@ -845,7 +845,7 @@ def main_train(sess, args, graph):
     if args.train_or_test == 'train' and not args.if_single_runs:
         print("Starting training")
         initialize(sess, graph, test_only=False)
-        args.save(os.path.join(args.output_path, "network", "parameters.json"))
+        args.save_yaml(os.path.join(args.output_path, "network", "parameters.json"))
         output_data = training(sess, args, graph, saver)
         dataio.save_plots(sess, args, output_data, training=True)
     elif args.train_or_test == 'test':
@@ -874,7 +874,7 @@ def main_train(sess, args, graph):
     elif args.train_or_test == 'train' and args.if_single_runs:
         print("Starting single epoch training")
         initialize(sess, graph, test_only=False)
-        args.save(os.path.join(args.output_path, "network", "parameters.json"))
+        args.save_yaml(os.path.join(args.output_path, "network", "parameters.yaml"))
         output_data = single_epo_runs(sess, args, graph)
         dataio.save_plots(sess, args, output_data, training=True)
 

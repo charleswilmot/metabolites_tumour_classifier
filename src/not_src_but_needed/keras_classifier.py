@@ -318,7 +318,7 @@ def copy_save_all_files(args, accuracy):
     """
     time_str = '{0:%Y-%m-%dT%H-%M-%S}'.format(datetime.datetime.now())
     results_dir = os.path.join(args["out"], time_str + '-{:0.4f}'.format(accuracy))
-    src_dir = '../src'  ## the dir of original files
+    src_dir = '..'  ## the dir of original files
     save_dir = os.path.join(args["out"], 'src')
     if not os.path.exists(save_dir):  # if subfolder doesn't exist, should make the directory and then save file.
         os.makedirs(save_dir)

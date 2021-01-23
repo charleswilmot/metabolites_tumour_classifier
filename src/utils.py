@@ -4,6 +4,7 @@ import json
 import os
 import logging
 import datetime
+import yaml
 
 class Params():
     """Class that loads hyperparameters from a json file.
@@ -125,6 +126,10 @@ def load_all_params_yaml(exp_param_dir, model_param_dir):
 class Struct:
     def __init__(self, **entries):
         self.__dict__.update(entries)
+        
+    def save_yaml(self, save_file_name):
+        with open(save_file_name, 'w') as outfile:
+            yaml.dump(self.__dict__, outfile, default_flow_style=False)
 
 
 def load_parameters(filename, mode="train_or_test"):
@@ -134,7 +139,7 @@ def load_parameters(filename, mode="train_or_test"):
     :param mode:
     :return: ym_dict
     """
-    import yaml
+    
     if mode == "train_or_test":
         with open(filename) as f:
             ym_dicts = yaml.load(f, Loader=yaml.FullLoader)

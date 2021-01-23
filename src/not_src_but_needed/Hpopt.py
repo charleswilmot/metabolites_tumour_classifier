@@ -748,11 +748,11 @@ if __name__ == "__main__":
                                 x0=default_params)
 
     plot_convergence(search_result)
-    plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_{}_convergence_plot.png'.format(time_str, MODEL_NAME)), format='png')
-    plt.savefig(os.path.join("../results/Hyperparameter_Optimize", '{}_{}_convergence_plot.pdf'.format(time_str, MODEL_NAME)), format='pdf')
+    plt.savefig(os.path.join("../../results/Hyperparameter_Optimize", '{}_{}_convergence_plot.png'.format(time_str, MODEL_NAME)), format='png')
+    plt.savefig(os.path.join("../../results/Hyperparameter_Optimize", '{}_{}_convergence_plot.pdf'.format(time_str, MODEL_NAME)), format='pdf')
     plt.close()
     results = sorted(zip(search_result.func_vals, search_result.x_iters))
     print(results)
-    np.savetxt(os.path.join("../results/Hyperparameter_Optimize", '{}_{}_convergence_plot.txt'.format(time_str, MODEL_NAME)), results, fmt="%s", delimiter=",")
+    np.savetxt(os.path.join("../../results/Hyperparameter_Optimize", '{}_{}_convergence_plot.txt'.format(time_str, MODEL_NAME)), results, fmt="%s", delimiter=",")
     #
     

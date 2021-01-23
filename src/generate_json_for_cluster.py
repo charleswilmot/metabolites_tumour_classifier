@@ -57,7 +57,7 @@ def overwrite_params(args, cfg_dirs, **kwargs):
     make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
     save_command_line(args.model_save_dir)
 
-    new_model_son_fn = save_model_json(dest=os.path.join(args.output_path, "network"), source=default_json_dir, file_name="model_parameters.json")
+    new_model_son_fn = save_model_json(dest=os.path.join(args.output_path, "network"), source=default_json_dir, file_name="not_src_but_needed/model_parameters.json")
     args.save(os.path.join(args.output_path, "network", "exp_parameters.json"))
     time.sleep(1)
 

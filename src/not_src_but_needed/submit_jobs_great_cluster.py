@@ -55,7 +55,7 @@ def copy_save_all_files(model_save_dir):
     :param model_save_dir:
     :return:
     """
-    src_dir = '../src'
+    src_dir = '..'
     save_dir = os.path.join(model_save_dir, 'src')
     if not os.path.exists(save_dir):  # if subfolder doesn't exist, should make the directory and then save file.
         os.makedirs(save_dir)

@@ -18,7 +18,7 @@ srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classi
 srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py train --aug_method="ops_mean" --aug_scale=0.5 --from_epoch=3 --aug_folds=5
 srun -p sleuths -w speedboat --mem=6000 --reservation triesch-shared python3 classifier.py
 
-srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py
+srun  -p sleuths -w speedboat --mem=8000 --reservation triesch-shared python3 classifier.py
 
 # successfully allocate space for runing wtih bash
 salloc -p sleuths -w speedboat --mem=20000 --reservation triesch-shared --gres gpu:rtx2070super:1 -t UNLIMITED
