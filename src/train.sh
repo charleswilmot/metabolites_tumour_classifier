@@ -11,11 +11,13 @@ srun -p sleuths -w jetski --mem=15000 --reservation triesch-shared --gres gpu:rt
 srun -p sleuths -w speedboat --mem=6000 --reservation triesch-shared --gres gpu:rtx2070super:1 python3 harrisonNN.py
 srun -p sleuths -w jetski --mem=8000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py test --restore_from=/home/epilepsy-data/data/metabolites/results/2020-04-23-17-48-34_noisex5_factor_0.02_from-epoch_99_from-lout40_data5_train/network
 
-srun -p sleuths -w jetski --mem=10000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py train
+srun -p sleuths -w jetski --mem=20000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 train_aae.py
+srun --jobid={} --ntasks=1 --job-name={} --error {}/{}.log python3 classifier.py {} > {}/{}.log
+srun --error {}/{}.log python3 classifier.py {} > {}/{}.log
 
 srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py train
 
-srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py train --aug_method="ops_mean" --aug_scale=0.5 --from_epoch=3 --aug_folds=5
+srun -p sleuths --mem=9000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py
 srun -p sleuths -w speedboat --mem=6000 --reservation triesch-shared python3 classifier.py
 
 srun  -p sleuths -w speedboat --mem=8000 --reservation triesch-shared python3 classifier.py

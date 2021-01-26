@@ -69,7 +69,10 @@ def loss_figure(args, data, training=False):
 def accuracy_figure(args, data, training=False, epoch=0):
     f = plt.figure()
     ax = f.add_subplot(111)
-    auc = metrics.roc_auc_score(data["test_labels"], data["test_logits"])
+    if args.num_classes == 2:
+        auc = metrics.roc_auc_score(data["test_labels"], data["test_logits"])
+    else:
+        auc = 0.500
     max_acc = accuracy_plot(ax, data, training=training)
 
     f.savefig(args.output_path + '/accuracy_step_{:.1f}_acc_{:.4f}_auc_{:.3f}_{}-{}.png'.format(epoch, max_acc, auc, args.data_source, args.train_or_test))

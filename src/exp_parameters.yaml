@@ -2,21 +2,22 @@
 "aug_method": "both_mean"
 "aug_scale": 0.5
 "aug_folds": 3
-"theta_thr": 1
 "data_source": null
 "data_mode": "mnist"
 "noise_ratio": 0.8
 "data_dim": "1d"
 "data_len": 288
 "distill_old": false
-"input_data": "/home/epilepsy-data/data/metabolites/noisy-MNIST/0.8_noisy_whole_mnist_[samp_id,true,noise,feature].csv"  #"../data/20190325/20190325-3class_lout40_train_test_data5.mat"
-"noisy_mnist_file": "/home/epilepsy-data/data/metabolites/noisy-MNIST/0.8_noisy_whole_mnist_[samp_id,true,noise,feature].csv" #"../data/noisy_mnist/0.5_noisy_whole_mnist_[samp_id,true,noise,feature].csv"   #  None
-"certain_dir": "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-on-MNIST-MLP/2021-01-22T18-38-15--MLP-noisex0-factor-0-from-mnist-certainFalse-theta-1-s798-0.5-noise-100rns-train-with" #"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-runs-on-mnist-MLP/2021-01-22T09-50-20--MLP-noisex0-factor-0-from-mnist-certainFalse-theta-1-s798-0.5-noise-100rns-train-with"  # None  #
-"if_from_certain": false                # TODO Change
+"platform": "laptop"
+"input_data":  "0.5_noisy_whole_mnist_[samp_id,true,noise,feature].csv"     #"20190325-3class_lout40_train_test_data5.mat"
+"certain_dir": "C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier/data/noisy_mnist"  #"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-01-23T19-39-08--MLP-both_meanx3-factor-0.5-from-mnist-certainFalse-theta-1-s5281-0.8-noise-100rns-train-with"    # TODO: this is full path
+"output_root": "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
+"theta_thr": 0.5
+"if_from_certain": true                # TODO Change
 
 ################## training related ###################
 "train_or_test": "train"
-"if_single_runs": true                   # TODO Change
+"if_single_runs": false                   # TODO Change
 "if_save_certain": false             # TODO tied with if_single_runs
 "from_clusterpy": false
 "exp_config": "./exp_parameters.yaml"
@@ -31,7 +32,6 @@
 "restore_from": null
 "output_path": null
 "resume_training": false
-"output_root": "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
 "model_save_dir": null
 "optimizer_type": "adam"
 "loss_type": "softmax_ce"

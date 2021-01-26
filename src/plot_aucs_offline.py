@@ -448,7 +448,7 @@ def split_data_for_lout_val(data):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "delete_folders"
+plot_name = "100_single_ep_corr_classification_rate_mnist"
 
 if plot_name == "plot_random_roc":
     filename = "C:/Users/LDY/Desktop/1-all-experiment-results/Gk-patient-wise-classification/2021-01-06T22-46-36-classifier4-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex5/classifier4-spec51-CV9--ROC-AUC-[n_cv_folds,n_spec_per_pat].csv"
@@ -1593,7 +1593,7 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-on-MNIST-MLP/2021-01-23T08-16-30--MLP-learned-on-pregenerated-noisy-MNIST-0.5-noise-100rns-train-with"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-01-23T19-39-08--MLP-both_meanx3-factor-0.5-from-mnist-certainFalse-theta-1-s5281-0.8-noise-100rns-train-with"
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,

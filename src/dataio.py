@@ -373,9 +373,9 @@ def mixup_noisy_mnist(args, aug_target, augs):
     X_train_aug = np.empty((0, aug_target.shape[1]))
     X_train_aug = np.vstack((X_train_aug, aug_target))  # the first fold is the original data
 
-    inds = np.arange(len(augs[:, 2]))  # use all labels to augment
+    inds = np.arange(len(augs))  # use all labels to augment
     aug_inds = np.random.choice(inds, args.aug_folds * len(inds) * num2average, replace=True).reshape(-1, num2average)
-    target_inds = np.random.choice(inds, args.aug_folds * len(
+    target_inds = np.random.choice(np.arange(len(aug_target)), args.aug_folds * len(
         inds) * num2average).reshape(-1, num2average)
     mean_batch = np.mean(augs[:, 3:][aug_inds], axis=1)  # get a batch of spectra to get the mean
     noise_aug_scale = np.random.uniform(args.aug_scale - 0.05, args.aug_scale + 0.05, size=[len(mean_batch), 1])
@@ -634,7 +634,7 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
                                                             test_size=args.test_ratio)
         
     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
-        whole_noisy_set  = pd.read_csv(args.noisy_mnist_file, header=None).values  # sample_id,true_label,true_label,features
+        whole_noisy_set  = pd.read_csv(args.input_data, header=None).values  # sample_id,true_label,true_label,features
         
         train_data = {}
         test_data = {}
@@ -812,7 +812,7 @@ def generate_mnist_with_noise(args):
     
 def load_noisy_mnist_data(args):
     # # load pre-generated noisy mnist set from .csv
-    new_mat = pd.read_csv(args.noisy_mnist_file, header=None).values   # change path with testing
+    new_mat = pd.read_csv(args.input_data, header=None).values   # change path with testing
     
     train_data = {}
     test_data = {}

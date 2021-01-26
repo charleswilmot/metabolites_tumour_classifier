@@ -5,6 +5,7 @@
 import sys
 sys.path.append("..")
 import graph
+import os
 import ipdb
 import dataio as dataio
 import utils
@@ -51,6 +52,25 @@ tracemalloc.start()
 params = parser.parse_args()
 
 args = utils.load_all_params_yaml(params.exp_config, params.model_config)
+args.rand_seed = np.random.randint(0, 9999)
+
+if args.platform == "laptop":
+    args.root_of_root = "C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier"
+    if args.data_mode == "metabolite" or args.data_mode == "metabolites":
+        args.data_root = os.path.join(args.root_of_root, "data", "20190325")
+    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+        args.data_root = os.path.join(args.root_of_root, "data", "noisy_mnist")
+    args.input_data = os.path.join(args.data_root, args.input_data)
+    args.output_path = os.path.join(args.root_of_root, "results")
+    
+elif args.platform == "FIAS":
+    args.root_of_root = "/home/epilepsy-data/data/metabolites"
+    if args.data_mode == "metabolite" or args.data_mode == "metabolites":
+        args.data_root = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data"
+    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+        args.data_root = "/home/epilepsy-data/data/metabolites/noisy-MNIST"
+    args.input_data = os.path.join(args.data_root, args.input_data)
+    args.output_root = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
 
 # if the job is NOT submitted with cluster.py, only locally, then
 if not args.from_clusterpy:
@@ -61,50 +81,38 @@ if not args.from_clusterpy:
 logger.info("Taking in config files: {}\n{}\n{}".format(params.output_path, params.exp_config, params.model_config))
 get_available_gpus()
 
-if not args.rand_seed:
-    temp_seed = np.random.randint(0, 9999)
-    args.rand_seed = temp_seed
-
 np.random.seed(seed=np.int(args.rand_seed))
 tf.compat.v1.set_random_seed(np.int(args.rand_seed))
+
+# use to generate noisy mnist
+# dataio.generate_mnist_with_noise(args)
 
 
 if args.if_single_runs:  ## 100 single-epoch training
     if args.data_mode == "metabolites" or args.data_mode == "metabolite":
         data_tensors, args = dataio.get_single_ep_training_data_tensors(args)
     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
-        data_tensors, args = dataio.get_noisy_mnist_data(args)
-        
+        args.num_classes = 10
+        data_tensors, args = dataio.get_noisy_mnist_data_tensors(args)
+
 elif args.if_from_certain and args.train_or_test == "train":  # use distillation to augment data
     certain_files = dataio.find_files(args.certain_dir,
                                       pattern="full_summary*.csv")
     print("certain_files", certain_files)
-    
+
     if args.data_mode == "metabolites" or args.data_mode == "metabolite":
         data_tensors, args = dataio.get_data_tensors(args,
                                                      certain_fns=certain_files[0])
     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
-        data_tensors, args = dataio.get_noisy_mnist_data(args, certain_fns=certain_files[0])
+        args.num_classes = 10
+        data_tensors, args = dataio.get_noisy_mnist_data_tensors(args, certain_fns=certain_files[0])
 else:                # normal training
     if args.data_mode == "metabolites" or args.data_mode == "metabolite":
         data_tensors, args = dataio.get_data_tensors(args)
     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
-        data_tensors, args = dataio.get_noisy_mnist_data(args)
+        args.num_classes = 10
+        data_tensors, args = dataio.get_noisy_mnist_data_tensors(args)
 
-# Get augmentation of the data
-if args.if_from_certain and args.train_or_test == 'train':
-    if args.distill_old:
-        # certain_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-distillation-Res_ECG_CAM/2020-10-20T00-59-22--Res_ECG_CAM-Nonex0-factor-0-from-data5-certainFalse-theta-0.9-s2246-train/certains"
-        logger.info("______________________________________________")
-        print(args.certain_dir)
-        logger.info("______________________________________________")
-        certain_files = dataio.find_files(args.certain_dir, pattern="certain_data*_epoch_{}_*.csv".format(args.from_epoch))
-        print("certain_files", certain_files)
-        data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files)
-    else:
-        certain_files = dataio.find_files(args.certain_dir, pattern="full_summary*.csv")
-        print("certain_files", certain_files)
-        data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files[0])
 logger.info("------------Successfully get data tensors----------------------")
 
 graph = graph.get_graph(args, data_tensors)
