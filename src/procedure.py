@@ -460,15 +460,6 @@ def training(sess, args, graph, saver):
         ret_train = train_phase(sess, graph, args,
                                 lr=lr, if_get_wrong=False,
                                 if_get_certain=True, train_or_test="train")
-        if args.if_save_certain and len(ret_train["train_certain_sample_ids"]) > 0 and epoch < 21:
-            certain_data = np.concatenate((np.array(ret_train["train_certain_sample_ids"]).reshape(-1, 1),
-                                           np.array(ret_train["train_certain_ids"]).reshape(-1, 1),
-                                           np.array(ret_train["train_certain_labels"]).reshape(-1, 1),
-                                           ret_train["train_certain_logits"]), axis=1)
-            np.savetxt(os.path.join(args.output_path, "certains",
-                                    "certain_data_train_epoch_{}_num_{}_{}_theta_{}_s{}.csv".format(epoch, ret_train[
-                                        "train_certain_sample_ids"].size, args.data_source, args.theta_thr, args.rand_seed)),
-                       certain_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
 
         if ret_train is not None:
             output_data["train_loss"].append(ret_train["train_loss"])
@@ -484,15 +475,15 @@ def training(sess, args, graph, saver):
                                     compute_batches=graph["test_num_batches"],
                                     train_or_test="test")
 
-        if args.if_save_certain and len(ret_test["test_certain_labels"]) > 0 and epoch < 21:
-            certain_data = np.concatenate((ret_test["test_certain_sample_ids"].reshape(-1, 1),
-                                           ret_test["test_certain_labels"].reshape(-1, 1),
-                                           ret_test["test_certain_logits"]), axis=1)
-
-            np.savetxt(os.path.join(args.output_path, "certains",
-                                    "certain_data_{}_epoch_{}_num_{}_{}.csv".format("test", epoch, ret_test[
-                                        "test_certain_sample_ids"].size, args.data_source)),
-                       certain_data, header="sample_ids,labels" + ",logits" * args.num_classes, delimiter=",")
+        # if args.if_save_certain and len(ret_test["test_certain_labels"]) > 0 and epoch < 21:
+        #     certain_data = np.concatenate((ret_test["test_certain_sample_ids"].reshape(-1, 1),
+        #                                    ret_test["test_certain_labels"].reshape(-1, 1),
+        #                                    ret_test["test_certain_logits"]), axis=1)
+        #
+        #     np.savetxt(os.path.join(args.output_path, "certains",
+        #                             "certain_data_{}_epoch_{}_num_{}_{}.csv".format("test", epoch, ret_test[
+        #                                 "test_certain_sample_ids"].size, args.data_source)),
+        #                certain_data, header="sample_ids,labels" + ",logits" * args.num_classes, delimiter=",")
 
         epoch = num_trained * 1.0 / graph["train_num_samples"]
         output_data["test_loss"].append(ret_test["test_loss"])
@@ -558,6 +549,7 @@ def single_epo_runs(sess, args, graph):
     :param saver:
     :return:
     """
+    from scipy.special import softmax
     print("Starting training procedure")
 
     output_data = {}
@@ -598,10 +590,18 @@ def single_epo_runs(sess, args, graph):
                                       np.array(ret_train["train_one_ep_ids"]).reshape(-1, 1),
                                     np.array(ret_train["train_one_ep_labels"]).reshape(-1, 1),
                                     ret_train["train_one_ep_logits"]), axis=1)
+
         np.savetxt(os.path.join(args.output_path, "certains",
-                                "one_ep_data_{}_epoch_{}_num_{}-{}_{}_theta_{}_s{}[sample_id,true_id,label,logits].csv".format("train", epoch, ret_train[
-                                    "train_one_ep_sample_ids"].size, ret_train["train_one_ep_sample_ids"].max(), args.data_source, args.theta_thr, args.rand_seed)),
-                   one_ep_data, header="sample_id,pat_id,label" + ",logits" * args.num_classes, delimiter=",")
+            "one_{}_num_{}-{}_{}_theta_{}_s{}.csv".format(epoch, ret_train[
+                "train_one_ep_sample_ids"].size,
+                                                      ret_train[
+                                                          "train_one_ep_sample_ids"].max(),
+                                                      args.data_source,
+                                                      args.theta_thr,
+                                                      args.rand_seed)),
+                   one_ep_data,
+                   header="sample_id,pat_id,label" + ",logits" * args.num_classes,
+                   delimiter=",")
 
         if ret_train is not None:
             output_data["train_loss"].append(ret_train["train_loss"])
@@ -617,7 +617,8 @@ def single_epo_runs(sess, args, graph):
 
     print("100 single-epoch Training procedure done")
     output_data["test_labels"] = np.eye(args.num_classes)
-    output_data["test_logits"] = np.array([0.9, 0.1], [0.2, 0.8])
+    
+    output_data["test_logits"] = softmax(np.random.randn(args.num_classes, args.num_classes), axis=1)
     save_plots(sess, args, output_data, training=True, epoch=epoch)
     return output_data
 

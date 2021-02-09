@@ -448,7 +448,7 @@ def split_data_for_lout_val(data):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "100_single_ep_corr_classification_rate_mnist"
+plot_name = "rename_files"
 
 if plot_name == "plot_random_roc":
     filename = "C:/Users/LDY/Desktop/1-all-experiment-results/Gk-patient-wise-classification/2021-01-06T22-46-36-classifier4-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex5/classifier4-spec51-CV9--ROC-AUC-[n_cv_folds,n_spec_per_pat].csv"
@@ -1039,11 +1039,11 @@ elif plot_name == "rename_test_folders":
 
 
 elif plot_name == "rename_files":
-    results = "C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier/data/20190325"
-    filenames = find_files(results, pattern="*lout40_val*.mat")
+    results = r"C:\Users\LDY\Desktop\Candidate Papers\anomaly detection reference"
+    filenames = find_files(results, pattern="*.pdf")
     for fn in filenames:
         print(fn)
-        new_name = os.path.basename(fn).replace("lout40_val", "lout40_test")
+        new_name = "Anomaly-"+os.path.basename(fn)
         os.rename(fn, os.path.join(os.path.dirname(fn), new_name))
 
 
@@ -1055,7 +1055,7 @@ elif plot_name == "get_performance_metrices":
         :return:
         """
     postfix = ""
-
+    data_dirs = [""]
     for data_source, prefix in zip(["", "data5"], ["all-CVs","data5"]):
         for data_dir in data_dirs:
             for method in ["same"]: # "None","same", "both", "ops"
@@ -1593,12 +1593,17 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-01-23T19-39-08--MLP-both_meanx3-factor-0.5-from-mnist-certainFalse-theta-1-s5281-0.8-noise-100rns-train-with"
+        # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-01-27T10-57-12--MLP-both_meanx3-factor-0.5-from-mnist-certainFalse-theta-1-s7218-0.5-noise-100rns-train-with",
+        # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-01-27T13-14-34--MLP-both_meanx3-factor-0.5-from-mnist-certainFalse-theta-1-s5506-0.5-noise-100rns-train-with"
+        r"C:\Users\LDY\Desktop\EPG\PPS-EEG-anomaly"
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,
                        "data6": 8371, "data7": 8357, "data8": 8384, "data9": 7701,
-                       "mnist": 70000}
+                       "mnist": 60000}
+    filename = r"C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\data\noisy_mnist\0.5_noisy_train_val_mnist_[samp_id,true,noise,feature].csv"
+    
+    data = pd.read_csv(filename, header=0).values
 
     for data_dir in data_dirs:
         files = find_files(data_dir, pattern="one_ep_data_train*.csv")
@@ -1607,11 +1612,11 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
         # get correct count in 100 rauns
         data_source = os.path.basename(files[0]).split("_")[8]
         for ind in range(len(files)):
-            fn = find_files(data_dir, pattern="one_ep_data_train_epoch_{}*.csv".format(ind))
-            values = pd.read_csv(fn[0], header=0).values
+            # fn = find_files(data_dir, pattern="one_ep_data_train_epoch_{}*.csv".format(ind))
+            values = pd.read_csv(files[ind], header=0).values
             smp_ids = values[:, 0].astype(np.int)
-            pat_ids = values[:, 1].astype(np.int)
-            lbs = values[:, 2]
+            pat_ids = values[:, 1].astype(np.int)  # true labels
+            lbs = values[:, 2]  # noisy labels
             prob = values[:, 3:]
             if ind == 0:  # the first file to get the total number (3-class) of samples
                 total_num = num_smp_dataset[data_source]  # 3-class samples id
@@ -1682,7 +1687,7 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
                                  rates.reshape(-1, 1)), axis=1)
     np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
         files[0]).split("_")[7], total_num), concat_data, fmt="%.5f", delimiter=",",
-               header="ori_id,sort_rate,true_lbs,noisy_lbs")
+               header="ori_id,sort_rate")
 
 
 elif plot_name == "100_single_ep_corr_classification_rate":

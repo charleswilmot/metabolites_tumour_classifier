@@ -17,6 +17,7 @@ class ClusterQueue:
 		# special treatment for the "description" param (for convevience)
 		# self.cmd_slurm += " --job-name {}".format(kwargs["description"])
 		self.cmd_slurm += " cluster_queue.sh"
+		
 		# self.cmd_slurm = "python3 classifier.py "
 		
 		# Creating the flags to be passed to classifier.py

@@ -54,6 +54,7 @@ params = parser.parse_args()
 args = utils.load_all_params_yaml(params.exp_config, params.model_config)
 args.rand_seed = np.random.randint(0, 9999)
 
+# switch the directory in different platforms
 if args.platform == "laptop":
     args.root_of_root = "C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier"
     if args.data_mode == "metabolite" or args.data_mode == "metabolites":
@@ -61,8 +62,9 @@ if args.platform == "laptop":
     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
         args.data_root = os.path.join(args.root_of_root, "data", "noisy_mnist")
     args.input_data = os.path.join(args.data_root, args.input_data)
-    args.output_path = os.path.join(args.root_of_root, "results")
-    
+    args.output_root = os.path.join(args.root_of_root, "results")
+
+
 elif args.platform == "FIAS":
     args.root_of_root = "/home/epilepsy-data/data/metabolites"
     if args.data_mode == "metabolite" or args.data_mode == "metabolites":
@@ -84,22 +86,21 @@ get_available_gpus()
 np.random.seed(seed=np.int(args.rand_seed))
 tf.compat.v1.set_random_seed(np.int(args.rand_seed))
 
-# use to generate noisy mnist
+## use to generate noisy mnist
 # dataio.generate_mnist_with_noise(args)
 
-
+#
 if args.if_single_runs:  ## 100 single-epoch training
+    args.if_save_certain = True
     if args.data_mode == "metabolites" or args.data_mode == "metabolite":
         data_tensors, args = dataio.get_single_ep_training_data_tensors(args)
     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
         args.num_classes = 10
-        data_tensors, args = dataio.get_noisy_mnist_data_tensors(args)
+        data_tensors, args = dataio.get_single_ep_training_data_tensors(args)
 
 elif args.if_from_certain and args.train_or_test == "train":  # use distillation to augment data
     certain_files = dataio.find_files(args.certain_dir,
                                       pattern="full_summary*.csv")
-    print("certain_files", certain_files)
-
     if args.data_mode == "metabolites" or args.data_mode == "metabolite":
         data_tensors, args = dataio.get_data_tensors(args,
                                                      certain_fns=certain_files[0])

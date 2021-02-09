@@ -76,10 +76,11 @@ certain_model_files = {
         "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-12-18T13-50-32--Res_ECG_CAM-nonex0-factor-0-from-data8-certainFalse-theta-0-s899-100rns-train",
         "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-12-18T13-51-29--Res_ECG_CAM-nonex0-factor-0-from-data2-certainFalse-theta-0-s899-100rns-train",
         "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-12-18T13-51-30--Res_ECG_CAM-nonex0-factor-0-from-data4-certainFalse-theta-0-s899-100rns-train"],
-    "MLP":["/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-29-18--MLP-nonex0-factor-0-from-data3-certainFalse-theta-0-s989-100rns-train",
+    "MLP":[
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-11--MLP-nonex0-factor-0-from-data5-certainFalse-theta-0-s789-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-29-18--MLP-nonex0-factor-0-from-data3-certainFalse-theta-0-s989-100rns-train",
         "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-30-52--MLP-nonex0-factor-0-from-data9-certainFalse-theta-0-s989-100rns-train",
         "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-10-14T14-30-53--MLP-nonex0-factor-0-from-data7-certainFalse-theta-0-s989-100rns-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-11--MLP-nonex0-factor-0-from-data5-certainFalse-theta-0-s789-100rns-train",
         "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-12--MLP-nonex0-factor-0-from-data1-certainFalse-theta-0-s789-100rns-train",
         "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2020-11-18T19-07-14--MLP-nonex0-factor-0-from-data2-certainFalse-theta-0-s789-100rns-train",
         "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-MLP/2021-01-12T11-03-06--MLP-nonex0-factor-0-from-data8-certainFalse-theta-0-s989-100rns-train",
@@ -128,7 +129,7 @@ data_source_dirs = [
 
 config_dirs = []
 seed = np.random.randint(9999)
-mode = "single_runs"
+mode = "aug_training"
 
 
 if mode == "single_runs":
@@ -151,7 +152,7 @@ if mode == "single_runs":
 elif mode == "aug_training":
     aug_method = "certain"
     
-    for model_name in ["Res_ECG_CAM", "MLP", "Inception", "RNN"]:#
+    for model_name in ["MLP", "Inception", "RNN", "Res_ECG_CAM"]:#
         args.model_name = model_name
         if aug_method == "random":
             certain_dirs = [None] * len(data_source_dirs)

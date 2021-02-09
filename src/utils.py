@@ -173,11 +173,11 @@ def generate_output_path(args):
         time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
         args.postfix = "100rns-" + args.train_or_test if args.if_single_runs else args.train_or_test
         args.output_path = os.path.join(args.output_path,
-                                        "{}-{}-{}x{}-factor-{}-from-{}-certain{}-theta-{}-s{}-{}-noise-{}-with".format(
+                                        "{}-{}-{}x{}-factor-{}-from-{}-certain{}-theta-{}-s{}-{}".format(
                                             time_str, args.model_name, args.aug_method, args.aug_folds,
                                             args.aug_scale, args.data_source,
                                             args.if_from_certain, args.theta_thr,
-                                            args.rand_seed, args.noise_ratio, args.postfix))
+                                            args.rand_seed, args.postfix))
     elif args.restore_from is not None and args.resume_training:  # restore a model
         args.train_or_test = "train"
         args.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(args.data_source, "resume_train")

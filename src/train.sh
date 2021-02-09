@@ -18,9 +18,9 @@ srun --error {}/{}.log python3 classifier.py {} > {}/{}.log
 srun -p sleuths -w jetski --mem=5000 --reservation triesch-shared python3 classifier.py train
 
 srun -p sleuths --mem=9000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py
-srun -p sleuths -w speedboat --mem=6000 --reservation triesch-shared python3 classifier.py
+srun -p sleuths -w speedboat --mem=8000 --reservation triesch-shared --gres gpu:rtx2070super:1 python3 classifier.py
 
-srun  -p sleuths -w speedboat --mem=8000 --reservation triesch-shared python3 classifier.py
+srun  -p sleuths -w speedboat --mem=7000 python3 classifier.py
 
 # successfully allocate space for runing wtih bash
 salloc -p sleuths -w speedboat --mem=20000 --reservation triesch-shared --gres gpu:rtx2070super:1 -t UNLIMITED
