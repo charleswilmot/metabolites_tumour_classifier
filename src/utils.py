@@ -112,6 +112,7 @@ def load_all_params_yaml(exp_param_dir, model_param_dir):
     :return:
     """
     ## Load experiment parameters and model parameters
+    
     assert os.path.isfile(exp_param_dir), "No json configuration file found at {}".format(exp_param_dir)
     exp_dict = load_parameters(exp_param_dir, mode="train_or_test")
 
@@ -120,6 +121,28 @@ def load_all_params_yaml(exp_param_dir, model_param_dir):
     modal_args_dict = load_parameters(model_param_dir, mode=exp_dict["model_name"])
     exp_dict.update(modal_args_dict)
     args = Struct(**exp_dict)
+
+    # switch the directory in different platforms
+    if args.platform == "laptop":
+        args.root_of_root = "C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier"
+        if args.data_mode == "metabolite" or args.data_mode == "metabolites":
+            args.data_root = os.path.join(args.root_of_root, "data", "20190325")
+        elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+            args.data_root = os.path.join(args.root_of_root, "data",
+                                          "noisy_mnist")
+        args.input_data = os.path.join(args.data_root, args.input_data)
+        args.output_root = os.path.join(args.root_of_root, "results")
+
+
+    elif args.platform == "FIAS":
+        args.root_of_root = "/home/epilepsy-data/data/metabolites"
+        if args.data_mode == "metabolite" or args.data_mode == "metabolites":
+            args.data_root = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data"
+        elif args.data_mode == "mnist" or args.data_mode == "MNIST":
+            args.data_root = "/home/epilepsy-data/data/metabolites/noisy-MNIST"
+        args.input_data = os.path.join(args.data_root, args.input_data)
+        args.output_root = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
+
     return args
 
 
@@ -127,7 +150,7 @@ class Struct:
     def __init__(self, **entries):
         self.__dict__.update(entries)
         
-    def save_yaml(self, save_file_name):
+    def save(self, save_file_name):
         with open(save_file_name, 'w') as outfile:
             yaml.dump(self.__dict__, outfile, default_flow_style=False)
 

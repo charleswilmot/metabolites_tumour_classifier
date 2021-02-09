@@ -846,7 +846,7 @@ def main_train(sess, args, graph):
     if args.train_or_test == 'train' and not args.if_single_runs:
         print("Starting training")
         initialize(sess, graph, test_only=False)
-        args.save_yaml(os.path.join(args.output_path, "network", "parameters.json"))
+        args.save(os.path.join(args.output_path, "network", "parameters.json"))
         output_data = training(sess, args, graph, saver)
         dataio.save_plots(sess, args, output_data, training=True)
     elif args.train_or_test == 'test':
@@ -875,7 +875,7 @@ def main_train(sess, args, graph):
     elif args.train_or_test == 'train' and args.if_single_runs:
         print("Starting single epoch training")
         initialize(sess, graph, test_only=False)
-        args.save_yaml(os.path.join(args.output_path, "network", "parameters.yaml"))
+        args.save(os.path.join(args.output_path, "network", "parameters.yaml"))
         output_data = single_epo_runs(sess, args, graph)
         dataio.save_plots(sess, args, output_data, training=True)
 

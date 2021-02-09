@@ -54,26 +54,6 @@ params = parser.parse_args()
 args = utils.load_all_params_yaml(params.exp_config, params.model_config)
 args.rand_seed = np.random.randint(0, 9999)
 
-# switch the directory in different platforms
-if args.platform == "laptop":
-    args.root_of_root = "C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier"
-    if args.data_mode == "metabolite" or args.data_mode == "metabolites":
-        args.data_root = os.path.join(args.root_of_root, "data", "20190325")
-    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
-        args.data_root = os.path.join(args.root_of_root, "data", "noisy_mnist")
-    args.input_data = os.path.join(args.data_root, args.input_data)
-    args.output_root = os.path.join(args.root_of_root, "results")
-
-
-elif args.platform == "FIAS":
-    args.root_of_root = "/home/epilepsy-data/data/metabolites"
-    if args.data_mode == "metabolite" or args.data_mode == "metabolites":
-        args.data_root = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data"
-    elif args.data_mode == "mnist" or args.data_mode == "MNIST":
-        args.data_root = "/home/epilepsy-data/data/metabolites/noisy-MNIST"
-    args.input_data = os.path.join(args.data_root, args.input_data)
-    args.output_root = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
-
 # if the job is NOT submitted with cluster.py, only locally, then
 if not args.from_clusterpy:
     args = utils.generate_output_path(args)

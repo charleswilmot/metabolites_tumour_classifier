@@ -1,7 +1,7 @@
 import time
 import os
 import utils
-import json
+# import json
 from dataio import make_output_dir, save_command_line
 import shutil
 import fnmatch
@@ -16,7 +16,7 @@ def find_folderes(directory, pattern='*.csv'):
 
     return folders
 
-def save_model_json(dest="./", source="./", file_name="model_parameters.json"):
+def save_model_yaml_files(dest="./", source="./", file_name="model_parameters.yaml"):
     s = os.path.join(source, file_name)
     d = os.path.join(dest, file_name)
     shutil.copy2(s, d)
@@ -50,18 +50,19 @@ def overwrite_params(args, cfg_dirs, **kwargs):
     # GET output_path
     args = utils.generate_output_path(args)
 
-    assert os.path.isfile(default_exp_json_dir), "No json configuration file found at {}".format(default_exp_json_dir)
-    new_exp_json_fn = os.path.join(args.output_path, "network", "exp_parameters.json")
+    assert os.path.isfile(default_exp_json_dir), "No yaml configuration file found at {}".format(default_exp_json_dir)
+    new_exp_json_fn = os.path.join(args.output_path, "network", "exp_parameters.yaml")
 
     # make dirs
     make_output_dir(args, sub_folders=["AUCs", "CAMs", 'CAMs/mean', "wrong_examples", "certains"])
     save_command_line(args.model_save_dir)
 
-    new_model_son_fn = save_model_json(dest=os.path.join(args.output_path, "network"), source=default_json_dir, file_name="not_src_but_needed/model_parameters.json")
-    args.save(os.path.join(args.output_path, "network", "exp_parameters.json"))
+    new_model_son_fn = save_model_yaml_files(dest=os.path.join(args.output_path, "network"), source=default_json_dir, file_name="model_parameters.yaml")
+    args.save(os.path.join(args.output_path, "network", "exp_parameters.yaml"))
     time.sleep(1)
 
     cfg_dirs.append([args.output_path, new_exp_json_fn, new_model_son_fn])
+    
     return cfg_dirs
 
 
@@ -106,10 +107,11 @@ default_output_root= "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_af
 # default_json_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src"
 default_train_or_test = "train"
 ## Load experiment parameters and model parameters
-default_exp_json_dir = os.path.join(default_json_dir, "exp_parameters.json")
-default_model_json_dir = os.path.join(default_json_dir, "model_parameters.json")
+default_exp_json_dir = os.path.join(default_json_dir, "exp_parameters.yaml")
+default_model_json_dir = os.path.join(default_json_dir, "model_parameters.yaml")
 
-args = utils.load_all_params(default_exp_json_dir, default_model_json_dir)
+args = utils.load_all_params_yaml(default_exp_json_dir, default_model_json_dir)
+
 
 data_source_dirs = [
     "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_data5.mat",
@@ -173,7 +175,7 @@ elif mode == "aug_training":
                 "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/20190325/20190325-3class_lout40_train_test_{}.mat".format(
                     src_dir) for src_dir in src_data_dirs]
             theta = 0.5
-            args.new_folder = "3-certain-DA-new"
+            args.new_folder = "3-certain-DA-with-distillation"
         for dd, certain in zip(data_source_dirs, certain_dirs):   #, certain_dirs)
             for method in ["both_mean"]:  #, "both_mean", "same_mean"， "ops_mean", "noise" #
                 for fold in [3]:  #, 5, 3,  , 7, 10, 9,  #
