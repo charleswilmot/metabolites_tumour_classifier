@@ -209,14 +209,17 @@ def put_values_in_train_data_dict(train_target, Y_train, train_data, args, aug_d
     else:
         train_data["spectra"] = train_target[:, 3:]
         train_data["labels"] = Y_train
-        true_lables = train_target[:, 2]
-        train_data["ids"] = train_target[:, 1]
+        true_lables = train_target[:, 1]
+        train_data["ids"] = train_target[:, 1]  # in mnist case, it is the true label
         train_data["sample_ids"] = train_target[:, 0]
 
     args.num_train = train_data["spectra"].shape[0]
-    train_data["sample_ids"], train_data["ids"], train_data["labels"], train_data["spectra"] = \
-        oversample_train(train_data["sample_ids"], train_data["ids"],
-                         train_data["labels"], train_data["spectra"])
+    
+    # only oversample with metabolites
+    if args.data_source == "metabolites" or args.data_source == "metabolite":
+        train_data["sample_ids"], train_data["ids"], train_data["labels"], train_data["spectra"] = \
+            oversample_train(train_data["sample_ids"], train_data["ids"],
+                             train_data["labels"], train_data["spectra"])
     print("After oversampling--num of train class 0: ", len(np.where(train_data["labels"] == 0)[0]),
           "\n num of train class 1: ", len(np.where(train_data["labels"] == 1)[0]))
     train_data["num_samples"] = len(Y_train)
@@ -228,8 +231,9 @@ def put_values_in_train_data_dict(train_target, Y_train, train_data, args, aug_d
 
     train_count = dict(Counter(list(train_data["ids"])))  # count the num of samples of each id
     sorted_count = sorted(train_count.items(), key=lambda kv: kv[1])
+    
     np.savetxt(
-        os.path.join(args.output_path, "train_ids_count_{}_tot_num_{}.csv".format(args.data_source, len(sorted_count))),
+        os.path.join(args.output_path, "train_ids_count_{}_tot_pat_{}.csv".format(args.data_source, len(sorted_count))),
         np.array(sorted_count), fmt='%d', delimiter=',')
     return train_data
 
@@ -664,14 +668,22 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
 
         if args.train_or_test == "train":
             np.random.shuffle(whole_noisy_set)
+            # X_train, X_val, Y_train, Y_val = train_test_split(
+            #     whole_noisy_set, whole_noisy_set[:, 2], test_size=args.test_ratio)
             X_train, X_val, Y_train, Y_val = train_test_split(
-                whole_noisy_set, whole_noisy_set[:, 2], test_size=args.test_ratio)
+                certain_mat, certain_mat[:, 2], test_size=args.test_ratio)
 
     test_data = put_values_in_test_data_dict(X_val, Y_val, test_data, args)
 
+    print("Val correct labels {}/{}: ".format(np.sum(X_val[:, 1] == Y_val)), len(Y_val))
+
     if args.train_or_test == 'train':
         # train_data = put_values_in_train_data_dict(X_train, Y_train, train_data, args, aug_data=certain_mat, aug_data_name="certain_mat")
-        train_data = put_values_in_train_data_dict(certain_mat, Y_train, train_data, args, aug_data=X_train, aug_data_name="certain_mat")
+        train_data = put_values_in_train_data_dict(X_train, Y_train, train_data, args, aug_data=X_train, aug_data_name="certain_mat")
+        print(
+            "Train correct labels {}/{}: ".format(np.sum(X_train[:, 1] == Y_train)),
+            len(Y_train))
+    
 
     return train_data, test_data
 
@@ -809,9 +821,9 @@ def generate_mnist_with_noise(args):
     
     extended_train_val[:, 2] = Y_train_noisy  # noisy labels
     extended_test[:, 2] = Y_test_noisy  # noisy labels
-    np.savetxt(os.path.join(args.data_root, "{}_noisy_train_val_mnist_[samp_id,true,noise,feature].csv".format(args.noise_ratio)), extended_train_val, fmt="%.3f", delimiter=",")
-    np.savetxt(os.path.join(args.data_root, "{}_noisy_test_mnist_[samp_id,true,noise,feature].csv".format(args.noise_ratio)), extended_test, fmt="%.3f", delimiter=",")
-    np.savetxt(os.path.join(args.data_root, "{}_noisy_train_val_mnist_[samp_id,true,noise].csv".format(args.noise_ratio)), extended_train_val[:, 0:3], fmt="%.3f", delimiter=",")
+    np.savetxt(os.path.join(args.data_root, "{}_noisy_train_val_mnist_[samp_id,true,noise,feature]-s{}.csv".format(args.noise_ratio, args.rand_seed)), extended_train_val, fmt="%.3f", delimiter=",")
+    np.savetxt(os.path.join(args.data_root, "{}_noisy_test_mnist_[samp_id,true,noise,feature]-s{}.csv".format(args.noise_ratio, args.rand_seed)), extended_test, fmt="%.3f", delimiter=",")
+    np.savetxt(os.path.join(args.data_root, "{}_noisy_train_val_mnist_[samp_id,true,noise]-s{}.csv".format(args.noise_ratio, args.rand_seed)), extended_train_val[:, 0:3], fmt="%.3f", delimiter=",")
     print(extended_train_val[0:100, 0:3])
 
 
@@ -821,7 +833,6 @@ def load_one_ep_noisy_mnist_data(args):
                           header=None).values  # change path with testing
     
     np.random.shuffle(new_mat)
-
     assert len(np.unique(new_mat[:,0])) == len(new_mat[:,0]), "sample id is not matching the number of samples"
 
     if args.test_ratio == 1:  # test_only
@@ -831,6 +842,7 @@ def load_one_ep_noisy_mnist_data(args):
     else:
         np.random.shuffle(new_mat)
         X_train, X_test, Y_train, Y_test = train_test_split(new_mat, new_mat[:, 2], test_size=args.test_ratio)
+
     return X_test, X_train, Y_test, Y_train
 
     

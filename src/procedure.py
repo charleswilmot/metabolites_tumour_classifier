@@ -619,7 +619,7 @@ def single_epo_runs(sess, args, graph):
     output_data["test_labels"] = np.eye(args.num_classes)
     
     output_data["test_logits"] = softmax(np.random.randn(args.num_classes, args.num_classes), axis=1)
-    save_plots(sess, args, output_data, training=True, epoch=epoch)
+    # save_plots(sess, args, output_data, training=True, epoch=epoch)
     return output_data
 
 

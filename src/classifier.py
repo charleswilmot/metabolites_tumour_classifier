@@ -81,6 +81,7 @@ if args.if_single_runs:  ## 100 single-epoch training
 elif args.if_from_certain and args.train_or_test == "train":  # use distillation to augment data
     certain_files = dataio.find_files(args.certain_dir,
                                       pattern="full_summary*.csv")
+    assert len(certain_files) == 1, "Something wrong with the certain file"
     if args.data_mode == "metabolites" or args.data_mode == "metabolite":
         data_tensors, args = dataio.get_data_tensors(args,
                                                      certain_fns=certain_files[0])
