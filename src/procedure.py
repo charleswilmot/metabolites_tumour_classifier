@@ -869,7 +869,6 @@ def main_train(sess, args, graph):
             pickle.dump({"output_data": output_data}, ff)
         dataio.save_plots(sess, args, output_data, training=False)
         logger.debug("Starting training")
-
         args.save(os.path.join(args.output_path, "network", "parameters.json"))
     # to get the correct clf rate of the whole data
     elif args.train_or_test == 'train' and args.if_single_runs:
@@ -877,5 +876,5 @@ def main_train(sess, args, graph):
         initialize(sess, graph, test_only=False)
         args.save(os.path.join(args.output_path, "network", "parameters.yaml"))
         output_data = single_epo_runs(sess, args, graph)
-        dataio.save_plots(sess, args, output_data, training=True)
+
 

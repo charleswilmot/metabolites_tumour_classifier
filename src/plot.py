@@ -135,7 +135,7 @@ def all_figures(sess, args, data, training=False, epoch=0):
 
             plot_class_activation_map(sess, class_maps, data["test_features"][rand_inds], data["test_labels"][rand_inds], data["test_logits"][rand_inds], epoch, args, auc=auc)
         # plot_wrong_examples(args, data, training=training)
-        # plot_prob_distr_on_ids(data, args.output_path)
+        plot_prob_distr_on_ids(data, args.output_path)
 
     # plot_tsne(args, data)
     # plot_hierarchy_cluster(args, data)

@@ -196,7 +196,7 @@ def generate_output_path(args):
         time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
         args.postfix = "100rns-" + args.train_or_test if args.if_single_runs else args.train_or_test
         args.output_path = os.path.join(args.output_path,
-                                        "{}-{}-{}x{}-factor-{}-from-{}-certain{}-theta-{}-s{}-{}".format(
+                                        "{}-{}-{}x{}-factor-{}-from-{}-ct{}-theta-{}-s{}-{}-trainOnTrue".format(
                                             time_str, args.model_name, args.aug_method, args.aug_folds,
                                             args.aug_scale, args.data_source,
                                             args.if_from_certain, args.theta_thr,

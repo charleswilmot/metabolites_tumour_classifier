@@ -10,7 +10,6 @@ from tqdm import tqdm
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.pylab as pylab
 import scipy as scipy
 from collections import Counter
 from sklearn import metrics
@@ -18,14 +17,27 @@ from textwrap import wrap
 
 from dataio import introduce_label_noisy
 
-base = 22
-args = {'legend.fontsize': base - 8,
-          'figure.figsize': (10, 7),
-         'axes.labelsize': base-4,
-        #'weight' : 'bold',
-         'axes.titlesize':base,
-         'xtick.labelsize':base-8,
-         'ytick.labelsize':base-8}
+# import matplotlib.pylab as pylab
+# base = 22
+# args = {'legend.fontsize': base - 8,
+#           'figure.figsize': (10, 7),
+#          'axes.labelsize': base-4,
+#         #'weight' : 'bold',
+#          'axes.titlesize':base,
+#          'xtick.labelsize':base-8,
+#          'ytick.labelsize':base-8}
+# pylab.rcParams.update(args)
+
+import matplotlib.pylab as pylab
+base = 20
+args = {
+    # 'legend.fontsize': base - 4,
+          'figure.figsize': (6, 4.8),
+          # 'axes.labelsize': base-4,
+          # 'axes.titlesize': base,
+          # 'xtick.labelsize': base-10,
+          # 'ytick.labelsize': base-10
+    }
 pylab.rcParams.update(args)
 
 def find_files(directory, pattern='*.csv'):
@@ -108,7 +120,7 @@ def combine_probabilities_test(files):
             values[:, 0] = 'class-1-' + values[:, 0]
         nn = np.hstack((nn, values))
     
-    np.savetxt(os.path.join(single_run, "new-combined_test_probabilities-{}.csv".format(id)), np.array(nn), fmt='%s',
+    np.savetxt(os.path.join(data_dir, "new-combined_test_probabilities-{}.csv".format(id)), np.array(nn), fmt='%s',
                delimiter=',', header='class0-dates,class0-prob,class1-dates,class1-prob')
 
 
@@ -449,7 +461,8 @@ def split_data_for_lout_val(data):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "100_single_ep_corr_classification_rate_mnist"
+plot_name = "patient_wise_performance"
+
 
 if plot_name == "plot_random_roc":
     print("Plot_name: ", plot_name)
@@ -470,7 +483,7 @@ elif plot_name == "indi_rating_with_model":
     give individual doctors' ratings, model logits
     """
     print("Plot_name: ", plot_name)
-    single_run = "../data/20190325"
+    data_dir = "../data/20190325"
     # Get individual rater's prediction
     human_indi_rating = "../data/20190325/20190325-3class_lout40_test_data5-2class_doctor_ratings_individual_new.mat"
 
@@ -687,14 +700,14 @@ elif plot_name == "indi_rating_with_model":
     plt.xlabel('false positive rate')
     plt.tight_layout()
     
-    plt.savefig(os.path.join(single_run, "Model_with_indi_human_rating_only_AUC.png"), format='png')
-    plt.savefig(os.path.join(single_run, "Model_with_indi_human_rating_only_AUC.pdf"), format='pdf')
+    plt.savefig(os.path.join(data_dir, "Model_with_indi_human_rating_only_AUC.png"), format='png')
+    plt.savefig(os.path.join(data_dir, "Model_with_indi_human_rating_only_AUC.pdf"), format='pdf')
     plt.close()
     
 
 elif plot_name == "human_whole_with_model":
     print("Plot_name: ", plot_name)
-    single_run = "../data/20190325"
+    data_dir = "../data/20190325"
     original = "../data/20190325/20190325-3class_lout40_test_data5-2class_human_performance844_with_labels.mat"
     ori = scipy.io.loadmat(original)["DATA"]
     true_label = ori[:, 1]
@@ -736,17 +749,17 @@ elif plot_name == "human_whole_with_model":
     plt.legend(loc=4)
     plt.ylabel('true positive rate', fontsize=18)
     plt.xlabel('false positive rate', fontsize=18)
-    plt.savefig(os.path.join(single_run, "model_with_human_rating_collectively_certain.pdf"), format='pdf')
+    plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively_certain.pdf"), format='pdf')
     # plt.savefig(os.path.join(data_dir, "model_with_human_rating.eps"), format='eps')
-    plt.savefig(os.path.join(single_run, "model_with_human_rating_collectively_certain.png"), format='png')
+    plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively_certain.png"), format='png')
     plt.close()
 
 
 elif plot_name == "all_ROCs":
     print("Plot_name: ", plot_name)
-    single_run = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-Res7-updateDataio-Res_ECG_CAM/great"
+    data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/certain-DA-Res7-updateDataio-Res_ECG_CAM/great"
 
-    files = find_files(single_run, pattern="AUC_curve_step_0.00-auc*.csv")
+    files = find_files(data_dir, pattern="AUC_curve_step_0.00-auc*.csv")
     tprs = []
     plt.figure(figsize=[10, 6.8])
     base_fpr = np.linspace(0, 1, 20)
@@ -772,8 +785,8 @@ elif plot_name == "all_ROCs":
     plt.legend(loc="best")
     plt.ylabel('true positive rate', fontsize=18)
     plt.xlabel('false positive rate', fontsize=18)
-    plt.savefig(os.path.join(single_run, "All ROC curves in cross validation test-lout40-validation.png"), format='png')
-    plt.savefig(os.path.join(single_run, "All ROC curves in cross validation test-lout40-validation.pdf"), format='pdf')
+    plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.png"), format='png')
+    plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.pdf"), format='pdf')
     plt.close()
 
 
@@ -795,8 +808,8 @@ elif plot_name == "average_models":
 
 elif plot_name == "plot_mean_cluster":
     print("Plot_name: ", plot_name)
-    single_run = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/KMeans/metabolites_clustering-spec-whole-20190325/2019-12-16T13-34-47/7-cluster/plots"
-    mean_files = find_files(single_run, pattern="*.csv")
+    data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/src/KMeans/metabolites_clustering-spec-whole-20190325/2019-12-16T13-34-47/7-cluster/plots"
+    mean_files = find_files(data_dir, pattern="*.csv")
     for fn in mean_files:
         num_clusters = fn.split("_")[0]
         cluster_id = fn.split("_")[-1].split("-")[0]
@@ -804,21 +817,21 @@ elif plot_name == "plot_mean_cluster":
         mean = data[:, 0]
         std = data[:, 1]
 
-        plot_mean_spec_in_cluster(mean, std, cluster_id, num_clusters, "train", crosstab_count=[None], save_folder=single_run)
+        plot_mean_spec_in_cluster(mean, std, cluster_id, num_clusters, "train", crosstab_count=[None], save_folder=data_dir)
 
 
 elif plot_name == "test_performance_with_different_data_aug_parameters":
     print("Plot_name: ", plot_name)
-    from_dirs = False  #True   #
+    from_dirs = True   #False  #
     if from_dirs:
-        single_run = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-Res_ECG_CAM"
-        model = os.path.basename(single_run).split("-")[-1]
-        exp_mode = os.path.basename(single_run).split("-")[-2]
+        data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-MLP"
+        model = os.path.basename(data_dir).split("-")[-1]
+        exp_mode = os.path.basename(data_dir).split("-")[-2]
 
         for data_source in ["data1", "data2", "data3", "data4", "data5", "data6", "data7", "data8", "data9"]:  #, "data7", "data9", "data1", "data3"
             # data_source = "data7"
             pattern = "*-{}-test-*".format(data_source)
-            folders = find_folderes(single_run, pattern=pattern)
+            folders = find_folderes(data_dir, pattern=pattern)
             if len(folders) == 0:
                 continue
 
@@ -865,8 +878,8 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
                         plt.plot(np.array(value_per_scale)[:, 0], np.array(value_per_scale)[:, 1], fold_markers[fold], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(value_per_scale)[:, 1])), color=meth_color[method])
             plt.legend(),
             plt.title("\n".join(wrap("{} with {} on {}".format(exp_mode, model, data_source), 60)))
-            plt.savefig(os.path.join(single_run, "new-{}-with-{}-on-{}.png".format(exp_mode, model, data_source))),
-            plt.savefig(os.path.join(single_run, "new-{}-with-{}-on-{}.pdf".format(exp_mode, model, data_source)), format="pdf")
+            plt.savefig(os.path.join(data_dir, "new-{}-with-{}-on-{}.png".format(exp_mode, model, data_source))),
+            plt.savefig(os.path.join(data_dir, "new-{}-with-{}-on-{}.pdf".format(exp_mode, model, data_source)), format="pdf")
             plt.close()
             
             # plot each fold and aug-method w.r.t augmentation factor alpha
@@ -889,7 +902,7 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             # plt.close()
             #
 
-            np.savetxt(os.path.join(single_run, 'new-model_{}_all_different_config_theta{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same), exp_mode, model, data_source)), configs, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s")
+            np.savetxt(os.path.join(data_dir, 'new-model_{}_all_different_config_theta{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same), exp_mode, model, data_source)), configs, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s")
     else:
         file_dirs = [
             "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta39-DA+DA-with-Res_ECG_CAM-on-data5.txt",
@@ -1066,15 +1079,15 @@ elif plot_name == "get_performance_metrices":
         """
     print("Plot_name: ", plot_name)
     postfix = ""
-    single_runs_dirs = [""]
+    data_dirs = ["/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Inception"]
     for data_source, prefix in zip(["", "data5"], ["all-CVs","data5"]):
-        for single_run in single_runs_dirs:
-            for method in ["same"]: # "None","same", "both", "ops"
+        for data_dir in data_dirs:
+            for method in ["both"]: # "None","same", "both", "ops"
                 for fold in [9, 5, 0, 1, 3]: #
                     for alpha in [0.5, 0, 0.05, 0.2, 0.35]:
-                        folders = find_folderes(single_run, pattern="*{}*x{}-factor-{}-from-{}*-test-0.*".format(method, fold, alpha, data_source))
+                        folders = find_folderes(data_dir, pattern="*{}*x{}-factor-{}-from-{}*-test-0.*".format(method, fold, alpha, data_source))
                         if len(folders) > 0:
-                            print(os.path.basename(single_run),
+                            print(os.path.basename(data_dir),
                                   "{}x{}-{}-[{}]!".format(method, fold, alpha, [os.path.basename(fdn).split("-")[-3] for fdn in folders]))
                             performance = {"ACC": np.empty((0,)), "patient_ACC": np.empty((0,)),
                                            "AUC": np.empty((0,)), "SEN": np.empty((0,)),
@@ -1108,7 +1121,7 @@ elif plot_name == "get_performance_metrices":
                                     performance["patient_ACC"] = np.append(performance["patient_ACC"],
                                                                            patient_acc)
                 
-                                    performance_summary.append(["{}-{}x{}-{}-data[{}]\n".format(os.path.basename(single_run), method, fold, alpha, data_names),
+                                    performance_summary.append(["{}-{}x{}-{}-data[{}]\n".format(os.path.basename(data_dir), method, fold, alpha, data_names),
                                                                 "Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SEN"]), np.std(performance["SEN"]))
                                                                 + "specificity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SPE"]), np.std(performance["SPE"]))
                                                                 +"AUC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["AUC"]),
@@ -1123,9 +1136,9 @@ elif plot_name == "get_performance_metrices":
                                                                                                                       np.std(performance["ACC"]))
                                                                 
                                                                 ])
-                            np.savetxt(os.path.join(single_run, "{}-AUC-{:.4f}-performance-summarries-of-{}x{}-{}-num{}-CVs.csv".format(prefix, np.mean(performance["AUC"]), method, fold, alpha, len(folders))), np.array(performance_summary), fmt="%s", delimiter=",")
+                            np.savetxt(os.path.join(data_dir, "{}-AUC-{:.4f}-performance-summarries-of-{}x{}-{}-num{}-CVs.csv".format(prefix, np.mean(performance["AUC"]), method, fold, alpha, len(folders))), np.array(performance_summary), fmt="%s", delimiter=",")
             
-                            print("{}-{}x{}-{}-data[{}]\n".format(os.path.basename(single_run), method, fold, alpha, data_names))
+                            print("{}-{}x{}-{}-data[{}]\n".format(os.path.basename(data_dir), method, fold, alpha, data_names))
                             print("Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SEN"]),
                                                                           np.std(performance["SEN"])))
                             print("specificity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SPE"]),
@@ -1141,7 +1154,7 @@ elif plot_name == "get_performance_metrices":
                             print("ACC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["ACC"]),
                                                                   np.std(performance["ACC"])))
                         else:
-                            print(os.path.basename(single_run), "{}x{}-{}-No data!".format(method, fold, alpha))
+                            print(os.path.basename(data_dir), "{}x{}-{}-No data!".format(method, fold, alpha))
         
 
 elif plot_name == "move_folder":
@@ -1216,7 +1229,7 @@ elif plot_name == "certain_tsne_distillation":
     from scipy.stats import ks_2samp
 
     pattern = "full_summary-*.csv"
-    single_run = "C:\\Users\\LDY\\Desktop\\metabolites-0301\\metabolites_tumour_classifier\\data"
+    data_dir = "C:\\Users\\LDY\\Desktop\\metabolites-0301\\metabolites_tumour_classifier\\data"
     # data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-37--Res_ECG_CAM-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train"
     # ori_data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/DATA.mat"
     ori_data_dir = "C:\\Users\\LDY\\Desktop\\metabolites-0301\\metabolites_tumour_classifier\\data\\20190325\\20190325-3class_lout40_train_test_data5.mat"
@@ -1236,10 +1249,10 @@ elif plot_name == "certain_tsne_distillation":
             reduced_proj_whole = TSNE(whole_data[:, 3:], dimensions=2)
             reduced_proj_distill= TSNE(distill_data[:, 3:], dimensions=2)
             # np.savetxt(os.path.join(os.path.dirname(ori_data_dir), "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
-            np.savetxt(os.path.join(single_run, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
-            np.savetxt(os.path.join(single_run, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
+            np.savetxt(os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
+            np.savetxt(os.path.join(data_dir, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
         else:
-            filename_whole = os.path.join(single_run, "{}-whole_data-lout5-2d.csv".format(reduction_method))
+            filename_whole = os.path.join(data_dir, "{}-whole_data-lout5-2d.csv".format(reduction_method))
             reduced_proj_whole = pd.read_csv(filename_whole, header=None).values
             # filename_distill = os.path.join(data_dir, "distill_data_tsne-2d-from-whole-tsne.csv.csv".format(reduction_method))
             # reduced_proj_distill = pd.read_csv(filename_distill, header=None).values
@@ -1248,12 +1261,12 @@ elif plot_name == "certain_tsne_distillation":
             import umap.umap_ as umap
             reduced_proj_whole = umap.UMAP(random_state=42).fit_transform(whole_data[:, 3:])
             reduced_proj_distill = umap.UMAP(random_state=42).fit_transform(distill_data[:, 3:])
-            np.savetxt(os.path.join(single_run, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
-            np.savetxt(os.path.join(single_run, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
+            np.savetxt(os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
+            np.savetxt(os.path.join(data_dir, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
         else:
-            filename_whole = os.path.join(single_run, "{}-whole_data-2d.csv".format(reduction_method))
+            filename_whole = os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method))
             reduced_proj_whole = pd.read_csv(filename_whole, header=None).values
-            filename_distill = os.path.join(single_run, "{}-distill_data-2d-from-whole.csv".format(reduction_method))
+            filename_distill = os.path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method))
             reduced_proj_distill = pd.read_csv(filename_distill, header=None).values
     elif reduction_method == "MDS":
         if if_save_data:
@@ -1262,11 +1275,11 @@ elif plot_name == "certain_tsne_distillation":
             MDS_distill = MDS(n_components=2, random_state=199)
             reduced_proj_whole = MDS_whole.fit_transform(whole_data[:, 3:])
             reduced_proj_distill = MDS_distill.fit_transform(distill_data[:, 3:])
-            np.savetxt(os.path.join(single_run, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
-            np.savetxt(os.path.join(single_run, "{}-distill_data-2d-from-whole.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
+            np.savetxt(os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
+            np.savetxt(os.path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
         else:
-            filename_whole = os.path.join(single_run, "{}-whole_data-2d.csv".format(reduction_method))
-            filename_distill = os.path.join(single_run, "{}-distill_data-2d-from-whole.csv".format(reduction_method))
+            filename_whole = os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method))
+            filename_distill = os.path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method))
             reduced_proj_whole = pd.read_csv(filename_whole, header=None).values
             reduced_proj_distill = pd.read_csv(filename_distill, header=None).values
 
@@ -1289,8 +1302,8 @@ elif plot_name == "certain_tsne_distillation":
     plt.title("{} of both classes (whole)".format(reduction_method))
     plt.xlabel("dimension #1 (p={:.2E})".format(p_x_whole)),
     plt.ylabel("dimension #2 (p={:.2E})".format(p_y_whole))
-    plt.savefig(os.path.join(single_run, "{}-whole-{}.png".format(reduction_method, data_source))),
-    plt.savefig(os.path.join(single_run, "{}-whole-{}.pdf".format(reduction_method, data_source)), format="pdf")
+    plt.savefig(os.path.join(data_dir, "{}-whole-{}.png".format(reduction_method, data_source))),
+    plt.savefig(os.path.join(data_dir, "{}-whole-{}.pdf".format(reduction_method, data_source)), format="pdf")
     plt.close()
 
     # plot the whole set w.r.t patients
@@ -1311,8 +1324,8 @@ elif plot_name == "certain_tsne_distillation":
     plt.title("\n".join(wrap("Grouped by the patients", 40))),
     plt.xlabel("dimension #1"),
     plt.ylabel("dimension #2")
-    plt.savefig(os.path.join(single_run, "grouped-by-samples-{}-whole-{}.png".format(reduction_method, data_source))),
-    plt.savefig(os.path.join(single_run, "grouped-by-samples-{}-whole-{}.pdf".format(reduction_method, data_source)), format="pdf")
+    plt.savefig(os.path.join(data_dir, "grouped-by-samples-{}-whole-{}.png".format(reduction_method, data_source))),
+    plt.savefig(os.path.join(data_dir, "grouped-by-samples-{}-whole-{}.pdf".format(reduction_method, data_source)), format="pdf")
     plt.close()
 
     # plot the distill
@@ -1329,10 +1342,10 @@ elif plot_name == "certain_tsne_distillation":
     plt.title("TSNE of both classes (distilled)")
     plt.xlabel("dimension #1 (p={:.2E})".format(p_x_dis)),
     plt.ylabel("dimension #2 (p={:.2E})".format(p_x_dis))
-    plt.savefig(os.path.join(single_run, "umap_visualization", "tsne-distill-{}.png".format(data_source)))
-    plt.savefig(os.path.join(single_run, "umap_visualization", "tsne-distill-{}.pdf".format(data_source)), format="pdf")
-    plt.savefig(os.path.join(single_run, "Distilled tumor samples-{}-from-{}.png".format(reduction_method, data_source))),
-    plt.savefig(os.path.join(single_run, "Distilled tumor samples-{}-from-{}.pdf".format(reduction_method, data_source)), format="pdf")
+    plt.savefig(os.path.join(data_dir, "umap_visualization", "tsne-distill-{}.png".format(data_source)))
+    plt.savefig(os.path.join(data_dir, "umap_visualization", "tsne-distill-{}.pdf".format(data_source)), format="pdf")
+    plt.savefig(os.path.join(data_dir, "Distilled tumor samples-{}-from-{}.png".format(reduction_method, data_source))),
+    plt.savefig(os.path.join(data_dir, "Distilled tumor samples-{}-from-{}.pdf".format(reduction_method, data_source)), format="pdf")
     plt.close()
 
     # plot the same number as in distill from the whole set
@@ -1354,8 +1367,8 @@ elif plot_name == "certain_tsne_distillation":
     plt.title("\n".join(wrap("{} of both classes (random sampled from the whole)".format(reduction_method), 60)))
     plt.xlabel("dimension #1 (p={:.2E})".format(p_x_whole)),
     plt.ylabel("dimension #2 (p={:.2E})".format(p_y_whole))
-    plt.savefig(os.path.join(single_run, "umap_visualization", "{}-subset-the-same-number-as-distill-from-whole-{}.png".format(reduction_method, data_source))),
-    plt.savefig(os.path.join(single_run, "umap_visualization", "{}-subset-the-same-number-as-distill-from-whole-{}.pdf".format(reduction_method, data_source)),
+    plt.savefig(os.path.join(data_dir, "umap_visualization", "{}-subset-the-same-number-as-distill-from-whole-{}.png".format(reduction_method, data_source))),
+    plt.savefig(os.path.join(data_dir, "umap_visualization", "{}-subset-the-same-number-as-distill-from-whole-{}.pdf".format(reduction_method, data_source)),
                 format="pdf")
     plt.close()
 
@@ -1374,16 +1387,16 @@ elif plot_name == "certain_tsne_distillation":
     ## overlay the certain ones' tsne
 
 
-elif plot_name == "plot_metabolites":
+elif plot_name == "plot_metabolites_statistics":
     print("Plot_name: ", plot_name)
     from scipy.io import loadmat as loadmat
     import scipy.io as io
 
-    single_run = "C:/Users/LDY/Desktop/testestestestest/DTC"
+    data_dir = r"C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\data\20190325"
     file_patterns = "*.csv"
 
     # mat_file = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/DATA.mat"
-    mat_file = "C:\\Users\\LDY\\Desktop\\metabolites-0301\\metabolites_tumour_classifier\\data\\DATA.mat"
+    mat_file = "C:\\Users\\LDY\\Desktop\\metabolites-0301\\metabolites_tumour_classifier\\data\\2019.03.25-DATA.mat"
     
     original_data = get_data_from_mat(mat_file)
     
@@ -1392,30 +1405,29 @@ elif plot_name == "plot_metabolites":
     stat_num_per_pat.items()
     num_spectra = np.array([vl for _, vl in stat_num_per_pat.items()])
     plt.hist(num_spectra, bins=100)
-    plt.title("Distribution of number of spectra in patients")
-    plt.xlabel("number of voxels")
-    plt.ylabel("patient counts")
-    plt.vlines(np.percentile(num_spectra, 90), 0, 40, label="90th")
-    plt.legend()
-    plt.savefig(os.path.join(os.path.dirname(mat_file), "Distribution of number of spectra in patients-whole-data2.png")),
-    plt.savefig(os.path.join(os.path.dirname(mat_file), "Distribution of number of spectra in patients-whole-data2.pdf"))
+    # plt.title("Distribution of number of spectra in patients")
+    plt.xlabel("number of voxels per patient")
+    plt.ylabel("number of patients")
+    # plt.vlines(np.percentile(num_spectra, 90), 0, 40, label="90th")
+    # plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(os.path.dirname(mat_file), "Distribution-of-number-of-spectra-in-patients-whole2.png")),
+    plt.savefig(os.path.join(os.path.dirname(mat_file), "Distribution-of-number-of-spectra-in-patients-whole2.pdf"))
     plt.close()
     
-    for pat_id, num in stat_num_per_pat.items():
-        plt.figure()
-        pat_inds = np.where(original_data[:, 1] == pat_id)[0]
-        assert num == len(pat_inds)
-        label = np.mean(original_data[pat_inds, 2])
-        plt.plot(original_data[pat_inds, 3:].T)
-        plt.title("Patient({})-lb{}-num({})".format(pat_id, label, num))
-        plt.xlabel("metabolite index")
-        plt.ylabel("norm. amplitude")
-        plt.savefig(os.path.join(os.path.dirname(mat_file), "plot-spectra-patient-wise", "Spectra-Patient-{}-lb{}-({}).png".format(pat_id, label, num))),
-        plt.savefig(os.path.join(os.path.dirname(mat_file), "plot-spectra-patient-wise", "Spectra-Patient-{}-lb{}-({}).pdf".format(pat_id, label, num))),
-        plt.close()
-    
-    
-    
+    # plot the spectra of all patients. One plot one patient
+    # for pat_id, num in stat_num_per_pat.items():
+    #     plt.figure()
+    #     pat_inds = np.where(original_data[:, 1] == pat_id)[0]
+    #     assert num == len(pat_inds)
+    #     label = np.mean(original_data[pat_inds, 2])
+    #     plt.plot(original_data[pat_inds, 3:].T)
+    #     plt.title("Patient({})-lb{}-num({})".format(pat_id, label, num))
+    #     plt.xlabel("metabolite index")
+    #     plt.ylabel("norm. amplitude")
+    #     plt.savefig(os.path.join(os.path.dirname(mat_file), "plot-spectra-patient-wise", "Spectra-Patient-{}-lb{}-({}).png".format(pat_id, label, num))),
+    #     plt.savefig(os.path.join(os.path.dirname(mat_file), "plot-spectra-patient-wise", "Spectra-Patient-{}-lb{}-({}).pdf".format(pat_id, label, num))),
+    #     plt.close()
     
     labels = original_data[:, 1]
 
@@ -1444,7 +1456,7 @@ elif plot_name == "plot_metabolites":
     class_colors = ["lightblue", "violet"]
     class_dark = ["darkblue", "crimson"]
 
-    files = find_files(single_run, pattern=file_patterns)
+    files = find_files(data_dir, pattern=file_patterns)
     # certain_mat = np.empty((0, new_mat.shape[1]))
     certain_inds_tot = np.empty((0))
     for fn in files:
@@ -1491,7 +1503,7 @@ elif plot_name == "plot_metabolites":
                    verticalalignment='center'),
             f.subplots_adjust(hspace=0, wspace=0)
             plt.savefig(
-                os.path.join(single_run, "certain_samples_class{}_fig_{}.png".format(c, ii)))
+                os.path.join(data_dir, "certain_samples_class{}_fig_{}.png".format(c, ii)))
             plt.close()
 
 
@@ -1503,7 +1515,7 @@ elif plot_name == "100_single_ep_corr_classification_rate_with_certain":
     import ipdb
     from scipy.stats import spearmanr
     
-    single_runs_dirs = [
+    data_dirs = [
         # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-31-MLP-nonex0-factor-0-from-ep-0-from-lout40-data7-theta-None-s129-100rns-train/certains",
         # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-30-MLP-nonex0-factor-0-from-ep-0-from-lout40-data5-theta-None-s129-100rns-train/certains",
         # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/single-epoch-get-correct-classification-rate/2020-10-05T13-54-29-MLP-nonex0-factor-0-from-ep-0-from-lout40-data3-theta-None-s129-100rns-train",
@@ -1516,8 +1528,8 @@ elif plot_name == "100_single_ep_corr_classification_rate_with_certain":
                          "data6": 8371, "data7": 8357, "data8": 8384, "data9": 7701,
                        "mnist":70000}
     
-    for single_run in single_runs_dirs:
-        files = find_files(single_run, pattern="one_ep_data_train*.csv")
+    for data_dir in data_dirs:
+        files = find_files(data_dir, pattern="one_ep_data_train*.csv")
     
         # get correct count in 100 rauns
         data_source = os.path.basename(files[0]).split("_")[8]
@@ -1531,17 +1543,17 @@ elif plot_name == "100_single_ep_corr_classification_rate_with_certain":
                 prob = values[:, 3:]
                 if ind == 0:  #the first file to get the total number (3-class) of samples
                     total_num = num_smp_dataset[data_source]  #3-class samples id
-                    ids_w_count = []
+                    correct_ids_w_count = []
                     certain_w_count = []
                     certain_w_corr_count = []
-                    dict_count = {key: 0 for key in np.arange(total_num)}  #total number 9243
+                    correct_dict_id_w_count = {key: 0 for key in np.arange(total_num)}  #total number 9243
                     dict_count_certain = {key: 0 for key in np.arange(total_num)}
                     dict_corr_count_certain = {key: 0 for key in np.arange(total_num)}
                     
                 pred_lbs = np.argmax(prob, axis=1)
                 right_inds = np.where(pred_lbs == noisy_lbs)[0]
-                correct = np.unique(smp_ids[right_inds])
-                ids_w_count += list(correct)
+                correct_sample_ids = np.unique(smp_ids[right_inds])
+                correct_ids_w_count += list(correct_sample_ids)
                 
                 # Get certain with differnt threshold
                 if theta > 1:  #percentile
@@ -1557,15 +1569,15 @@ elif plot_name == "100_single_ep_corr_classification_rate_with_certain":
                 certain_w_corr_count += list(np.unique(smp_ids[ct_corr_inds]))
                 num_certain = len(ct_smp_ids)
     
-            count_all = Counter(ids_w_count)
-            dict_count.update(count_all)
+            correct_id_count_all = Counter(correct_ids_w_count)
+            correct_dict_id_w_count.update(correct_id_count_all)
     
             dict_count_certain.update(Counter(certain_w_count))
             dict_corr_count_certain.update(Counter(certain_w_corr_count))
             
             # if theta == 0.975:
             #     ipdb.set_trace()
-            counter_array = np.array([[key, val] for (key, val) in dict_count.items()])
+            counter_array = np.array([[key, val] for (key, val) in correct_dict_id_w_count.items()])
             sort_inds = np.argsort(counter_array[:, 1])
             sample_ids_key = counter_array[sort_inds, 0]
             # rates = counter_array[sort_inds, 1]/counter_array[:, 1].max()
@@ -1590,16 +1602,16 @@ elif plot_name == "100_single_ep_corr_classification_rate_with_certain":
             ax1.plot(np.arange(len(ct_corr_rates)), ct_corr_rates, label="distilled corr. rate", color='m')
             plt.legend()
             plt.title("\n".join(wrap("distillation effect-(theta-{})-{}.png".format(theta, data_source), 60)))
-            plt.savefig(single_run + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}-({}_theta-{}).png".format(os.path.basename(files[0]).split("_")[7], total_num, data_source, num_certain, theta)),
-            plt.savefig(single_run + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}-({}_theta-{}).pdf".format(os.path.basename(files[0]).split("_")[7], total_num, data_source, num_certain, theta), format="pdf")
+            plt.savefig(data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}-({}_theta-{}).png".format(os.path.basename(files[0]).split("_")[7], total_num, data_source, num_certain, theta)),
+            plt.savefig(data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}-({}_theta-{}).pdf".format(os.path.basename(files[0]).split("_")[7], total_num, data_source, num_certain, theta), format="pdf")
             print("ok")
             plt.close()
             
             num2select = np.int(np.int(os.path.basename(files[0]).split("_")[7]) * slc_ratio)
             ct_concat_data = np.concatenate((np.array(sort_inds).reshape(-1,1)[-num2select:], rates.reshape(-1,1)[-num2select:], ct_sele_rates.reshape(-1, 1)[-num2select:], ct_corr_rates.reshape(-1, 1)[-num2select:]), axis=1)
-            np.savetxt(single_run + "/certain_{}_({}-{})-({}_theta-{}).csv".format(data_source, os.path.basename(files[0]).split("_")[7], total_num, num2select, theta), ct_concat_data, fmt="%.5f", delimiter=",", header="ori_sort_rate_id,ori_sort_rate,certain_sele_rate,certain_corr_rate")
+            np.savetxt(data_dir + "/certain_{}_({}-{})-({}_theta-{}).csv".format(data_source, os.path.basename(files[0]).split("_")[7], total_num, num2select, theta), ct_concat_data, fmt="%.5f", delimiter=",", header="ori_sort_rate_id,ori_sort_rate,certain_sele_rate,certain_corr_rate")
     concat_data = np.concatenate((np.array(sort_inds).reshape(-1,1), rates.reshape(-1,1), ct_sele_rates.reshape(-1, 1), ct_corr_rates.reshape(-1, 1)), axis=1)
-    np.savetxt(single_run + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(files[0]).split("_")[7], total_num), concat_data, fmt="%.5f", delimiter=",", header="ori_sort_rate_id,ori_sort_rate,certain_sele_rate,certain_corr_rate")
+    np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(files[0]).split("_")[7], total_num), concat_data, fmt="%.5f", delimiter=",", header="ori_sort_rate_id,ori_sort_rate,certain_sele_rate,certain_corr_rate")
 
 
 elif plot_name == "100_single_ep_corr_classification_rate_mnist":
@@ -1607,16 +1619,14 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
     Get the correct classification rate with 100 runs of single-epoch-training
     """
     import ipdb
-
-    print("Plot_name: ", plot_name)
     from scipy.stats import spearmanr
     
     print("Plot_name: ", plot_name)
     original_data_dirs = [
         "/home/epilepsy-data/data/metabolites/noisy-MNIST/0.2_noisy_train_val_mnist_[samp_id,true,noise]-s5058.csv"
     ]
-    single_runs_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-02-10T08-18-38--MLP-both_meanx0-factor-0-from-mnist-certainFalse-theta-1-s5058-100rns-train"
+    data_dirs = [
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-02-13T07-08-29--MLP-both_meanx0-factor-0-from-mnist-ctFalse-theta-1-s8522-100rns-train-trainOnTrue"
         # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-01-27T13-14-34--MLP-both_meanx3-factor-0.5-from-mnist-certainFalse-theta-1-s5506-0.5-noise-100rns-train-with"
         # r"C:\Users\LDY\Desktop\EPG\PPS-EEG-anomaly"
     ]
@@ -1625,8 +1635,8 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
                        "data6": 8371, "data7": 8357, "data8": 8384, "data9": 7701,
                        "mnist": 60000}
 
-    for single_run, original in zip(single_runs_dirs, original_data_dirs):
-        files = find_files(single_run, pattern="one*.csv")
+    for data_dir, original in zip(data_dirs, original_data_dirs):
+        files = find_files(data_dir, pattern="one*.csv")
 
         spearmanr_rec = []
         # get correct count in 100 rauns
@@ -1640,6 +1650,120 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
             prob = values[:, 3:]
             if ind == 0:  # the first file to get the total number (3-class) of samples
                 total_num = num_smp_dataset[data_source]  # 3-class samples id
+                correct_ids_w_count = []
+                noisy_lb_ids_w_count = []
+                correct_dict_id_w_count = {key: 0 for key in np.arange(total_num)}  # total number 9243
+                noisy_lb_rec = {key: 0 for key in np.arange(total_num)}  # total number 9243
+                pre_rank = np.arange(total_num)  #indices
+
+            pred_lbs = np.argmax(prob, axis=1)
+            right_inds = np.where(pred_lbs == true_lables)[0]
+            correct_sample_ids = np.unique(smp_ids[right_inds])
+            correct_ids_w_count += list(correct_sample_ids)
+
+            noisy_lb_inds = np.where(true_lables != noisy_lbs)[0]
+            noisy_lb_sample_ids = np.unique(smp_ids[noisy_lb_inds])  # sample ids that with noisy labels
+            noisy_lb_ids_w_count += list(noisy_lb_sample_ids)  # sample ids that with noisy labels
+
+            # if ind % 10 == 0:
+            #     count_all = Counter(ids_w_count)
+            #     dict_count.update(count_all)
+            #     curr_count_array = np.array([[key, val] for (key, val) in dict_count.items()])
+            #     curr_rank = curr_count_array[np.argsort(curr_count_array[:, 1]),0]
+            #     # spearmanr_rec.append([ind, np.sum(curr_rank==pre_rank)])
+            #     spearmanr_rec.append([ind, spearmanr(pre_rank, curr_rank)[0]])
+            #     pre_rank = curr_rank.copy()
+
+        correct_id_count_all = Counter(correct_ids_w_count)
+        correct_dict_id_w_count.update(correct_id_count_all)
+        noisy_lb_rec.update(Counter(noisy_lb_ids_w_count))
+        
+        counter_array = np.array([[key, val] for (key, val) in correct_dict_id_w_count.items()])
+        noisy_lb_rec_array = np.array([[key, val] for (key, val) in noisy_lb_rec.items()])
+        noisy_inds_array = np.array([[key, val*1.0/len(files)] for (key, val) in noisy_lb_rec.items()])
+        sort_inds = np.argsort(counter_array[:, 1])
+        sample_ids_key = counter_array[sort_inds, 0]
+        # rates = counter_array[sort_inds, 1]/counter_array[:, 1].max()
+        rates = counter_array[sort_inds, 1] / len(files)
+        noisy_lb_rate = noisy_inds_array[sort_inds, 1]
+    
+        assert np.sum(counter_array[sort_inds, 0] == noisy_inds_array[sort_inds, 0]), "sorted sample indices mismatch"
+    
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel("sample sorted by the correct clf. rate"),
+        ax1.set_ylabel("correct clf. rate (over 100 runs)"),
+        ax1.plot(rates, label="original data set"),
+        ax1.tick_params(axis='y'),
+        ax1.set_ylim([0, 1.0])
+        ax1.legend(loc="upper left")
+    
+        ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+        ax2.set_ylabel('counts'),  # we already handled the x-label with ax1
+        ax2.plot(noisy_lb_rate.cumsum(), "m", label="accum. # of noisy labels"),
+        ax2.plot(np.ones(total_num).cumsum(), "c", label="accum. # of all samples")
+        ax2.set_ylim([0, total_num])
+        ax2.tick_params(axis='y')
+        ax2.legend(loc="upper right")
+        plt.title("distillation effect-{}.png".format(data_source))
+        plt.savefig(
+            data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
+                os.path.basename(files[0]).split("_")[-6], total_num, data_source)),
+        plt.savefig(
+            data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
+                os.path.basename(files[0]).split("_")[-6], total_num, data_source), format="pdf")
+        print("ok")
+        plt.close()
+        
+
+        original_data = pd.read_csv(original, header=None).values
+        ordered_data_w_lbs = original_data[sort_inds]
+        concat_data = np.concatenate((
+                                     np.array(sort_inds).reshape(-1, 1),
+                                     rates.reshape(-1, 1)), axis=1)
+        np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
+            files[0]).split("_")[7], total_num), concat_data, fmt="%.5f", delimiter=",",
+                   header="ori_id,sort_rate")
+        
+        concat_2 = np.concatenate((np.array(sort_inds).reshape(-1, 1),
+                                   ordered_data_w_lbs,
+                                   rates.reshape(-1, 1)), axis=1)
+        np.savetxt(
+            data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(
+                data_source, os.path.basename(
+                    files[0]).split("_")[7], total_num), concat_data, fmt="%.5f",
+            delimiter=",",
+            header="ori_id,sort_rate")
+        
+
+elif plot_name == "100_single_ep_corr_classification_rate_mnist_old":
+    """
+    Get the correct classification rate with 100 runs of single-epoch-training
+    """
+    import ipdb
+    from scipy.stats import spearmanr
+
+    data_dirs = [
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-02-10T13-20-28--MLP-both_meanx0-factor-0-from-mnist-certainFalse-theta-1-s379-100rns-train",
+    ]
+    num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
+                       "data3": 8454, "data4": 8440, "data5": 8231,
+                       "data6": 8371, "data7": 8357, "data8": 8384, "data9": 7701,
+                       "mnist": 60000}
+
+    for data_dir in data_dirs:
+        files = find_files(data_dir, pattern="one*.csv")
+
+        spearmanr_rec = []
+        # get correct count in 100 rauns
+        data_source = os.path.basename(files[0]).split("_")[-4]
+        for ind in tqdm(range(len(files))):
+            values = pd.read_csv(files[ind], header=0).values
+            smp_ids = values[:, 0].astype(np.int)
+            pat_ids = values[:, 1].astype(np.int)
+            lbs = values[:, 2]
+            prob = values[:, 3:]
+            if ind == 0:  # the first file to get the total number (3-class) of samples
+                total_num = num_smp_dataset[data_source]  # 3-class samples id
                 ids_w_count = []
                 noisy_lb_counts = []
                 dict_count = {key: 0 for key in np.arange(total_num)}  # total number 9243
@@ -1647,10 +1771,114 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
                 pre_rank = np.arange(total_num)  #indices
 
             pred_lbs = np.argmax(prob, axis=1)
-            right_inds = np.where(pred_lbs == true_lables)[0]
+            right_inds = np.where(pred_lbs == pat_ids)[0]
             correct = np.unique(smp_ids[right_inds])
             ids_w_count += list(correct)
-            noisy_lb_counts += list(smp_ids[true_lables != noisy_lbs])  # sample ids that with noisy labels
+            # noisy_lb_counts += list(np.unique(smp_ids[pat_ids != lbs]))  #  it should be the same for every file
+            
+
+            if ind % 10 == 0:
+                count_all = Counter(ids_w_count)
+                dict_count.update(count_all)
+                curr_count_array = np.array([[key, val] for (key, val) in dict_count.items()])
+                curr_rank = curr_count_array[np.argsort(curr_count_array[:, 1]),0]
+                # spearmanr_rec.append([ind, np.sum(curr_rank==pre_rank)])
+                spearmanr_rec.append([ind, spearmanr(pre_rank, curr_rank)[0]])
+                pre_rank = curr_rank.copy()
+
+        count_all = Counter(ids_w_count)
+        dict_count.update(count_all)
+        # noisy_lb_rec.update(Counter(noisy_lb_counts))
+        noisy_lb_counts = list(np.unique(
+            smp_ids[pat_ids != lbs]))  # it should be the same for every file
+        noisy_lb_rec.update(Counter(noisy_lb_counts))
+
+        counter_array = np.array([[key, dict_count[key]] for key in np.arange(total_num)])
+        noisy_inds_array = np.array([[key, noisy_lb_rec[key]] for key in np.arange(total_num)])
+        ipdb.set_trace()
+        # noisy_inds_array = np.array([[key, val] for (key, val) in noisy_lb_rec.items()])
+        sort_inds = np.argsort(counter_array[:, 1])
+        sample_ids_key = counter_array[sort_inds][:, 0]
+        # rates = counter_array[sort_inds, 1]/counter_array[:, 1].max()
+        rates = counter_array[sort_inds][:, 1] / len(files)
+        noisy_lb_rate = noisy_inds_array[sort_inds][:, 1]
+
+        assert np.sum(counter_array[sort_inds, 0] == noisy_inds_array[sort_inds, 0]), "sorted sample indices mismatch"
+
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel("sample sorted by the correct clf. rate"),
+        ax1.set_ylabel("correct clf. rate (over 100 runs)"),
+        ax1.plot(rates, label="original data set"),
+        ax1.tick_params(axis='y'),
+        ax1.set_ylim([0, 1.0])
+        ax1.legend(loc="upper left")
+
+        ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+        ax2.set_ylabel('counts'),  # we already handled the x-label with ax1
+        ax2.plot(noisy_lb_rate.cumsum(), "m", label="accum. # of noisy labels"),
+        ax2.plot(np.ones(total_num).cumsum(), "c", label="accum. # of all samples")
+        ax2.set_ylim([0, total_num])
+        ax2.tick_params(axis='y')
+        ax2.legend(loc="upper right")
+        plt.title("distillation effect-{}.png".format(data_source))
+        plt.savefig(
+            data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
+                os.path.basename(files[0]).split("_")[-6], total_num, data_source)),
+        plt.savefig(
+            data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
+                os.path.basename(files[0]).split("_")[-6], total_num, data_source), format="pdf")
+        print("ok")
+        plt.close()
+        
+    ipdb.set_trace()
+    concat_data = np.concatenate((
+                                 np.array(sort_inds).reshape(-1, 1), rates.reshape(-1, 1)), axis=1)
+    np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
+        files[0]).split("_")[7], total_num), concat_data, fmt="%.5f", delimiter=",",
+               header="ori_sort_rate_id,ori_sort_rate,true_lbs,noisy_lbs")
+
+
+elif plot_name == "100_single_ep_corr_classification_rate_mnist_old2":
+    """
+    Get the correct classification rate with 100 runs of single-epoch-training
+    """
+    import ipdb
+    from scipy.stats import spearmanr
+
+    data_dirs = [
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-02-10T13-20-28--MLP-both_meanx0-factor-0-from-mnist-certainFalse-theta-1-s379-100rns-train"
+    ]
+    num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
+                       "data3": 8454, "data4": 8440, "data5": 8231,
+                       "data6": 8371, "data7": 8357, "data8": 8384, "data9": 7701,
+                       "mnist": 60000}
+
+    for data_dir in data_dirs:
+        files = find_files(data_dir, pattern="one*.csv")
+
+        spearmanr_rec = []
+        print("number of files: ", len(files))
+        data_source = os.path.basename(files[0]).split("_")[-4]
+        for ind in tqdm(range(len(files))):
+            fn = find_files(data_dir, pattern="one_{}*.csv".format(ind))
+            values = pd.read_csv(fn[0], header=0).values
+            smp_ids = values[:, 0].astype(np.int)
+            pat_ids = values[:, 1].astype(np.int)
+            lbs = values[:, 2]
+            prob = values[:, 3:]
+            if ind == 0:  # the first file to get the total number (3-class) of samples
+                total_num = num_smp_dataset[data_source]  # 3-class samples id
+                ids_w_count = []
+                noisy_lb_counts = []
+                dict_count = {key: 0 for key in np.arange(total_num)}  # total number 9243
+                noisy_lb_rec = {key: 0 for key in np.arange(total_num)}  # total number 9243
+                pre_rank = np.arange(total_num)  #indices
+
+            pred_lbs = np.argmax(prob, axis=1)
+            right_inds = np.where(pred_lbs == pat_ids)[0]
+            correct = np.unique(smp_ids[right_inds])
+            ids_w_count += list(correct)
+            noisy_lb_counts += list(smp_ids[pat_ids != lbs])  # sample ids that with noisy labels
 
             if ind % 10 == 0:
                 count_all = Counter(ids_w_count)
@@ -1664,63 +1892,49 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
         count_all = Counter(ids_w_count)
         dict_count.update(count_all)
         noisy_lb_rec.update(Counter(noisy_lb_counts))
+
+        counter_array = np.array([[key, val] for (key, val) in dict_count.items()])
+        noisy_inds_array = np.array([[key, val/len(files)] for (key, val) in noisy_lb_rec.items()])
+        sort_inds = np.argsort(counter_array[:, 1])
+        sample_ids_key = counter_array[sort_inds, 0]
+        rates = counter_array[sort_inds, 1] / len(files)
+        noisy_lb_rate = noisy_inds_array[sort_inds, 1]
+
+        ipdb.set_trace()
+        assert np.sum(counter_array[sort_inds, 0] == noisy_inds_array[sort_inds, 0]) == total_num, "sorted sample indices mismatch"
+
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel("sample sorted by the correct clf. rate"),
+        ax1.set_ylabel("correct clf. rate (over 100 runs)"),
+        ax1.plot(rates, label="original data set"),
+        ax1.tick_params(axis='y'),
+        ax1.set_ylim([0, 1.0])
+        ax1.legend(loc="upper left")
+
+        ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+        ax2.set_ylabel('counts'),  # we already handled the x-label with ax1
+        ax2.plot(noisy_lb_rate.cumsum(), "m", label="accum. # of noisy labels"),
+        ax2.plot(np.ones(total_num).cumsum(), "c", label="accum. # of all samples")
+        ax2.set_ylim([0, total_num])
+        ax2.tick_params(axis='y')
+        ax2.legend(loc="upper right")
+        plt.title("distillation effect-{}.png".format(data_source))
+        plt.savefig(
+            data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
+                os.path.basename(files[0]).split("_")[-5], total_num, data_source)),
+        plt.savefig(
+            data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
+                os.path.basename(files[0]).split("_")[-5], total_num, data_source), format="pdf")
+        print("ok")
+        plt.close()
         
-    
-    counter_array = np.array([[key, val] for (key, val) in dict_count.items()])
-    noisy_inds_array = np.array([[key, val/len(files)] for (key, val) in noisy_lb_rec.items()])
-    sort_inds = np.argsort(counter_array[:, 1])
-    sample_ids_key = counter_array[sort_inds, 0]
-    # rates = counter_array[sort_inds, 1]/counter_array[:, 1].max()
-    rates = counter_array[sort_inds, 1] / len(files)
-    noisy_lb_rate = noisy_inds_array[sort_inds, 1]
-
-    assert np.sum(counter_array[sort_inds, 0] == noisy_inds_array[sort_inds, 0]), "sorted sample indices mismatch"
-
-    fig, ax1 = plt.subplots()
-    ax1.set_xlabel("sample sorted by the correct clf. rate"),
-    ax1.set_ylabel("correct clf. rate (over 100 runs)"),
-    ax1.plot(rates, label="original data set"),
-    ax1.tick_params(axis='y'),
-    ax1.set_ylim([0, 1.0])
-    ax1.legend(loc="upper left")
-
-    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-    ax2.set_ylabel('counts'),  # we already handled the x-label with ax1
-    ax2.plot(noisy_lb_rate.cumsum(), "m", label="accum. # of noisy labels"),
-    ax2.plot(np.ones(total_num).cumsum(), "c", label="accum. # of all samples")
-    ax2.set_ylim([0, total_num])
-    ax2.tick_params(axis='y')
-    ax2.legend(loc="upper right")
-    plt.title("distillation effect-{}.png".format(data_source))
-    plt.savefig(
-        single_run + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
-            os.path.basename(files[0]).split("_")[-6], total_num, data_source)),
-    plt.savefig(
-        single_run + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
-            os.path.basename(files[0]).split("_")[-6], total_num, data_source), format="pdf")
-    print("ok")
-    plt.close()
-    
     ipdb.set_trace()
-    original_data = pd.read_csv(original, header=0).values
-    ordered_data_w_lbs = original_data[sort_inds]
     concat_data = np.concatenate((
-                                 np.array(sort_inds).reshape(-1, 1),
-                                 rates.reshape(-1, 1)), axis=1)
-    np.savetxt(single_run + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
-        files[0]).split("_")[7], total_num), concat_data, fmt="%.5f", delimiter=",",
-               header="ori_id,sort_rate")
+                                 np.array(sort_inds).reshape(-1, 1), rates.reshape(-1, 1)), axis=1)
+    np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
+        files[0]).split("_")[-4], total_num), concat_data, fmt="%.5f", delimiter=",",
+               header="ori_sort_rate_id,ori_sort_rate,true_lbs,noisy_lbs")
     
-    concat_2 = np.concatenate((np.array(sort_inds).reshape(-1, 1),
-                               ordered_data_w_lbs,
-                               rates.reshape(-1, 1)), axis=1)
-    np.savetxt(
-        single_run + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(
-            data_source, os.path.basename(
-                files[0]).split("_")[7], total_num), concat_data, fmt="%.5f",
-        delimiter=",",
-        header="ori_id,sort_rate")
-
 
 elif plot_name == "100_single_ep_corr_classification_rate":
     """
@@ -1731,7 +1945,7 @@ elif plot_name == "100_single_ep_corr_classification_rate":
     print("Plot_name: ", plot_name)
     from scipy.stats import spearmanr
 
-    single_runs_dirs = [
+    data_dirs = [
        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2021-01-12T11-47-50--Inception-nonex0-factor-0-from-data9-certainFalse-theta-0-s989-100rns-train",
        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2021-01-12T11-47-51--Inception-nonex0-factor-0-from-data8-certainFalse-theta-0-s989-100rns-train",
        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Inception/2021-01-12T11-47-52--Inception-nonex0-factor-0-from-data7-certainFalse-theta-0-s989-100rns-train",
@@ -1744,9 +1958,9 @@ elif plot_name == "100_single_ep_corr_classification_rate":
                        "data6": 8371, "data7": 8357, "data8": 8384, "data9": 7701,
                        "mnist": 70000}
 
-    for single_run in single_runs_dirs:
-        print(single_run)
-        files = find_files(single_run, pattern="one_ep_data_train*.csv")
+    for data_dir in data_dirs:
+        print(data_dir)
+        files = find_files(data_dir, pattern="one_ep_data_train*.csv")
 
         # get correct count in 100 rauns
         data_source = os.path.basename(files[0]).split("_")[8]
@@ -1758,20 +1972,20 @@ elif plot_name == "100_single_ep_corr_classification_rate":
             prob = values[:, 3:]
             if ind == 0:  # the first file to get the total number (3-class) of samples
                 total_num = num_smp_dataset[data_source]  # 3-class samples id
-                ids_w_count = []
-                dict_count = {key: 0 for key in np.arange(total_num)}  #
+                correct_ids_w_count = []
+                correct_dict_id_w_count = {key: 0 for key in np.arange(total_num)}  #
 
             pred_lbs = np.argmax(prob, axis=1)
             right_inds = np.where(pred_lbs == noisy_lbs)[0]
-            correct = np.unique(smp_ids[right_inds])
-            ids_w_count += list(correct)
+            correct_sample_ids = np.unique(smp_ids[right_inds])
+            correct_ids_w_count += list(correct_sample_ids)
 
-        count_all = Counter(ids_w_count)
-        dict_count.update(count_all)
+        correct_id_count_all = Counter(correct_ids_w_count)
+        correct_dict_id_w_count.update(correct_id_count_all)
 
         # if theta == 0.975:
         #     ipdb.set_trace()
-        counter_array = np.array([[key, val] for (key, val) in dict_count.items()])
+        counter_array = np.array([[key, val] for (key, val) in correct_dict_id_w_count.items()])
         sort_inds = np.argsort(counter_array[:, 1])
         sample_ids_key = counter_array[sort_inds, 0]
         # rates = counter_array[sort_inds, 1]/counter_array[:, 1].max()
@@ -1786,16 +2000,16 @@ elif plot_name == "100_single_ep_corr_classification_rate":
         ax1.legend(loc="upper left")
 
         plt.title("distillation effect {}.png".format(data_source))
-        plt.savefig(single_run + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
+        plt.savefig(data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
                 os.path.basename(files[0]).split("_")[7], total_num, data_source)),
-        plt.savefig(single_run + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
+        plt.savefig(data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
                 os.path.basename(files[0]).split("_")[7], total_num, data_source), format="pdf")
         print("ok")
         plt.close()
 
         concat_data = np.concatenate((
                                      np.array(sort_inds).reshape(-1, 1), rates.reshape(-1, 1)), axis=1)
-        np.savetxt(single_run + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
+        np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
             files[0]).split("_")[7], total_num), concat_data, fmt="%.5f", delimiter=",",
                    header="sort_samp_ids,sort_corr_rate")
 
@@ -1869,13 +2083,13 @@ elif plot_name == "K_NN_stats_test_for_distillation":
 
     print("Plot_name: ", plot_name)
     
-    single_run = "../data/20190325/20190325-3class_lout40_train_test_data5.mat"
+    data_dir = "../data/20190325/20190325-3class_lout40_train_test_data5.mat"
     corr_clf_rate_file = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-37--Res_ECG_CAM-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train/full_summary-data5_100_runs_sort_inds_rate_(6592-8229-8231).csv"
     theta = 0.5
     num_2class = np.int(os.path.basename(corr_clf_rate_file).split("(")[1].split("-")[0])
     num_3class = np.int(os.path.basename(corr_clf_rate_file).split(")")[0].split("-")[-1])
 
-    original_data = loadmat(single_run)["DATA"]
+    original_data = loadmat(data_dir)["DATA"]
     labels = original_data[:, 1]
     whole_set = np.zeros((original_data.shape[0], original_data.shape[1] + 1))
     whole_set[:, 0] = np.arange(original_data.shape[0])  # tag every sample
@@ -2212,7 +2426,7 @@ elif plot_name == "get_d_prime":
     print("Plot_name: ", plot_name)
     
     # get the original labels
-    single_run = "../data/20190325"
+    data_dir = "../data/20190325"
     original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
     ori = scipy.io.loadmat(original)["DATA"]
     true_label = ori[:, 1]
@@ -2236,15 +2450,134 @@ elif plot_name == "delete_folders":
 
     print("Plot_name: ", plot_name)
     target_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/1-on-MNIST-MLP",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randDA-on-MNIST-MLP",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA-on-MNIST-MLP"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-06--Res_ECG_CAM-both_meanx3-factor-0.5-from-data5-certainTrue-theta-0.5-s700-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-07--Res_ECG_CAM-both_meanx3-factor-0.5-from-data3-certainTrue-theta-0.5-s700-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-08--Res_ECG_CAM-both_meanx3-factor-0.5-from-data1-certainTrue-theta-0.5-s700-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-09--Res_ECG_CAM-both_meanx3-factor-0.5-from-data9-certainTrue-theta-0.5-s700-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-10--Res_ECG_CAM-both_meanx3-factor-0.5-from-data7-certainTrue-theta-0.5-s700-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-12--Res_ECG_CAM-both_meanx3-factor-0.5-from-data6-certainTrue-theta-0.5-s700-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-13--Res_ECG_CAM-both_meanx3-factor-0.5-from-data8-certainTrue-theta-0.5-s700-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-14--Res_ECG_CAM-both_meanx3-factor-0.5-from-data2-certainTrue-theta-0.5-s700-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-15--Res_ECG_CAM-both_meanx3-factor-0.5-from-data4-certainTrue-theta-0.5-s700-train",
     ]
     for dd in target_dirs:
         print("Deleting ", dd)
         shutil.rmtree(dd)
         print("Done")
     print("All Done")
+    
+    
+elif plot_name == "patient_wise_performance":
+    data_dir = r"C:\1-study\FIAS\1-My-papers\10-2021.02 ICLR AI for public health workshop\results-MI-SVM\2021-02-13T18-50-57-classifier3-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex1"
+    file_patterns = ["*test.csv", "*-test_doc.csv"]
+    
+    for pattern in file_patterns:
+        files = find_files(data_dir, pattern=pattern)
+        
+        performance = {"ACC": np.empty((0,)), "patient_ACC": np.empty((0,)),
+                       "AUC": np.empty((0,)), "SEN": np.empty((0,)),
+                       "SPE": np.empty((0,)), "F1_score": np.empty((0,)),
+                       "MCC": np.empty((0,))}
+        performance_summary = []
+        if len(files) > 0:
+            for fn in files:
+                data = pd.read_csv(fn, header=None).values
+                sample_ids = data[:, 0]
+                patient_ids = data[:, 1]
+                true_labels = data[:, 2]
+                pred_logits = data[:, 3:]
+
+                # get the prob of one patient, average them, get predicted label, get right or wrong.
+                # get true labels for all unique patients
+                uniq_patients, uniq_patients_ind = np.unique(patient_ids, return_index=True)
+                patient_true_lb = {pat_id: true_labels[index] for pat_id, index in zip(uniq_patients, uniq_patients_ind)}
+                # get the index of each patient bag
+                uniq_patients_inds = {pat_id: [] for pat_id in uniq_patients}
+                uniq_patients_pred_lb = {pat_id: [] for pat_id in uniq_patients}
+                for ind, pat_id in enumerate(patient_ids):
+                    uniq_patients_inds[pat_id].append(ind)
+                # get aggregated prob of each patient
+                aggregated_prob_per_patient = {pat_id: np.mean(pred_logits[uniq_patients_inds[pat_id]], axis=0) for pat_id in uniq_patients}
+                # get predicted label from the aggregated prob
+                aggregated_pred_lb_per_patient = {pat_id: np.argmax(aggregated_prob_per_patient[pat_id], axis=0) for pat_id in aggregated_prob_per_patient.keys()}
+                # Get the patient-wise accuracy
+                patient_acc = np.sum([aggregated_pred_lb_per_patient[pat_id]==patient_true_lb[pat_id] for pat_id in uniq_patients]) / len(uniq_patients) * 1.0
+
+                
+
+                accuracy, sensitivity, specificity, precision, F1_score, auc, fpr, tpr, mcc = get_scalar_performance_matrices_2classes(true_labels, pred_logits[:, 1], if_with_logits=True)
+    
+                performance["ACC"] = np.append(performance["ACC"], accuracy)
+                performance["SEN"] = np.append(performance["SEN"],
+                                               sensitivity)
+                performance["SPE"] = np.append(performance["SPE"],
+                                               specificity)
+                performance["AUC"] = np.append(performance["AUC"], auc)
+                performance["F1_score"] = np.append(performance["F1_score"],
+                                                    F1_score)
+                performance["MCC"] = np.append(performance["MCC"], mcc)
+                performance["patient_ACC"] = np.append(
+                    performance["patient_ACC"],
+                    patient_acc)
+    
+                performance_summary.append(["performance of {}\n".format(os.path.basename(fn)),
+                                            "Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(
+                                                np.mean(performance["SEN"]),
+                                                np.std(performance["SEN"]))
+                                            + "specificity: mean-{:.3f}, std-{:.3f}\n".format(
+                                                np.mean(performance["SPE"]),
+                                                np.std(performance["SPE"]))
+                                            + "AUC: mean-{:.3f}, std-{:.3f}\n".format(
+                                                np.mean(performance["AUC"]),
+                                                np.std(performance["AUC"]))
+                                            + "patient acc: mean-{:.3f}, std-{:.3f}\n".format(
+                                                np.mean(performance[
+                                                            "patient_ACC"]),
+                                                np.std(performance[
+                                                           "patient_ACC"]))
+                                            + "F1-score: mean-{:.3f}, std-{:.3f}\n".format(
+                                                np.mean(
+                                                    performance["F1_score"]),
+                                                np.std(
+                                                    performance["F1_score"]))
+                                            + "MCC: mean-{:.3f}, std-{:.3f}\n".format(
+                                                np.mean(performance["MCC"]),
+                                                np.std(performance["MCC"]))
+                                            + "ACC: mean-{:.3f}, std-{:.3f}\n".format(
+                                                np.mean(performance["ACC"]),
+                                                np.std(performance["ACC"]))
+    
+                                            ])
+        # np.savetxt(os.path.join(data_dir,
+        #                         "AUC-{:.4f}-performance-summarries-of-{}.csv".format(
+        #                             np.mean(performance["AUC"]), os.path.basename(fn))),
+        #            np.array(performance_summary), fmt="%s", delimiter=",")
+
+        print("pattern: {} all average".format(pattern))
+        print("ACC: mean-{:.3f}, std-{:.3f}\n".format(
+            np.mean(performance["ACC"]),
+            np.std(performance["ACC"])))
+        print("AUC: mean-{:.3f}, std-{:.3f}\n".format(
+            np.mean(performance["AUC"]),
+            np.std(performance["AUC"])))
+        print("patient acc: mean-{:.3f}, std-{:.3f}\n".format(
+            np.mean(performance["patient_ACC"]),
+            np.std(performance["patient_ACC"])))
+        print("F1-score: mean-{:.3f}, std-{:.3f}\n".format(
+            np.mean(performance["F1_score"]),
+            np.std(performance["F1_score"])))
+        print("MCC: mean-{:.3f}, std-{:.3f}\n".format(
+            np.mean(performance["MCC"]),
+            np.std(performance["MCC"])))
+        print("Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(
+            np.mean(performance["SEN"]),
+            np.std(performance["SEN"])))
+        print("specificity: mean-{:.3f}, std-{:.3f}\n".format(
+            np.mean(performance["SPE"]),
+            np.std(performance["SPE"])))
+    else:
+        print("No data!")
+        
     
     
 

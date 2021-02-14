@@ -83,8 +83,7 @@ elif args.if_from_certain and args.train_or_test == "train":  # use distillation
                                       pattern="full_summary*.csv")
     assert len(certain_files) == 1, "Something wrong with the certain file"
     if args.data_mode == "metabolites" or args.data_mode == "metabolite":
-        data_tensors, args = dataio.get_data_tensors(args,
-                                                     certain_fns=certain_files[0])
+        data_tensors, args = dataio.get_data_tensors(args, certain_fns=certain_files[0])
     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
         args.num_classes = 10
         data_tensors, args = dataio.get_noisy_mnist_data_tensors(args, certain_fns=certain_files[0])

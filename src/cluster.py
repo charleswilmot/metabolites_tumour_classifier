@@ -95,7 +95,7 @@ if __name__ == "__main__":
 		commands += "\"{}\" ".format(cmds)
 	
 	active_num_job = 10
-	job_submit_mode = "sbatch_array"  # "sbatch_queue" # "srun_jobid" # , , True   #
+	job_submit_mode = "sbatch_queue" # "sbatch_array"  # "srun_jobid" # , , True   #
 	
 	if job_submit_mode == "sbatch_array":
 

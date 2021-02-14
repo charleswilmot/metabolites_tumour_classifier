@@ -131,7 +131,7 @@ data_source_dirs = [
 
 config_dirs = []
 seed = np.random.randint(9999)
-mode = "testing"
+mode = "aug_training"
 
 
 if mode == "single_runs":
@@ -154,7 +154,7 @@ if mode == "single_runs":
 elif mode == "aug_training":
     aug_method = "certain"
     
-    for model_name in ["MLP", "Inception", "RNN", "Res_ECG_CAM"]:#
+    for model_name in ["Res_ECG_CAM", "RNN"]:#"MLP", "Inception",
         args.model_name = model_name
         if aug_method == "random":
             certain_dirs = [None] * len(data_source_dirs)
@@ -263,7 +263,7 @@ elif mode == "testing":
   # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/2-randomDA-MLP/2021-01-08T22-00-29--MLP-same_meanx3-factor-0.35-from-data6-certainFalse-theta-1-s7984-train/network"
   #   ]
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-MLP"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Inception"
         # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-new-MLP",
         # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-new-Res_ECG_CAM",
         # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-new-RNN"
