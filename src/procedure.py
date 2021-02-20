@@ -585,12 +585,27 @@ def single_epo_runs(sess, args, graph):
                                 lr=lr, if_get_wrong=False,
                                 if_get_certain=True, train_or_test="train")
         
-
+        if args.data_source == "mnist" or args.data_source == "MNIST":
+            assert np.sum(ret_train["train_one_ep_ids"] == ret_train["train_one_ep_labels"]) < len(ret_train["train_one_ep_labels"]), "Two labels are the same"
         one_ep_data = np.concatenate((np.array(ret_train["train_one_ep_sample_ids"]).reshape(-1, 1),
                                       np.array(ret_train["train_one_ep_ids"]).reshape(-1, 1),
                                     np.array(ret_train["train_one_ep_labels"]).reshape(-1, 1),
                                     ret_train["train_one_ep_logits"]), axis=1)
-
+        
+        if epoch == 0:
+            np.savetxt(os.path.join(args.output_path, "certains",
+                                    "one_{}_num_{}-{}_{}_theta_{}_s{}_for_checking.csv".format(
+                                        epoch, ret_train[
+                                            "train_one_ep_sample_ids"].size,
+                                        ret_train[
+                                            "train_one_ep_sample_ids"].max(),
+                                        args.data_source,
+                                        args.theta_thr,
+                                        args.rand_seed)),
+                       one_ep_data[25:525],
+                       header="sample_id,pat_id,label" + ",logits" * args.num_classes,
+                       delimiter=",")
+            
         np.savetxt(os.path.join(args.output_path, "certains",
             "one_{}_num_{}-{}_{}_theta_{}_s{}.csv".format(epoch, ret_train[
                 "train_one_ep_sample_ids"].size,

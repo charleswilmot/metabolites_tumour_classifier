@@ -461,9 +461,13 @@ def split_data_for_lout_val(data):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "patient_wise_performance"
+plot_name = "100_single_ep_corr_classification_rate_mnist_old"
 
-
+# filename = r"C:\Users\LDY\Desktop\one_0_num_60000-59999_mnist_theta_1_s3142_for_checking.csv"
+#
+# data = pd.read_csv(filename, header=0).values
+# #
+# print("ok")
 if plot_name == "plot_random_roc":
     print("Plot_name: ", plot_name)
     filename = "C:/Users/LDY/Desktop/1-all-experiment-results/Gk-patient-wise-classification/2021-01-06T22-46-36-classifier4-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex5/classifier4-spec51-CV9--ROC-AUC-[n_cv_folds,n_spec_per_pat].csv"
@@ -1743,7 +1747,7 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist_old":
     from scipy.stats import spearmanr
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-02-10T13-20-28--MLP-both_meanx0-factor-0-from-mnist-certainFalse-theta-1-s379-100rns-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-02-19T17-42-25--MLP-both_meanx0-factor-0-from-mnist-ctFalse-theta-1-s9311-100rns-train-trainOnTrue",
     ]
     num_smp_dataset = {"data0": 8357, "data1": 8326, "data2": 8566,
                        "data3": 8454, "data4": 8440, "data5": 8231,
@@ -1771,7 +1775,8 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist_old":
                 pre_rank = np.arange(total_num)  #indices
 
             pred_lbs = np.argmax(prob, axis=1)
-            right_inds = np.where(pred_lbs == pat_ids)[0]
+            right_inds = np.where(pred_lbs == lbs)[0]
+            # right_inds = np.where(pred_lbs == pat_ids)[0]
             correct = np.unique(smp_ids[right_inds])
             ids_w_count += list(correct)
             # noisy_lb_counts += list(np.unique(smp_ids[pat_ids != lbs]))  #  it should be the same for every file
@@ -1791,6 +1796,7 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist_old":
         # noisy_lb_rec.update(Counter(noisy_lb_counts))
         noisy_lb_counts = list(np.unique(
             smp_ids[pat_ids != lbs]))  # it should be the same for every file
+        
         noisy_lb_rec.update(Counter(noisy_lb_counts))
 
         counter_array = np.array([[key, dict_count[key]] for key in np.arange(total_num)])
@@ -1830,7 +1836,6 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist_old":
         print("ok")
         plt.close()
         
-    ipdb.set_trace()
     concat_data = np.concatenate((
                                  np.array(sort_inds).reshape(-1, 1), rates.reshape(-1, 1)), axis=1)
     np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
@@ -2450,15 +2455,10 @@ elif plot_name == "delete_folders":
 
     print("Plot_name: ", plot_name)
     target_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-06--Res_ECG_CAM-both_meanx3-factor-0.5-from-data5-certainTrue-theta-0.5-s700-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-07--Res_ECG_CAM-both_meanx3-factor-0.5-from-data3-certainTrue-theta-0.5-s700-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-08--Res_ECG_CAM-both_meanx3-factor-0.5-from-data1-certainTrue-theta-0.5-s700-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-09--Res_ECG_CAM-both_meanx3-factor-0.5-from-data9-certainTrue-theta-0.5-s700-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-10--Res_ECG_CAM-both_meanx3-factor-0.5-from-data7-certainTrue-theta-0.5-s700-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-12--Res_ECG_CAM-both_meanx3-factor-0.5-from-data6-certainTrue-theta-0.5-s700-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-13--Res_ECG_CAM-both_meanx3-factor-0.5-from-data8-certainTrue-theta-0.5-s700-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-14--Res_ECG_CAM-both_meanx3-factor-0.5-from-data2-certainTrue-theta-0.5-s700-train",
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM/2021-02-10T18-05-15--Res_ECG_CAM-both_meanx3-factor-0.5-from-data4-certainTrue-theta-0.5-s700-train",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-02-13T07-06-49--MLP-both_meanx3-factor-0.5-from-mnist-ctFalse-theta-1-s3512-100rns-train-trainOnTrue",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-02-13T07-08-29--MLP-both_meanx0-factor-0-from-mnist-ctFalse-theta-1-s8522-100rns-train-trainOnTrue",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-02-19T15-55-16--MLP-both_meanx0-factor-0-from-mnist-ctFalse-theta-1-s4396-100rns-train-trainOnTrue",
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-02-19T16-06-14--MLP-both_meanx0-factor-0-from-mnist-ctFalse-theta-1-s3397-100rns-train-trainOnTrue"
     ]
     for dd in target_dirs:
         print("Deleting ", dd)
@@ -2468,115 +2468,117 @@ elif plot_name == "delete_folders":
     
     
 elif plot_name == "patient_wise_performance":
-    data_dir = r"C:\1-study\FIAS\1-My-papers\10-2021.02 ICLR AI for public health workshop\results-MI-SVM\2021-02-13T18-50-57-classifier3-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex1"
+    data_dirs = [r"C:\1-study\FIAS\1-My-papers\10-2021.02 ICLR AI for public health workshop\results-single\2021-02-14T15-46-27-classifier3-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex1",
+                 r"C:\1-study\FIAS\1-My-papers\10-2021.02 ICLR AI for public health workshop\results-single\2021-02-14T15-48-22-classifier3-1spec-gentest-non-overlap-filter-16-aug-mixup_augx5",
+                 r"C:\1-study\FIAS\1-My-papers\10-2021.02 ICLR AI for public health workshop\results-single\2021-02-14T15-50-14-classifier3-1spec-gentest-non-overlap-filter-16-aug-add_multip_noisex5"]
     file_patterns = ["*test.csv", "*-test_doc.csv"]
+    for data_dir in data_dirs:
+        for pattern in file_patterns:
+            files = find_files(data_dir, pattern=pattern)
+            
+            performance = {"ACC": np.empty((0,)), "patient_ACC": np.empty((0,)),
+                           "AUC": np.empty((0,)), "SEN": np.empty((0,)),
+                           "SPE": np.empty((0,)), "F1_score": np.empty((0,)),
+                           "MCC": np.empty((0,))}
+            performance_summary = []
+            if len(files) > 0:
+                for fn in files:
+                    data = pd.read_csv(fn, header=None).values
+                    sample_ids = data[:, 0]
+                    patient_ids = data[:, 1]
+                    true_labels = data[:, 2]
+                    pred_logits = data[:, 3:]
     
-    for pattern in file_patterns:
-        files = find_files(data_dir, pattern=pattern)
+                    # get the prob of one patient, average them, get predicted label, get right or wrong.
+                    # get true labels for all unique patients
+                    uniq_patients, uniq_patients_ind = np.unique(patient_ids, return_index=True)
+                    patient_true_lb = {pat_id: true_labels[index] for pat_id, index in zip(uniq_patients, uniq_patients_ind)}
+                    # get the index of each patient bag
+                    uniq_patients_inds = {pat_id: [] for pat_id in uniq_patients}
+                    uniq_patients_pred_lb = {pat_id: [] for pat_id in uniq_patients}
+                    for ind, pat_id in enumerate(patient_ids):
+                        uniq_patients_inds[pat_id].append(ind)
+                    # get aggregated prob of each patient
+                    aggregated_prob_per_patient = {pat_id: np.mean(pred_logits[uniq_patients_inds[pat_id]], axis=0) for pat_id in uniq_patients}
+                    # get predicted label from the aggregated prob
+                    aggregated_pred_lb_per_patient = {pat_id: np.argmax(aggregated_prob_per_patient[pat_id], axis=0) for pat_id in aggregated_prob_per_patient.keys()}
+                    # Get the patient-wise accuracy
+                    patient_acc = np.sum([aggregated_pred_lb_per_patient[pat_id]==patient_true_lb[pat_id] for pat_id in uniq_patients]) / len(uniq_patients) * 1.0
+    
+                    
+    
+                    accuracy, sensitivity, specificity, precision, F1_score, auc, fpr, tpr, mcc = get_scalar_performance_matrices_2classes(true_labels, pred_logits[:, 1], if_with_logits=True)
         
-        performance = {"ACC": np.empty((0,)), "patient_ACC": np.empty((0,)),
-                       "AUC": np.empty((0,)), "SEN": np.empty((0,)),
-                       "SPE": np.empty((0,)), "F1_score": np.empty((0,)),
-                       "MCC": np.empty((0,))}
-        performance_summary = []
-        if len(files) > 0:
-            for fn in files:
-                data = pd.read_csv(fn, header=None).values
-                sample_ids = data[:, 0]
-                patient_ids = data[:, 1]
-                true_labels = data[:, 2]
-                pred_logits = data[:, 3:]
-
-                # get the prob of one patient, average them, get predicted label, get right or wrong.
-                # get true labels for all unique patients
-                uniq_patients, uniq_patients_ind = np.unique(patient_ids, return_index=True)
-                patient_true_lb = {pat_id: true_labels[index] for pat_id, index in zip(uniq_patients, uniq_patients_ind)}
-                # get the index of each patient bag
-                uniq_patients_inds = {pat_id: [] for pat_id in uniq_patients}
-                uniq_patients_pred_lb = {pat_id: [] for pat_id in uniq_patients}
-                for ind, pat_id in enumerate(patient_ids):
-                    uniq_patients_inds[pat_id].append(ind)
-                # get aggregated prob of each patient
-                aggregated_prob_per_patient = {pat_id: np.mean(pred_logits[uniq_patients_inds[pat_id]], axis=0) for pat_id in uniq_patients}
-                # get predicted label from the aggregated prob
-                aggregated_pred_lb_per_patient = {pat_id: np.argmax(aggregated_prob_per_patient[pat_id], axis=0) for pat_id in aggregated_prob_per_patient.keys()}
-                # Get the patient-wise accuracy
-                patient_acc = np.sum([aggregated_pred_lb_per_patient[pat_id]==patient_true_lb[pat_id] for pat_id in uniq_patients]) / len(uniq_patients) * 1.0
-
-                
-
-                accuracy, sensitivity, specificity, precision, F1_score, auc, fpr, tpr, mcc = get_scalar_performance_matrices_2classes(true_labels, pred_logits[:, 1], if_with_logits=True)
-    
-                performance["ACC"] = np.append(performance["ACC"], accuracy)
-                performance["SEN"] = np.append(performance["SEN"],
-                                               sensitivity)
-                performance["SPE"] = np.append(performance["SPE"],
-                                               specificity)
-                performance["AUC"] = np.append(performance["AUC"], auc)
-                performance["F1_score"] = np.append(performance["F1_score"],
-                                                    F1_score)
-                performance["MCC"] = np.append(performance["MCC"], mcc)
-                performance["patient_ACC"] = np.append(
-                    performance["patient_ACC"],
-                    patient_acc)
-    
-                performance_summary.append(["performance of {}\n".format(os.path.basename(fn)),
-                                            "Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(
-                                                np.mean(performance["SEN"]),
-                                                np.std(performance["SEN"]))
-                                            + "specificity: mean-{:.3f}, std-{:.3f}\n".format(
-                                                np.mean(performance["SPE"]),
-                                                np.std(performance["SPE"]))
-                                            + "AUC: mean-{:.3f}, std-{:.3f}\n".format(
-                                                np.mean(performance["AUC"]),
-                                                np.std(performance["AUC"]))
-                                            + "patient acc: mean-{:.3f}, std-{:.3f}\n".format(
-                                                np.mean(performance[
-                                                            "patient_ACC"]),
-                                                np.std(performance[
-                                                           "patient_ACC"]))
-                                            + "F1-score: mean-{:.3f}, std-{:.3f}\n".format(
-                                                np.mean(
-                                                    performance["F1_score"]),
-                                                np.std(
-                                                    performance["F1_score"]))
-                                            + "MCC: mean-{:.3f}, std-{:.3f}\n".format(
-                                                np.mean(performance["MCC"]),
-                                                np.std(performance["MCC"]))
-                                            + "ACC: mean-{:.3f}, std-{:.3f}\n".format(
-                                                np.mean(performance["ACC"]),
-                                                np.std(performance["ACC"]))
-    
-                                            ])
-        # np.savetxt(os.path.join(data_dir,
-        #                         "AUC-{:.4f}-performance-summarries-of-{}.csv".format(
-        #                             np.mean(performance["AUC"]), os.path.basename(fn))),
-        #            np.array(performance_summary), fmt="%s", delimiter=",")
-
-        print("pattern: {} all average".format(pattern))
-        print("ACC: mean-{:.3f}, std-{:.3f}\n".format(
-            np.mean(performance["ACC"]),
-            np.std(performance["ACC"])))
-        print("AUC: mean-{:.3f}, std-{:.3f}\n".format(
-            np.mean(performance["AUC"]),
-            np.std(performance["AUC"])))
-        print("patient acc: mean-{:.3f}, std-{:.3f}\n".format(
-            np.mean(performance["patient_ACC"]),
-            np.std(performance["patient_ACC"])))
-        print("F1-score: mean-{:.3f}, std-{:.3f}\n".format(
-            np.mean(performance["F1_score"]),
-            np.std(performance["F1_score"])))
-        print("MCC: mean-{:.3f}, std-{:.3f}\n".format(
-            np.mean(performance["MCC"]),
-            np.std(performance["MCC"])))
-        print("Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(
-            np.mean(performance["SEN"]),
-            np.std(performance["SEN"])))
-        print("specificity: mean-{:.3f}, std-{:.3f}\n".format(
-            np.mean(performance["SPE"]),
-            np.std(performance["SPE"])))
-    else:
-        print("No data!")
+                    performance["ACC"] = np.append(performance["ACC"], accuracy)
+                    performance["SEN"] = np.append(performance["SEN"],
+                                                   sensitivity)
+                    performance["SPE"] = np.append(performance["SPE"],
+                                                   specificity)
+                    performance["AUC"] = np.append(performance["AUC"], auc)
+                    performance["F1_score"] = np.append(performance["F1_score"],
+                                                        F1_score)
+                    performance["MCC"] = np.append(performance["MCC"], mcc)
+                    performance["patient_ACC"] = np.append(
+                        performance["patient_ACC"],
+                        patient_acc)
+        
+                    performance_summary.append(["performance of {}\n".format(os.path.basename(fn)),
+                                                "Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(
+                                                    np.mean(performance["SEN"]),
+                                                    np.std(performance["SEN"]))
+                                                + "specificity: mean-{:.3f}, std-{:.3f}\n".format(
+                                                    np.mean(performance["SPE"]),
+                                                    np.std(performance["SPE"]))
+                                                + "AUC: mean-{:.3f}, std-{:.3f}\n".format(
+                                                    np.mean(performance["AUC"]),
+                                                    np.std(performance["AUC"]))
+                                                + "patient acc: mean-{:.3f}, std-{:.3f}\n".format(
+                                                    np.mean(performance[
+                                                                "patient_ACC"]),
+                                                    np.std(performance[
+                                                               "patient_ACC"]))
+                                                + "F1-score: mean-{:.3f}, std-{:.3f}\n".format(
+                                                    np.mean(
+                                                        performance["F1_score"]),
+                                                    np.std(
+                                                        performance["F1_score"]))
+                                                + "MCC: mean-{:.3f}, std-{:.3f}\n".format(
+                                                    np.mean(performance["MCC"]),
+                                                    np.std(performance["MCC"]))
+                                                + "ACC: mean-{:.3f}, std-{:.3f}\n".format(
+                                                    np.mean(performance["ACC"]),
+                                                    np.std(performance["ACC"]))
+        
+                                                ])
+            np.savetxt(os.path.join(data_dir,
+                                    "AUC-{:.4f}-performance-summarries-of-{}.csv".format(
+                                        np.mean(performance["AUC"]), os.path.basename(data_dir).split("-")[-1])),
+                       np.array(performance_summary), fmt="%s", delimiter=",")
+            print("---------{}-------{}---------------".format(os.path.basename(data_dir).split("-")[-1], pattern))
+            print("ACC: mean-{:.3f}, std-{:.3f}\n".format(
+                np.mean(performance["ACC"]),
+                np.std(performance["ACC"])))
+            print("AUC: mean-{:.3f}, std-{:.3f}\n".format(
+                np.mean(performance["AUC"]),
+                np.std(performance["AUC"])))
+            print("patient acc: mean-{:.3f}, std-{:.3f}\n".format(
+                np.mean(performance["patient_ACC"]),
+                np.std(performance["patient_ACC"])))
+            print("F1-score: mean-{:.3f}, std-{:.3f}\n".format(
+                np.mean(performance["F1_score"]),
+                np.std(performance["F1_score"])))
+            print("MCC: mean-{:.3f}, std-{:.3f}\n".format(
+                np.mean(performance["MCC"]),
+                np.std(performance["MCC"])))
+            print("Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(
+                np.mean(performance["SEN"]),
+                np.std(performance["SEN"])))
+            print("specificity: mean-{:.3f}, std-{:.3f}\n".format(
+                np.mean(performance["SPE"]),
+                np.std(performance["SPE"])))
+            print("--------------END-----------------")
+        else:
+            print("No data!")
         
     
     
