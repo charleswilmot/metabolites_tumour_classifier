@@ -9,7 +9,7 @@
 srun -p sleuths -w jetski --mem=15000 --reservation triesch-shared --gres gpu:rtx2080ti:1  python3 Hpopt.py
 
 srun -p sleuths -w speedboat --mem=6000 --reservation triesch-shared --gres gpu:rtx2070super:1 python3 harrisonNN.py
-srun -p sleuths -w jetski --mem=8000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py test --restore_from=/home/epilepsy-data/data/metabolites/results/2020-04-23-17-48-34_noisex5_factor_0.02_from-epoch_99_from-lout40_data5_train/network
+srun -p sleuths -w jetski --mem=8000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 classifier.py test --restore_from=/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-02-24T07-09-21--MLP-both_meanx0-factor-0-from-mnist-ctTrue-theta-0.8-s3699-train-trainOnTrue/network
 
 srun -p sleuths -w jetski --mem=20000 --reservation triesch-shared --gres gpu:rtx2080ti:1 python3 train_aae.py
 srun --jobid={} --ntasks=1 --job-name={} --error {}/{}.log python3 classifier.py {} > {}/{}.log

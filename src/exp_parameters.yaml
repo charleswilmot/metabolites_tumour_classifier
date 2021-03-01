@@ -4,21 +4,22 @@
 "aug_folds": 0    #TODO control whether augment
 "data_source": null
 "data_mode":  "mnist"   #"metabolite"   #
+"lb_ind": 1
 "noise_ratio": 0.2
 "data_dim": "1d"
 "data_len": 288
 "distill_old": false
 "platform": "FIAS"      # TODO Change platform
 
-"input_data": "0.2_noisy_train_val_mnist_[samp_id,true,noise,feature]-s5058.csv"     #"20190325-3class_lout40_train_test_data5.mat"
-"certain_dir": null #"/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-01-28T09-30-37--MLP-both_meanx0-factor-0-from-mnist-certainFalse-theta-1-s8327-0.2-noise-100rns-train-with"   #"C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier/results/100-single-epoch-runs-MLP/2020-11-18T19-07-11--MLP-nonex0-factor-0-from-data5-certainFalse-theta-0-s789-100rns-train"  # TODO: this is full path
+"input_data": "0.2_noise_noisy_mnist_[smpID,noisy,true,features]_2021-02-24T06-21-49-.csv"     #"20190325-3class_lout40_train_test_data5.mat"
+"certain_dir": "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-mnist-single-ep-training-MLP/2021-02-24T06-21-49--MLP-same-meanx0-factor-0-from-mnist-certainFalse-theta-0.9-s988-100rns-train"   # null ##"C:/Users/LDY/Desktop/metabolites-0301/metabolites_tumour_classifier/results/100-single-epoch-runs-MLP/2020-11-18T19-07-11--MLP-nonex0-factor-0-from-data5-certainFalse-theta-0-s789-100rns-train"  # TODO: this is full path
 "output_root": null   # assign later in classifier.py
 "theta_thr": 1
 "if_from_certain": false                # TODO Change
 
 ################## training related ###################
 "train_or_test": "train"
-"if_single_runs": true               # TODO Change
+"if_single_runs": false               # TODO Change
 "if_save_certain": false
 "from_clusterpy": false
 "exp_config": "./exp_parameters.yaml"
@@ -29,7 +30,7 @@
 
 ################## model related ###################
 "model_name": "MLP"                  # TODO Change
-"new_folder": "9-train-with-MNIST"           # 3-certian-DA-on-distillTODO subfolder name
+"new_folder": "old-mnist-single-ep-training"           # 3-certian-DA-on-distillTODO subfolder name
 "restore_from": null
 "output_path": null
 "resume_training": false

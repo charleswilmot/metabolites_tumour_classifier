@@ -139,7 +139,8 @@ def load_all_params_yaml(exp_param_dir, model_param_dir):
         if args.data_mode == "metabolite" or args.data_mode == "metabolites":
             args.data_root = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data"
         elif args.data_mode == "mnist" or args.data_mode == "MNIST":
-            args.data_root = "/home/epilepsy-data/data/metabolites/noisy-MNIST"
+            # args.data_root = "/home/epilepsy-data/data/metabolites/noisy-MNIST"
+            args.data_root = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/old-mnist-single-ep-training-MLP"
         args.input_data = os.path.join(args.data_root, args.input_data)
         args.output_root = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review"
 
@@ -196,11 +197,11 @@ def generate_output_path(args):
         time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
         args.postfix = "100rns-" + args.train_or_test if args.if_single_runs else args.train_or_test
         args.output_path = os.path.join(args.output_path,
-                                        "{}-{}-{}x{}-factor-{}-from-{}-ct{}-theta-{}-s{}-{}-trainOnTrue".format(
+                                        "{}-{}-{}x{}-factor-{}-from-{}-ct{}-theta-{}-s{}-{}-lbInd-{}".format(
                                             time_str, args.model_name, args.aug_method, args.aug_folds,
                                             args.aug_scale, args.data_source,
                                             args.if_from_certain, args.theta_thr,
-                                            args.rand_seed, args.postfix))
+                                            args.rand_seed, args.postfix, args.lb_ind))
     elif args.restore_from is not None and args.resume_training:  # restore a model
         args.train_or_test = "train"
         args.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(args.data_source, "resume_train")

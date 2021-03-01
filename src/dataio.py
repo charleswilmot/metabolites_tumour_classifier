@@ -579,14 +579,14 @@ def get_single_ep_data(args):
         if args.train_or_test == 'train':
             train_data = put_values_in_train_data_dict(X_train, Y_train, train_data, args, lb_ind=1)
     elif args.data_mode == "mnist" or args.data_mode == "MNIST":
-        lb_ind = 1 # sample_id, true, noisy, features
-        X_test, X_train, Y_test, Y_train = load_one_ep_noisy_mnist_data(args, lb_ind=lb_ind)
+        # lb_ind = 1 # sample_id, true, noisy, features
+        X_test, X_train, Y_test, Y_train = load_one_ep_noisy_mnist_data(args, lb_ind=args.lb_ind)
         # put in test_data dict
         test_data["spectra"] = zscore(X_test[:, 3:], axis=1).astype(np.float32)
         test_data["labels"] = Y_test.astype(np.int32)
-        assert np.sum(Y_test.astype(np.int32) == X_test[:, lb_ind].astype(np.int32)) == len(
+        assert np.sum(Y_test.astype(np.int32) == X_test[:, args.lb_ind].astype(np.int32)) == len(
             X_test), "train_test_split messed up the data!"
-        test_data["ids"] = X_test[:, 3 - lb_ind].astype(np.int32)
+        test_data["ids"] = X_test[:, 3 - args.lb_ind].astype(np.int32)
         test_data["sample_ids"] = X_test[:, 0].astype(np.int32)
         test_data["num_samples"] = len(test_data["labels"])
         print("Test num of class 0: ", len(np.where(test_data["labels"] == 0)[0]),
@@ -734,14 +734,15 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
             #     whole_noisy_set, whole_noisy_set[:, 2], test_size=args.test_ratio)
             X_train, X_val, Y_train, Y_val = train_test_split(
                 certain_mat, certain_mat[:, 2], test_size=args.test_ratio)
-
-    test_data = put_values_in_test_data_dict(X_val, Y_val, test_data, args)
+    # lb_ind = 1
+    # old save function, [sample_id, noisy_lb, true_lb, features]
+    test_data = put_values_in_test_data_dict(X_val, Y_val, test_data, args, lb_ind=args.lb_ind)
 
     print("Val correct labels {}/{}: ".format(np.sum(X_val[:, 1] == Y_val), len(Y_val)))
 
     if args.train_or_test == 'train':
         # train_data = put_values_in_train_data_dict(X_train, Y_train, train_data, args, aug_data=certain_mat, aug_data_name="certain_mat")
-        train_data = put_values_in_train_data_dict(X_train, Y_train, train_data, args, aug_data=X_train, aug_data_name="certain_mat")
+        train_data = put_values_in_train_data_dict(X_train, Y_train, train_data, args, aug_data=X_train, aug_data_name="certain_mat", lb_ind=args.lb_ind)
         print(
             "Train correct labels {}/{}: ".format(np.sum(X_train[:, 1] == Y_train),
             len(Y_train)))

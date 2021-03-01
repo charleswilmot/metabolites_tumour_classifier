@@ -461,7 +461,7 @@ def split_data_for_lout_val(data):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "100_single_ep_corr_classification_rate_mnist_old"
+plot_name = "certain_tsne_distillation"
 
 # filename = r"C:\Users\LDY\Desktop\one_0_num_60000-59999_mnist_theta_1_s3142_for_checking.csv"
 #
@@ -1236,25 +1236,24 @@ elif plot_name == "certain_tsne_distillation":
     data_dir = "C:\\Users\\LDY\\Desktop\\metabolites-0301\\metabolites_tumour_classifier\\data"
     # data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/100-single-epoch-runs-Res_ECG_CAM/2020-10-14T22-07-37--Res_ECG_CAM-nonex0-factor-0-from-data5-certainFalse-theta-0-s989-100rns-train"
     # ori_data_dir = "/home/elu/LU/2_Neural_Network/2_NN_projects_codes/Epilepsy/metabolites_tumour_classifier/data/DATA.mat"
-    ori_data_dir = "C:\\Users\\LDY\\Desktop\\metabolites-0301\\metabolites_tumour_classifier\\data\\20190325\\20190325-3class_lout40_train_test_data5.mat"
-
-    # certain_fns = find_files(data_dir, pattern=pattern)
-    # whole_data, distill_data = get_data_from_certain_ids(certain_fns[0], mat_file=ori_data_dir)
-    whole_data = get_data_from_mat(ori_data_dir)
-    data_source = "lout5"
+    ori_data_dir = "C:\\Users\\LDY\\Desktop\\metabolites-0301\\metabolites_tumour_classifier\\data\\2019.03.25-DATA.mat"
+    whole_data = get_data_from_mat(ori_data_dir)   # sample_id, pat_id, lb, features
+    feature_start_id = 3
+    data_source = "whole"
     # data_source = data_dir.split("-")[-7]
-    reduction_method = "tsne"
-    if_save_data = False
+    reduction_method = "PCA"
+    if_save_data = True
     # data_dir = os.path.dirname(ori_data_dir)
+    if_get_distilldata = False
     ## get the whole tsne projection
     if reduction_method == "tsne":
         if if_save_data:
             from bhtsne import tsne as TSNE
-            reduced_proj_whole = TSNE(whole_data[:, 3:], dimensions=2)
-            reduced_proj_distill= TSNE(distill_data[:, 3:], dimensions=2)
-            # np.savetxt(os.path.join(os.path.dirname(ori_data_dir), "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
+            reduced_proj_whole = TSNE(whole_data[:, feature_start_id:], dimensions=2)
             np.savetxt(os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
-            np.savetxt(os.path.join(data_dir, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
+            if if_get_distilldata:
+                reduced_proj_distill= TSNE(distill_data[:, feature_start_id:], dimensions=2)
+                np.savetxt(os.path.join(data_dir, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
         else:
             filename_whole = os.path.join(data_dir, "{}-whole_data-lout5-2d.csv".format(reduction_method))
             reduced_proj_whole = pd.read_csv(filename_whole, header=None).values
@@ -1263,10 +1262,11 @@ elif plot_name == "certain_tsne_distillation":
     elif reduction_method == "UMAP":
         if if_save_data:
             import umap.umap_ as umap
-            reduced_proj_whole = umap.UMAP(random_state=42).fit_transform(whole_data[:, 3:])
-            reduced_proj_distill = umap.UMAP(random_state=42).fit_transform(distill_data[:, 3:])
+            reduced_proj_whole = umap.UMAP(random_state=42).fit_transform(whole_data[:, feature_start_id:])
             np.savetxt(os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
-            np.savetxt(os.path.join(data_dir, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
+            if if_get_distilldata:
+                reduced_proj_distill = umap.UMAP(random_state=42).fit_transform(distill_data[:, feature_start_id:])
+                np.savetxt(os.path.join(data_dir, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
         else:
             filename_whole = os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method))
             reduced_proj_whole = pd.read_csv(filename_whole, header=None).values
@@ -1277,15 +1277,21 @@ elif plot_name == "certain_tsne_distillation":
             from sklearn.manifold import MDS
             MDS_whole = MDS(n_components=2, random_state=199)
             MDS_distill = MDS(n_components=2, random_state=199)
-            reduced_proj_whole = MDS_whole.fit_transform(whole_data[:, 3:])
-            reduced_proj_distill = MDS_distill.fit_transform(distill_data[:, 3:])
+            reduced_proj_whole = MDS_whole.fit_transform(whole_data[:, feature_start_id:])
+            if if_get_distilldata:
+                reduced_proj_distill = MDS_distill.fit_transform(distill_data[:, feature_start_id:])
+                np.savetxt(os.path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
             np.savetxt(os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
-            np.savetxt(os.path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
         else:
             filename_whole = os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method))
             filename_distill = os.path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method))
             reduced_proj_whole = pd.read_csv(filename_whole, header=None).values
             reduced_proj_distill = pd.read_csv(filename_distill, header=None).values
+    elif reduction_method == "PCA":
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=2)
+        reduced_proj_whole = pca.fit_transform(whole_data[:, feature_start_id:].astype('float64'))
+        
 
     # ori_colors = ["c", "violet"]
     ori_colors = ["c", "m"]
@@ -1302,10 +1308,13 @@ elif plot_name == "certain_tsne_distillation":
     inds1 = np.where(whole_data[:, 2] == 1)[0]
     _, p_x_whole = ks_2samp(reduced_proj_whole[inds0, 0], reduced_proj_whole[inds1, 0])
     _, p_y_whole = ks_2samp(reduced_proj_whole[inds0, 1], reduced_proj_whole[inds1, 1])
-    plt.legend(scatterpoints=4, loc=3)
-    plt.title("{} of both classes (whole)".format(reduction_method))
-    plt.xlabel("dimension #1 (p={:.2E})".format(p_x_whole)),
-    plt.ylabel("dimension #2 (p={:.2E})".format(p_y_whole))
+    plt.legend(scatterpoints=4)
+    # plt.title("{} of original data ()".format(reduction_method))
+    # plt.xlabel("dimension #1 (p={:.2E})".format(p_x_whole)),
+    # plt.ylabel("dimension #2 (p={:.2E})".format(p_y_whole))
+    plt.xlabel("dimension #1")
+    plt.ylabel("dimension #2")
+    plt.tight_layout()
     plt.savefig(os.path.join(data_dir, "{}-whole-{}.png".format(reduction_method, data_source))),
     plt.savefig(os.path.join(data_dir, "{}-whole-{}.pdf".format(reduction_method, data_source)), format="pdf")
     plt.close()
@@ -1404,6 +1413,7 @@ elif plot_name == "plot_metabolites_statistics":
     
     original_data = get_data_from_mat(mat_file)
     
+    ####################################
     # get num of spectra distribution among patients
     stat_num_per_pat = Counter(original_data[:, 1])
     stat_num_per_pat.items()
@@ -1418,7 +1428,8 @@ elif plot_name == "plot_metabolites_statistics":
     plt.savefig(os.path.join(os.path.dirname(mat_file), "Distribution-of-number-of-spectra-in-patients-whole2.png")),
     plt.savefig(os.path.join(os.path.dirname(mat_file), "Distribution-of-number-of-spectra-in-patients-whole2.pdf"))
     plt.close()
-    
+
+    ###################################################################
     # plot the spectra of all patients. One plot one patient
     # for pat_id, num in stat_num_per_pat.items():
     #     plt.figure()
@@ -1458,7 +1469,14 @@ elif plot_name == "plot_metabolites_statistics":
 
     class_names = ["healthy", "tumor"]
     class_colors = ["lightblue", "violet"]
-    class_dark = ["darkblue", "crimson"]
+    # class_dark = ["darkblue", "crimson"]
+    class_dark = ["c", "m"]
+    
+    ###################################################################
+    # plot PCA of original data
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=2)
+    pca_emb = pca.fit(original_data[:, 2:].astype('float64'))
 
     files = find_files(data_dir, pattern=file_patterns)
     # certain_mat = np.empty((0, new_mat.shape[1]))
@@ -1470,8 +1488,10 @@ elif plot_name == "plot_metabolites_statistics":
         print(os.path.basename(fn), len(certain_inds), "samples\n")
 
     uniq_inds = np.unique(certain_inds_tot).astype(np.int)
-    certain_mat = new_mat[uniq_inds]
+    certain_mat = original_data[uniq_inds]
 
+    ###################################################################
+    # plot the certain samples' PCA
     # np.savetxt(os.path.join(data_dir, "certain_samples_lout40_fold5[smp_id,pat_id,label,meta]_class(0-1)=({}-{}).csv".format(len(np.where(certain_mat[:,2]==0)[0]), len(np.where(certain_mat[:,2]==1)[0]))), certain_mat, delimiter=",", fmt="%.5f")
     #
     # for c in range(2):
@@ -2292,7 +2312,7 @@ elif plot_name == "re_split_data_0_9_except_5":
                              np.sum(train_coll["DATA"][:, 1] == 2), num_pat, jj)), train_coll)
 
 
-elif plot_name == "re_split_data_0_9_except_5_patient_wise":
+elif plot_name == "re_split_data_0_9_except_5_patient_wise_get_data_statistics":
     print("Plot_name: ", plot_name)
     src_data = ["data{}".format(jj) for jj in [0,1,2,3,4,6,7,8,9]]
     data_dir_root = "../data/20190325"
@@ -2466,11 +2486,9 @@ elif plot_name == "delete_folders":
         print("Done")
     print("All Done")
     
-    
-elif plot_name == "patient_wise_performance":
-    data_dirs = [r"C:\1-study\FIAS\1-My-papers\10-2021.02 ICLR AI for public health workshop\results-single\2021-02-14T15-46-27-classifier3-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex1",
-                 r"C:\1-study\FIAS\1-My-papers\10-2021.02 ICLR AI for public health workshop\results-single\2021-02-14T15-48-22-classifier3-1spec-gentest-non-overlap-filter-16-aug-mixup_augx5",
-                 r"C:\1-study\FIAS\1-My-papers\10-2021.02 ICLR AI for public health workshop\results-single\2021-02-14T15-50-14-classifier3-1spec-gentest-non-overlap-filter-16-aug-add_multip_noisex5"]
+elif plot_name == "patient_wise_performance_ICLR":
+    # data_dirs
+    data_dirs = [r"C:\1-study\FIAS\1-My-papers\10-2021.02 ICLR AI for public health workshop\results always test mode\2021-02-22T20-00-10-classifier3-20spec-gentest-non-overlap-filter-16-aug-nonex0"]
     file_patterns = ["*test.csv", "*-test_doc.csv"]
     for data_dir in data_dirs:
         for pattern in file_patterns:
