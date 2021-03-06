@@ -32,7 +32,7 @@ import matplotlib.pylab as pylab
 base = 20
 args = {
     # 'legend.fontsize': base - 4,
-          'figure.figsize': (6, 4.8),
+          'figure.figsize': (8, 6),
           # 'axes.labelsize': base-4,
           # 'axes.titlesize': base,
           # 'xtick.labelsize': base-10,
@@ -461,13 +461,29 @@ def split_data_for_lout_val(data):
 
 original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
 
-plot_name = "certain_tsne_distillation"
+plot_name = "100_single_ep_corr_classification_rate_mnist"
 
-# filename = r"C:\Users\LDY\Desktop\one_0_num_60000-59999_mnist_theta_1_s3142_for_checking.csv"
-#
-# data = pd.read_csv(filename, header=0).values
+filename = r"C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\results\old-mnist-single-ep-training-MLP\2021-03-04T23-34-33--MLP-20210305T002816-test-lbInd1-acc0.3515\Datamnist_class10_modelMLP_test_return_data_acc_0.352.txt"
+ff = open(filename, 'rb')
+data_dict = pickle.load(ff)
+for c in range(10):
+    print("class {} - {}".format(c, np.sum(data_dict["output_data"]["test_labels"][:, c] == 1)))
+f = plt.figure()
+plt.imshow(data_dict["output_data"]["test_confusion"], interpolation=None, aspect='auto')
+tick_marks = np.arange(10)
+plt.xticks(tick_marks)
+plt.yticks(tick_marks)
+plt.colorbar()
+plt.ylabel('True label')
+plt.xlabel('Predicted label')
+f.savefig(os.path.dirname(filename) + '/confusion_matrix.png')
+plt.close()
+
+plt.close()
+data = pd.read_csv(filename, header=None).values
 # #
-# print("ok")
+print("ok")
+
 if plot_name == "plot_random_roc":
     print("Plot_name: ", plot_name)
     filename = "C:/Users/LDY/Desktop/1-all-experiment-results/Gk-patient-wise-classification/2021-01-06T22-46-36-classifier4-20spec-gentest-non-overlap-filter-16-aug-add_additive_noisex5/classifier4-spec51-CV9--ROC-AUC-[n_cv_folds,n_spec_per_pat].csv"
@@ -1647,10 +1663,10 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
     
     print("Plot_name: ", plot_name)
     original_data_dirs = [
-        "/home/epilepsy-data/data/metabolites/noisy-MNIST/0.2_noisy_train_val_mnist_[samp_id,true,noise]-s5058.csv"
+        r"C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\data\noisy_mnist\0.2_noisy_train_val_mnist_[samp_id,true,noise]-s5058.csv"
     ]
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-02-13T07-08-29--MLP-both_meanx0-factor-0-from-mnist-ctFalse-theta-1-s8522-100rns-train-trainOnTrue"
+        r"C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\results\old-mnist-single-ep-training-MLP\2021-03-02T21-17-27--MLP-from-mnist-ctFalse-theta-1-s3174-100rns-train-lbInd-2"
         # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/9-train-with-MNIST-MLP/2021-01-27T13-14-34--MLP-both_meanx3-factor-0.5-from-mnist-certainFalse-theta-1-s5506-0.5-noise-100rns-train-with"
         # r"C:\Users\LDY\Desktop\EPG\PPS-EEG-anomaly"
     ]
@@ -1665,6 +1681,7 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
         spearmanr_rec = []
         # get correct count in 100 rauns
         data_source = os.path.basename(files[0]).split("_")[-4]
+        compare2_lb_ind = 2
         for ind in tqdm(range(len(files))):
             # fn = find_files(data_dir, pattern="one_ep_data_train_epoch_{}*.csv".format(ind))
             values = pd.read_csv(files[ind], header=0).values
@@ -1681,7 +1698,7 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
                 pre_rank = np.arange(total_num)  #indices
 
             pred_lbs = np.argmax(prob, axis=1)
-            right_inds = np.where(pred_lbs == true_lables)[0]
+            right_inds = np.where(pred_lbs == values[:, compare2_lb_ind])[0]
             correct_sample_ids = np.unique(smp_ids[right_inds])
             correct_ids_w_count += list(correct_sample_ids)
 
@@ -1723,18 +1740,22 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
     
         ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
         ax2.set_ylabel('counts'),  # we already handled the x-label with ax1
-        ax2.plot(noisy_lb_rate.cumsum(), "m", label="accum. # of noisy labels"),
-        ax2.plot(np.ones(total_num).cumsum(), "c", label="accum. # of all samples")
+        ax2.plot(noisy_lb_rate.cumsum(), "m", label="cum. # of noisy labels"),
+        ax2.plot(np.ones(total_num).cumsum(), "c", label="cum. # of all samples")
         ax2.set_ylim([0, total_num])
         ax2.tick_params(axis='y')
         ax2.legend(loc="upper right")
         plt.title("distillation effect-{}.png".format(data_source))
+        plt.tight_layout()
+        # plt.savefig(
+        #     data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
+        #         os.path.basename(files[0]).split("_")[-6], total_num, data_source)),
         plt.savefig(
-            data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
-                os.path.basename(files[0]).split("_")[-6], total_num, data_source)),
-        plt.savefig(
-            data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
-                os.path.basename(files[0]).split("_")[-6], total_num, data_source), format="pdf")
+            data_dir + "/CCR_in-100-runs-({})-{}-pred-vs-{}.png".format(
+                os.path.basename(files[0]).split("_")[-5], data_source, compare2_lb_ind)),
+        # plt.savefig(
+        #     data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
+        #         os.path.basename(files[0]).split("_")[-6], total_num, data_source), format="pdf")
         print("ok")
         plt.close()
         
@@ -1744,19 +1765,9 @@ elif plot_name == "100_single_ep_corr_classification_rate_mnist":
         concat_data = np.concatenate((
                                      np.array(sort_inds).reshape(-1, 1),
                                      rates.reshape(-1, 1)), axis=1)
-        np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
+        np.savetxt(data_dir + "/full_summary-{}_sort_CCR_({}-{}).csv".format(data_source, os.path.basename(
             files[0]).split("_")[7], total_num), concat_data, fmt="%.5f", delimiter=",",
                    header="ori_id,sort_rate")
-        
-        concat_2 = np.concatenate((np.array(sort_inds).reshape(-1, 1),
-                                   ordered_data_w_lbs,
-                                   rates.reshape(-1, 1)), axis=1)
-        np.savetxt(
-            data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(
-                data_source, os.path.basename(
-                    files[0]).split("_")[7], total_num), concat_data, fmt="%.5f",
-            delimiter=",",
-            header="ori_id,sort_rate")
         
 
 elif plot_name == "100_single_ep_corr_classification_rate_mnist_old":

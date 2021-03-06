@@ -10,6 +10,7 @@ import plot as plot
 import pickle
 import dataio
 from sklearn import metrics
+import plot as Plot
 
 logger = log.getLogger("classifier")
 # initializer = tf.glorot_uniform_initializer()
@@ -56,7 +57,7 @@ def sum_confusion(ret):
 #     return ret, tape_end
 
 
-def compute(sess, fetches, compute_batches=100, lr=0.0005,
+def compute(sess, fetches, args, compute_batches=100, lr=0.0005,
             if_get_wrong=False, if_get_certain=False, theta=0.90,
             one_epoch_learning=False):
     """
@@ -92,15 +93,21 @@ def compute(sess, fetches, compute_batches=100, lr=0.0005,
     if one_epoch_learning:
         exp_keys += ["one_ep_labels", "one_ep_sample_ids", "one_ep_ids", "one_ep_features"]
 
-
     for key in exp_keys:
         results[key] = []
-
+        
+    rand_bt = np.random.randint(0, compute_batches)
     for i in tqdm(range(compute_batches)):
         if "train_op" in fetches.keys():  # if training
             run_all = sess.run(fetches, feed_dict={fetches["learning_rate_op"]: lr})
         else:  # when testing/validating
             run_all = sess.run(fetches)
+            
+        # if "features" in fetches.keys():
+        #     if i  == rand_bt:
+        #         Plot.plot_train_samples(run_all["features"],
+        #                                 np.argmax(run_all["labels"], axis=1), args,
+        #                                 postfix="bt-{}-samples".format(i), data_dim=args.data_dim)
 
         for _, key in enumerate(run_all.keys()):
             # Sum over all the sumable variables
@@ -108,7 +115,6 @@ def compute(sess, fetches, compute_batches=100, lr=0.0005,
                 results[key] = results[key] + run_all[key]
             elif key in exp_keys:
                 results[key] = run_all[key]  # if np.isnan(run_all[key]).any()
-
         if if_get_wrong:
             results = get_wrong_examples(results)
         if if_get_certain:
@@ -118,7 +124,7 @@ def compute(sess, fetches, compute_batches=100, lr=0.0005,
     return results
 
 
-def compute_test_only(sess, fetches, compute_batches=100,
+def compute_test_only(sess, fetches, args, compute_batches=100,
                       if_get_wrong=False, if_get_certain=False,
                       if_check_cam=False):
     """
@@ -169,6 +175,15 @@ def compute_test_only(sess, fetches, compute_batches=100,
                     else False
             else:
                 collections = get_wrong_examples(collections)
+
+        if "features" in fetches.keys():
+            if i % (compute_batches // 2) == 0 and i > 0:
+                Plot.plot_train_samples(ret["features"],
+                                        np.argmax(ret["labels"], axis=1),
+                                        args,
+                                        postfix="bt-{}-samples".format(i),
+                                        data_dim=args.data_dim)
+        # Plot.plot_confusion_matrix(args, ret)
         if if_get_certain:
             if init_certrin:
                 for key in ret.keys():
@@ -470,7 +485,7 @@ def training(sess, args, graph, saver):
 
         ## test phase
         if_check_cam = True if "CAM" in args.model_name else False
-        ret_test = validation_phase(sess, graph,
+        ret_test = validation_phase(sess, graph, args,
                                     if_check_cam=if_check_cam,
                                     compute_batches=graph["test_num_batches"],
                                     train_or_test="test")
@@ -661,7 +676,7 @@ def train_phase(sess, graph, args, lr=0.001,
              'learning_rate_op', "sample_ids", "ids"]
     fetches = get_fetches(graph, names, train_or_test=train_or_test)
 
-    ret = compute(sess, fetches, compute_batches=args.test_every, lr=lr,
+    ret = compute(sess, fetches, args, compute_batches=args.test_every, lr=lr,
                   if_get_wrong=if_get_wrong, if_get_certain=if_get_certain,
                   one_epoch_learning=args.if_single_runs, theta=args.theta_thr)
     
@@ -676,7 +691,7 @@ def train_phase(sess, graph, args, lr=0.001,
     return get_returns(ret, return_names, train_or_test=train_or_test)
 
 
-def validation_phase(sess, graph, compute_batches=100,
+def validation_phase(sess, graph, args, compute_batches=100,
                      if_check_cam=False, train_or_test='test'):
     """
     Testing phase
@@ -695,7 +710,7 @@ def validation_phase(sess, graph, compute_batches=100,
                  'logits', 'features', 'conv', 'gap_w']
         fetches = get_fetches(graph, names, train_or_test=train_or_test)
 
-        results = compute(sess, fetches,
+        results = compute(sess, fetches, args,
                           compute_batches=compute_batches,
                           if_get_wrong=True,
                           if_get_certain=True)
@@ -711,7 +726,7 @@ def validation_phase(sess, graph, compute_batches=100,
                  'batch_size', 'labels', 'ids',
                  'logits', 'features', "sample_ids"]
         fetches = get_fetches(graph, names, train_or_test=train_or_test)
-        results = compute(sess, fetches,
+        results = compute(sess, fetches, args,
                           compute_batches=compute_batches,
                           if_get_wrong=True,
                           if_get_certain=True)
@@ -725,7 +740,7 @@ def validation_phase(sess, graph, compute_batches=100,
     return ret
 
 
-def test_phase(sess, graph, compute_batches=100,
+def test_phase(sess, graph, args, compute_batches=100,
                if_check_cam=False, train_or_test='test'):
     """
     Testing phase
@@ -744,7 +759,7 @@ def test_phase(sess, graph, compute_batches=100,
                  'logits', 'features', 'conv', 'gap_w']
         fetches = get_fetches(graph, names, train_or_test=train_or_test)
 
-        results, collections = compute_test_only(sess, fetches,
+        results, collections = compute_test_only(sess, fetches, args,
                                                  compute_batches=compute_batches,
                                                  if_get_wrong=True,
                                                  if_get_certain=True,
@@ -780,7 +795,7 @@ def test_phase(sess, graph, compute_batches=100,
                  'batch_size', 'labels', 'ids',
                  'logits', 'features', "sample_ids"]
         fetches = get_fetches(graph, names, train_or_test=train_or_test)
-        results, collections = compute_test_only(sess, fetches,
+        results, collections = compute_test_only(sess, fetches, args,
                                                  compute_batches=compute_batches,
                                                  if_get_wrong=True,
                                                  if_get_certain=True,
@@ -868,7 +883,7 @@ def main_train(sess, args, graph):
         print("Starting testing")
         initialize(sess, graph, test_only=True)
         if_check_cam = True if "CAM" in args.model_name else False
-        output_data = test_phase(sess, graph, compute_batches=graph["test_batches"],
+        output_data = test_phase(sess, graph, args, compute_batches=graph["test_batches"],
                                  if_check_cam=if_check_cam, train_or_test='test')
 
         if len(output_data["test_certain_labels"]) > 0:
@@ -891,5 +906,6 @@ def main_train(sess, args, graph):
         initialize(sess, graph, test_only=False)
         args.save(os.path.join(args.output_path, "network", "parameters.yaml"))
         output_data = single_epo_runs(sess, args, graph)
+        dataio.save_plots(sess, args, output_data, training=False)
 
 

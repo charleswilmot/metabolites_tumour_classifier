@@ -120,7 +120,7 @@ def all_figures(sess, args, data, training=False, epoch=0):
     # print("labels: ", np.argmax(data["test_labels"], axis=1))
     accuracy_figure(args, data, training=training, epoch=epoch)
     # accuracy_loss_figure(args, data, training=training, epoch=epoch)
-    # plot_confusion_matrix(args, data, ifnormalize=True, training=training)
+    plot_confusion_matrix(args, data, ifnormalize=True, training=training)
     if args.num_classes == 2:
         auc = plot_auc_curve(args, data, epoch=epoch)
         print("accuracy: ", data["test_accuracy"], "auc: ", auc)
@@ -150,11 +150,12 @@ def plot_confusion_matrix(args, data, ifnormalize=False, training=False):
     :param normalize: boolean, whether normalize to (0,1)
     :return:
     """
+    kkey = "confusion"
     if ifnormalize:
-        cm = (data["test_confusion"] * 1.0 / data["test_confusion"].sum(axis=1)[:, np.newaxis])*1.0
+        cm = (data[kkey] * 1.0 / data[kkey].sum(axis=1)[:, np.newaxis])*1.0
         logger.info("Normalized confusion matrix")
     else:
-        cm = data["test_confusion"]
+        cm = data[kkey]
         logger.info('Confusion matrix, without normalization')
     f = plt.figure()
     plt.imshow(cm, interpolation='nearest', cmap='Blues', aspect='auto')
@@ -694,6 +695,6 @@ def plot_train_samples(samples, true_labels, args, postfix="samples", data_dim="
                 plt.subplots_adjust(hspace=0.00, wspace=0.00)
                 plt.savefig(args.output_path + '/augmented_samples-class-{}-{}-{}.png'.format(class_id, args.aug_method, postfix),
                             format='png')
-                plt.savefig(args.output_path + '/augmented_samples-class-{}-{}-{}.pdf'.format(class_id, args.aug_method, postfix),
-                            format='pdf')
+                # plt.savefig(args.output_path + '/augmented_samples-class-{}-{}-{}.pdf'.format(class_id, args.aug_method, postfix),
+                #             format='pdf')
                 plt.close()

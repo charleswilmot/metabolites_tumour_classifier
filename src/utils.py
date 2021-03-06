@@ -196,12 +196,22 @@ def generate_output_path(args):
     if args.restore_from is None:  # and args.output_path is None:  #cluster.py
         time_str = '{0:%Y-%m-%dT%H-%M-%S-}'.format(datetime.datetime.now())
         args.postfix = "100rns-" + args.train_or_test if args.if_single_runs else args.train_or_test
-        args.output_path = os.path.join(args.output_path,
-                                        "{}-{}-{}x{}-factor-{}-from-{}-ct{}-theta-{}-s{}-{}-lbInd-{}".format(
-                                            time_str, args.model_name, args.aug_method, args.aug_folds,
-                                            args.aug_scale, args.data_source,
-                                            args.if_from_certain, args.theta_thr,
-                                            args.rand_seed, args.postfix, args.lb_ind))
+        if args.aug_folds > 0:
+            args.output_path = os.path.join(args.output_path,
+                                            "{}-{}-{}x{}-factor-{}-from-{}-ct{}-theta-{}-s{}-{}-lbInd-{}".format(
+                                                time_str, args.model_name, args.aug_method, args.aug_folds,
+                                                args.aug_scale, args.data_source,
+                                                args.if_from_certain, args.theta_thr,
+                                                args.rand_seed, args.postfix, args.lb_ind))
+        else:
+            args.output_path = os.path.join(args.output_path,
+                                            "{}-{}-from-{}-ct{}-theta-{}-s{}-{}-lbInd-{}".format(
+                                                time_str, args.model_name,
+                                                args.data_source,
+                                                args.if_from_certain,
+                                                args.theta_thr,
+                                                args.rand_seed, args.postfix,
+                                                args.lb_ind))
     elif args.restore_from is not None and args.resume_training:  # restore a model
         args.train_or_test = "train"
         args.output_path = os.path.dirname(args.restore_from) + "-on-{}-{}".format(args.data_source, "resume_train")
@@ -209,7 +219,9 @@ def generate_output_path(args):
     elif args.restore_from is not None and not args.resume_training:
         time_str = '{0:%Y%m%dT%H%M%S}'.format(datetime.datetime.now())
         args.train_or_test = "test"
-        args.output_path = os.path.dirname(args.restore_from) + "-{}-on-{}-{}".format(time_str, args.data_source, "test")
+        pretrained_dir = os.path.dirname(args.restore_from)
+        args.output_path = os.path.join(os.path.dirname(pretrained_dir), "-".join(os.path.basename(pretrained_dir).split("-")[0:7])) + "-{}-{}-lbInd{}".format(time_str, "test", args.lb_ind)
+        # args.output_path = os.path.dirname(args.restore_from) + "-{}-on-{}-{}".format(time_str, args.data_source, "test")
         args.if_from_certain = False
         args.if_save_certain = False
         args.postfix = "-test"
