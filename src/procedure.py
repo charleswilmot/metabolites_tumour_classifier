@@ -176,13 +176,13 @@ def compute_test_only(sess, fetches, args, compute_batches=100,
             else:
                 collections = get_wrong_examples(collections)
 
-        if "features" in fetches.keys():
-            if i % (compute_batches // 2) == 0 and i > 0:
-                Plot.plot_train_samples(ret["features"],
-                                        np.argmax(ret["labels"], axis=1),
-                                        args,
-                                        postfix="bt-{}-samples".format(i),
-                                        data_dim=args.data_dim)
+        # if "features" in fetches.keys():
+        #     if i % (compute_batches // 2) == 0 and i > 0:
+        #         Plot.plot_train_samples(ret["features"],
+        #                                 np.argmax(ret["labels"], axis=1),
+        #                                 args,
+        #                                 postfix="bt-{}-samples".format(i),
+        #                                 data_dim=args.data_dim)
         # Plot.plot_confusion_matrix(args, ret)
         if if_get_certain:
             if init_certrin:

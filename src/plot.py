@@ -150,7 +150,7 @@ def plot_confusion_matrix(args, data, ifnormalize=False, training=False):
     :param normalize: boolean, whether normalize to (0,1)
     :return:
     """
-    kkey = "confusion"
+    kkey = "test_confusion"
     if ifnormalize:
         cm = (data[kkey] * 1.0 / data[kkey].sum(axis=1)[:, np.newaxis])*1.0
         logger.info("Normalized confusion matrix")

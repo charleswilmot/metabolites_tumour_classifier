@@ -686,7 +686,7 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
         print(os.path.basename(certain_fns), len(picked_ids), "samples\n")
         certain_mat = whole_noisy_set[picked_ids]
         
-        concat_data = np.concatenate((picked_ids.reshape(-1,1),whole_noisy_set[picked_ids,1:3], sort_rate[-np.int(args.theta_thr*total_2_class_num):].reshape(-1,1)), axis=1)
+        concat_data = np.concatenate((picked_ids.reshape(-1,1), whole_noisy_set[picked_ids,1:3], sort_rate[-np.int(args.theta_thr*total_2_class_num):].reshape(-1,1)), axis=1)
         np.savetxt(os.path.join(args.output_path, "selected_top_{}percent_total_{}_samples.csv".format(args.theta_thr*100, len(picked_ids))), concat_data , fmt='%.4f', header="samp_id,pat_id,lb,clf_rate", delimiter=',')
     
         ## following code is to get only label 0 and 1 data from the file. TODO: to make this more easy and clear
@@ -700,8 +700,7 @@ def get_data_from_certain_ids(args, certain_fns="f1"):
             sub_mat = whole_noisy_set
     
         np.random.shuffle(sub_mat)
-        print("data labels: ", sub_mat[:, 2])
-    
+        
         print("top", args.theta_thr*100, "% as distill, certain samples 0: ", len(np.where(certain_mat[:, 2] == 0)[0]),
               "\ncertain samples 1: ", len(np.where(certain_mat[:, 2] == 1)[0]))
     
@@ -938,7 +937,8 @@ def get_noisy_mnist_data_tensors(args, certain_fns=None):
     if not args.if_from_certain:  # get data from origal array
         train_data, test_data = load_noisy_mnist_data(args)
     else:  # Get certain AND mix original un-distilled samples
-        train_data, test_data = get_data_from_certain_ids(args, certain_fns=certain_fns)
+        # train_data, test_data = get_data_from_certain_ids(args, certain_fns=certain_fns)
+        train_data, test_data = load_mnist_from_certain(args, certain_fns=certain_fns)
         
     test_spectra = tf.constant(test_data["spectra"], dtype=tf.float32)
     test_labels = tf.constant(test_data["labels"], dtype=tf.int32)
@@ -1094,6 +1094,98 @@ def load_noisy_mnist_data(args):
     return train_data, test_data
 
 
+def load_mnist_from_certain(args, certain_fns="certain.csv"):
+    # # load pre-generated noisy mnist set from .csv
+    whole_noisy_set = pd.read_csv(args.input_data,
+                          header=None).values  # change path with testing
+    
+    train_data = {}
+    test_data = {}
+
+    # get certain samples from saved CCR file
+    sort_data = pd.read_csv(certain_fns, header=0).values
+    total_2_class_num = 60000
+    # total_2_class_num = np.int(
+    #     certain_fns.split("_")[-1].split("(")[1].split("-")[0])
+    # total_3_class_num = np.int(certain_fns.split("_")[-1].split(")")[1].split("-")[-1])
+    sort_samp_ids = sort_data[:, 0].astype(np.int)
+    sort_rate = sort_data[:, 1].astype(np.float32)
+    picked_ids = sort_samp_ids[-np.int(args.theta_thr * total_2_class_num):]
+    print(os.path.basename(certain_fns), len(picked_ids), "samples\n")
+    certain_mat = whole_noisy_set[picked_ids]
+    concat_data = np.concatenate((picked_ids.reshape(-1, 1),
+                                  whole_noisy_set[picked_ids, 0:3], sort_rate[
+                                                                    -np.int(
+                                                                        args.theta_thr * total_2_class_num):].reshape(
+        -1, 1)), axis=1)
+    np.savetxt(os.path.join(args.output_path,
+                            "[highCCRID,sampID,lb,noisyLb,CCR]_top_{}_total_{}.csv".format(
+                                args.theta_thr * 100, len(picked_ids))),
+               concat_data, fmt='%.4f',
+               header="pickedID,samp_id,pat_id,lb,clf_rate", delimiter=',')
+
+    print("top", args.theta_thr * 100, "% as distill")
+
+    for c in range(args.num_classes):
+        c_inds = np.where(certain_mat[:, 1] == c)[0]
+        print("label {}: true-{} vs. noisy-{}".format(c, len(c_inds), np.sum(
+            certain_mat[c_inds, 2] != c)))
+
+    if args.train_or_test == "train":
+        np.random.shuffle(whole_noisy_set)
+        np.random.shuffle(certain_mat)
+        # X_train, X_val, Y_train, Y_val = train_test_split(
+        #     whole_noisy_set, whole_noisy_set[:, 2], test_size=args.test_ratio)
+        X_train, X_val, Y_train, Y_val = train_test_split(
+            certain_mat, certain_mat[:, args.lb_ind], test_size=args.test_ratio)
+
+    test_data["spectra"] = X_val[:, 3:]
+    test_data["labels"] = Y_val.astype(np.int32)
+    assert np.sum(Y_val.astype(np.int32) == X_val[:, args.lb_ind].astype(
+        np.int32)) == len(
+        X_val), "train_test_split messed up the data!"
+    test_data["ids"] = X_val[:, 3 - args.lb_ind].astype(
+        np.int32)  # ids and labels are complementary depending on which one you trained on.
+    test_data["sample_ids"] = X_val[:, 0].astype(np.int32)
+    test_data["num_samples"] = len(test_data["labels"])
+    print("num_samples: ", test_data["num_samples"])
+    
+    np.savetxt(os.path.join(args.output_path,
+                            "val_id_noisy_labels_count_{}.csv".format(
+                                args.data_source)), X_val[:, 0:3], fmt='%d',
+               delimiter=',')
+    
+    ## oversample the minority samples ONLY in training data
+    if args.train_or_test == 'train':
+        np.savetxt(os.path.join(args.output_path,
+                                "train_id_noisy_labels_count_{}.csv".format(
+                                    args.data_source)), X_train[:, 0:3],
+                   fmt='%d',
+                   delimiter=',')
+        if args.aug_folds != 0:
+            train_data = augment_data(X_train, X_train, args)
+            print("Use X_train augment X_train class 0: ",
+                  len(np.where(train_data["labels"] == 0)[0]),
+                  "num of train class 1: ",
+                  len(np.where(train_data["labels"] == 1)[0]))
+        else:
+            train_data["spectra"] = X_train[:, 3:]
+            train_data["labels"] = Y_train
+            
+            train_data["ids"] = X_train[:,
+                                3 - args.lb_ind]  # id is the true label
+            train_data["sample_ids"] = X_train[:, 0]
+        args.num_train = train_data["spectra"].shape[0]
+        train_data["num_samples"] = len(Y_train)
+        train_data["spectra"] = train_data["spectra"].astype(np.float32)
+        train_data["labels"] = train_data["labels"].astype(np.int32)
+        
+        train_data["ids"] = train_data["ids"].astype(np.int32)
+        train_data["sample_ids"] = train_data["sample_ids"].astype(np.int32)
+    
+    return train_data, test_data
+    
+    
 def load_concat_mnist_clean(args):
     """
     Load the whole mnist while concatenating the training and test set

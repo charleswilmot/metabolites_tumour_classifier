@@ -210,9 +210,10 @@ elif mode == "pure_training":  # without DA, without distillation
 elif mode == "testing_given_the_whole_folder":
 
     data_dirs = [
-        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Inception"
+        # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Inception"
+        "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-Res_ECG_CAM",
+        # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-RNN"
         # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-new-MLP",
-        # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-new-Res_ECG_CAM",
         # "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-new-RNN"
     ]
     for jj in data_dirs:
