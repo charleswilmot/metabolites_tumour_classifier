@@ -1,13 +1,10 @@
 import fnmatch
 import os
-import random
 import itertools
 import pickle
 import pacmap
 
-from sklearn.metrics import confusion_matrix
-from scipy import io
-from tqdm import tqdm
+from scipy.io import loadmat, savemat
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,7 +13,6 @@ from collections import Counter
 from sklearn import metrics
 from textwrap import wrap
 
-from dataio import introduce_label_noisy
 
 # import matplotlib.pylab as pylab
 # base = 22
@@ -505,53 +501,64 @@ def interactive_bokeh_with_select(x, y, indiv_id="1227", colormap=pylab.cm.jet,
         """
     from bokeh.io import show
     from bokeh.layouts import row, grid
-    from bokeh.models import CustomJS, ColumnDataSource, HoverTool, Button
+    from bokeh.models import CustomJS, ColumnDataSource, HoverTool, Button, ColorBar
     from bokeh.events import ButtonClick  # for saving data
     from bokeh.models.widgets import DataTable, DateFormatter, TableColumn
     from bokeh.plotting import figure, show, save, output_file
+    from bokeh.transform import linear_cmap
     import matplotlib.colors as clr
     from bokeh.palettes import Category20b_20
     from bokeh.transform import factor_cmap, factor_mark
     
-    
     tooltips = []
     data_dict = {"x": x, "y": y, "desc": np.arange(len(y))}
-    plot_width = 500
-    plot_height = 500
+    plot_width = 600
+    plot_height = 600
     for key, value in hover_notions:
         data_dict.update({key: value})
         tooltips.append((key, "@{}".format(key)))
-    
-    # cmap_colors = pylab.cm.cool(np.linspace(0, 1, len(np.unique(data_dict[colorby]))))
+    if colorby == "pat_id":
+        uniq_values, indices, counts = np.unique(data_dict[colorby], return_index=True, return_counts=True)
+        indi_sort_order = np.sort(indices)
+
+
+        # sort_uniq_pats[pat_index]
+        replace_uniq_pats = np.arange(len(uniq_values))
+        sort_pats_counts = np.append(indi_sort_order[1:] - indi_sort_order[0:-1], len(data_dict["pat_id"])-indi_sort_order[-1])
+        replaced_all_pats = np.repeat(replace_uniq_pats, sort_pats_counts)
+        cmap_colors = pylab.cm.viridis(np.linspace(0, 1, len(uniq_values)))
+        data_dict.update({"colors": ["#%02x%02x%02x" % (int(r), int(g), int(b)) for r, g, b, _ in
+                                     255 * cmap_colors[replaced_all_pats]], })
+    else:
+        cmap_colors = pylab.cm.viridis(np.linspace(0, 1, len(np.unique(data_dict[colorby]))))
+        data_dict.update({"colors": ["#%02x%02x%02x" % (int(r), int(g), int(b)) for r, g, b, _ in
+                                     255 * cmap_colors[data_dict[colorby].astype(np.int32)]], })
+        
     # data_dict.update({"colors": ["#%02x%02x%02x" % (int(r), int(g), int(b)) for r, g, b, _ in
-    #                              255 * cmap_colors[data_dict[colorby]]], })
-    data_dict.update({"colors": ["#%02x%02x%02x" % (int(r), int(g), int(b)) for r, g, b, _ in
-                                 255 * colormap(clr.Normalize()(np.arange(len(x))))], })
+    #                              255 * colormap(clr.Normalize()(np.arange(len(x))))], })
     s1 = ColumnDataSource(data=data_dict)
     
     hovers = HoverTool(names=["train"], tooltips=tooltips)
     fig01 = figure(plot_width=plot_width, plot_height=plot_height,
                    tools=[hovers, 'pan', 'wheel_zoom', 'box_select', 'lasso_select', 'poly_select', 'tap', 'reset'],
-                   title="{}-{}-{}".format(indiv_id, mode, postfix))
-    fig01.circle('x', 'y', size=10, fill_color='colors', line_color='colors', alpha=0.85, line_width=1, source=s1, name="train")
-    # fig01.scatter('x', 'y', size=10, alpha=0.85,
-    #               line_width=1, source=s1, name="train",
-    #               fill_color=colors,
-    #               line_color=colors)
+                   title="\n".join(wrap("{}-{}-{}".format(indiv_id, mode, postfix), 60)))
+    fig01.circle('x', 'y', size=5, fill_color='colors', line_color='colors', alpha=0.5, line_width=1, source=s1, name="train")
+    mapper = linear_cmap(field_name='time', palette="Viridis256", low=0, high=cmap_interval)
+    color_bar = ColorBar(color_mapper=mapper['transform'], width=12, location=(0, 0))
+    fig01.add_layout(color_bar, 'right')
     
-    # create second subplot
-    # selected_s2 = {key: [] for key in data_dict.keys()}
-    # s2 = ColumnDataSource(data=selected_s2)
-    s2 = ColumnDataSource(data=dict(x=[], y=[], pat_id=[], index=[]))
+    ## plot selected points
+    s2 = ColumnDataSource(data=dict(x=[], y=[], pat_id=[], index=[], colors=[]))
     # demo smart error msg:  `box_zoom`, vs `BoxZoomTool`
-    fig02 = figure(plot_width=plot_width, plot_height=plot_height, tools=["box_zoom", "wheel_zoom", "reset", "save"],
+    fig02 = figure(plot_width=400, plot_height=400, tools=["box_zoom", "wheel_zoom", "reset", "save"],
                    title="Selected are here", )  # x_range=(0, 1), y_range=(0, 1),
-    fig02.circle("x", "y", source=s2, alpha=0.6, color="firebrick")
+    # fig02.circle("x", "y", size=5, source=s2, alpha=0.5, color="firebrick")
+    fig02.circle("x", "y", size=5, source=s2, alpha=0.5, fill_color='colors', line_color='colors')
     
     # create dynamic table of selected points
-    columns = [TableColumn(field="pat_id", title="pat_id"), TableColumn(field="index", title="index"), ]
+    columns = [TableColumn(field="pat_id", title="pat_id"), TableColumn(field="index", title="index"), TableColumn(field="label", title="label"), ]
     table = DataTable(source=s2, columns=columns, width=200, height=plot_height, sortable=True, selectable=True,
-                      editable=True, )
+                      editable=True)
     
     # fancy javascript to link subplots
     # js pushes selected points into ColumnDataSource of 2nd plot
@@ -559,45 +566,55 @@ def interactive_bokeh_with_select(x, y, indiv_id="1227", colormap=pylab.cm.jet,
     # credit: https://stackoverflow.com/users/1097752/iolsmit via: https://stackoverflow.com/questions/48982260/bokeh-lasso-select-to-table-update
     # credit: https://stackoverflow.com/users/8412027/joris via: https://stackoverflow.com/questions/34164587/get-selected-data-contained-within-box-select-tool-in-bokeh
     
-    s1.selected.js_on_change("indices", CustomJS(args=dict(s1=s1, s2=s2, table=table), code="""
-                    var inds = cb_obj.indices;
-                    var d1 = s1.data;
-                    var d2 = s2.data;
-                    d2['x'] = []
-                    d2['y'] = []
-                    d2['pat_id'] = []
-                    d2['index'] = []
-                    for (var i = 0; i < inds.length; i++) {
-                        d2['x'].push(d1['x'][inds[i]])
-                        d2['y'].push(d1['y'][inds[i]])
-                        d2['pat_id'].push(d1['pat_id'][inds[i]])
-                        d2['index'].push(d1['index'][inds[i]])
-                    }
-                    s2.change.emit();
-                    table.change.emit();
+    code = """
+        var inds = cb_obj.indices;
+        var d1 = s1.data;
+        var d2 = s2.data;"""
 
-                    var inds = source_data.selected.indices;
-                    var data = source_data.data;
-                    var out = "x, y\\n";
-                    for (i = 0; i < inds.length; i++) {
-                        out += data['x'][inds[i]] + "," + data['y'][inds[i]] + "," + data['pat_id'][inds[i]] + "," + data['index'][inds[i]] + "\\n";
-                    }
-                    var file = new Blob([out], {type: 'text/plain'});
-
-                """, ), )
+    for key in data_dict.keys():
+        # if key != "colors":
+        code += f"d2['{key}'] = []; \n"
     
+    code += "for (var i = 0; i < inds.length; i++) {\n"
+
+    for key in data_dict.keys():
+        # if key != "colors":
+        code += f"d2['{key}'].push(d1['{key}'][inds[i]]);\n"
+
+    code += """
+        }
+        s2.change.emit();
+        table.change.emit();
+
+        var inds = source_data.selected.indices;
+        var data = source_data.data;
+        var out = "x, y\\n";
+        for (i = 0; i < inds.length; i++) {
+        """
+    code += "out+="
+    for key in data_dict.keys():
+        # if key != "colors":
+        code += f"data['{key}'][inds[i]] + \",\" +"
+    code = code[:-5] # remove last ","
+    code += '"\\n"; \n'
+    code += """
+        }
+        var file = new Blob([out], {type: 'text/plain'});
+         """
+    
+    s1.selected.js_on_change("indices", CustomJS(args=dict(s1=s1, s2=s2, table=table), code=code))
+
     # create save button - saves selected datapoints to text file onbutton
     # inspriation for this code:
     # credit:  https://stackoverflow.com/questions/31824124/is-there-a-way-to-save-bokeh-data-table-content
     # note: savebutton line `var out = "x, y\\n";` defines the header of the exported file, helpful to have a header for downstream processing
-    
     savebutton = Button(label="Save", button_type="success")
     savebutton.js_on_event(ButtonClick, CustomJS(args=dict(source_data=s1), code="""
                     var inds = source_data.selected.indices;
                     var data = source_data.data;
-                    var out = "x, y\\n";
+                    var out = "pat_id, index\\n";
                     for (var i = 0; i < inds.length; i++) {
-                        out += data['x'][inds[i]] + "," + data['y'][inds[i]] + "\\n";
+                        out += data['pat_id'][inds[i]] + "," + data['index'][inds[i]] + "\\n";
                     }
                     var file = new Blob([out], {type: 'text/plain'});
                     var elem = window.document.createElement('a');
@@ -610,18 +627,13 @@ def interactive_bokeh_with_select(x, y, indiv_id="1227", colormap=pylab.cm.jet,
     
     # add Hover tool
     # define what is displayed in the tooltip
-    tooltips = [("X:", "@pat_id"), ("Y:", "@index"), ("static text", "static text"), ]
+    tooltips = [("pat_id", "@pat_id"), ("index", "@index"), ]
     source_train = ColumnDataSource(data=data_dict)
     fig02.add_tools(HoverTool(tooltips=tooltips))
     
     # display results
-    # demo linked plots
-    # demo zooms and reset
-    # demo hover tool
-    # demo table
-    # demo save selected results to file
     layout = grid([fig01, fig02, table, savebutton], ncols=4)
-    output_file(save_dir + '/2D-{}-on-{}2-with-select.html'.format(mode, postfix), title=title)
+    output_file(save_dir + '/2D-{}-on-{}-with-select-size5.html'.format(mode, postfix), title=title)
     save(layout)
     # output_file(r"C:\Users\LDY\Desktop\1-all-experiment-results\test_bokeh2.html")
     # save(layout)
@@ -667,7 +679,7 @@ if plot_name == "indi_rating_with_model":
 
     # Get human's cumulative labels
     human_rating = "../data/20190325/20190325-3class_lout40_test_data5-2class_human-ratings.mat"
-    hum_whole = scipy.io.loadmat(human_rating)["data_ratings"]
+    hum_whole = loadmat(human_rating)["data_ratings"]
     human_lb = hum_whole[:, 0]
     human_features = hum_whole[:, 1:]
     hum_fpr, hum_tpr, _ = metrics.roc_curve(true_label, human_lb)
@@ -870,7 +882,7 @@ elif plot_name == "human_whole_with_model":
     print("Plot_name: ", plot_name)
     data_dir = "../data/20190325"
     original = "../data/20190325/20190325-3class_lout40_test_data5-2class_human_performance844_with_labels.mat"
-    ori = scipy.io.loadmat(original)["DATA"]
+    ori = loadmat(original)["DATA"]
     true_label = ori[:, 1]
     temp_count = Counter(ori[:, 0])
     patient_summary = {}
@@ -908,7 +920,8 @@ elif plot_name == "human_whole_with_model":
     
         # Get human's total labels
         human_rating = "../data/20190325/20190325-3class_lout40_test_data5-2class_human-ratings.mat"
-        hum_whole = scipy.io.loadmat(human_rating)["data_ratings"]
+        hum_whole = loadmat(human_rating)["data_ratings"]
+        
         human_lb = hum_whole[:, 0]
         human_features = hum_whole[:, 1:]
         hum_fpr, hum_tpr, _ = metrics.roc_curve(true_label, human_lb)
@@ -1747,10 +1760,11 @@ elif plot_name == "first_impression_on_datasets_interactive_bokeh":
     combined_pat_ids = np.append(pat_id1, pat_id2)
     combined_vox_labels = np.append(labels1 + 10, labels2)
     combined_clusters = np.append(2 * np.ones(len(labels1)), cluster2)  # dataset1 patients has cluster 2
-    combined_features = np.vstack((features1, features2))
+    
 
     presaved_prj_file = r"C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\data\2022.02.01\pacmap_of_both_datasets_[pats,cluster,lb,proj].csv"
     if presaved_prj_file is None:
+        combined_features = np.vstack((features1, features2))
         embedding = pacmap.PaCMAP(n_dims=2, n_neighbors=None, MN_ratio=0.5, FP_ratio=2.0)
         # fit the data (The index of transformed data corresponds to the index of the original data)
         X_transformed = embedding.fit_transform(combined_features, init="pca")
@@ -1765,105 +1779,93 @@ elif plot_name == "first_impression_on_datasets_interactive_bokeh":
         load_combined_vox_labels = load_info[:, 2]
         X_transformed = load_info[:, 3:]
         assert np.sum(load_combined_pat_ids==combined_pat_ids) == len(combined_pat_ids), "order of data is missed up!"
+        assert np.sum(load_combined_vox_labels==combined_vox_labels) == len(combined_vox_labels), "order of data is missed up!"
+        assert np.sum(load_combined_clusters==combined_clusters) == len(combined_clusters), "order of data is missed up!"
     
     dataset_inds1 = np.arange(len(labels1))
     dataset_inds2 = np.arange(len(labels1), len(X_transformed))
+
+    collect_pat_ids = {}
+    collect_vox_labels = {}
+    collect_clusters = {}
+    collect_features = {}
+    collect_dataset_inds = {}
+    collect_pat_ids["data1"] = pat_id1
+    collect_vox_labels["data1"] = labels1
+    collect_clusters["data1"] = 2 * np.ones(len(labels1))
+    collect_features["data1"] = features1
+    collect_dataset_inds["data1"] = dataset_inds1
+    
+    collect_pat_ids["data2"] = pat_id2
+    collect_vox_labels["data2"] = labels2
+    collect_features["data2"] = features2
+    collect_clusters["data2"] = cluster2
+    collect_dataset_inds["data2"] = dataset_inds2
     
     patient_ID_cmap = "viridis"
     # class_cmap = ['tab:blue', 'tab:orange', 'tab:green']
     class_cmap = "cool"
     patient_cluster_cmap = "Dark2"
+    
+    
+    saved_selected = r"C:\Users\LDY\Desktop\selected-data (6).txt"
+    saved_data = pd.read_csv(saved_selected, header=0).values
+    saved_pat_ids = saved_data[:, 0]
+    saved_sample_index = saved_data[:, 1]
+    plt.figure()
+    plt.plot(features2[[1008, 6063]].T)
+    plt.xlabel("metabolite index")
+    plt.ylabel("amplitude [a.u.]")
+    plt.title("Dataset2: Samples in the smalles cluster")
+    region = "[:, -8]"
+    plt.figure()
+    plt.plot(features1[saved_sample_index].T)
+    plt.xlabel("metabolite index")
+    plt.ylabel("amplitude [a.u.]")
+    plt.title(f"Dataset1: Samples in the smalles cluster {region}")
+    plt.savefig(os.path.join(os.path.dirname(ori_data2), f"plot_data_from_selected_{region}_{os.path.basename(saved_selected)}.png"))
+    colorby = "cluster"
+    
+    
+    interactive_bokeh_with_select(X_transformed[:, 0],
+                                  X_transformed[:, 1], indiv_id="Both-datasets",
+                                  colormap=pylab.cm.viridis, hover_notions=[("pat_id", combined_pat_ids),
+                                                                        ("label", combined_vox_labels), (
+                                                                        "index", np.arange(
+                                                                            len(combined_vox_labels))),
+                                                                        ("cluster", combined_clusters.astype(np.int32))],
+                                  colorby=colorby, cmap_interval=np.max(combined_clusters),
+                                  xlabel="dimension #1", ylabel="dimension #1", title="Title", mode="pacmap",
+                                  plot_func="scatter",
+                                  postfix="colored by patient clusters of both datasets (0-Pseudo Progress, 1-true progress, 2-dataset1)",
+                                  save_dir=os.path.dirname(ori_data2))
     # visualize the embedding
-    interactive_bokeh_with_select(X_transformed[dataset_inds1, 0], X_transformed[dataset_inds1, 1], indiv_id="Dataset1",
-                                  colormap=pylab.cm.jet, hover_notions=[("pat_id", pat_id1), ("label", labels1),
-                                                                        ("index", np.arange(len(labels1)))],
-                                  colorby="label",
-                                  cmap_interval=np.max(pat_id1), xlabel="dimension #1", ylabel="dimension #1",
-                                  title="Title", mode="pacmap", plot_func="scatter",
-                                  postfix="colored by patient IDs - dataset1", save_dir=os.path.dirname(ori_data2))
-    # dataset1: colored by labels
-    interactive_bokeh_with_select(X_transformed[dataset_inds1, 0], X_transformed[dataset_inds1, 1], indiv_id="Dataset1",
-                                  colormap=pylab.cm.jet, hover_notions=[("pat_id", pat_id1), ("label", labels1),
-                                                                        ("index", np.arange(len(labels1)))],
-                                  colorby="label",
-                                  cmap_interval=np.max(labels1), xlabel="dimension #1", ylabel="dimension #1",
-                                  title="Title", mode="pacmap", plot_func="scatter",
-                                  postfix="colored by patient IDs - dataset1", save_dir=os.path.dirname(ori_data2))
-    interactive_bokeh_with_select(X_transformed[dataset_inds2, 0], X_transformed[dataset_inds2, 1], indiv_id="Dataset2",
-                                  colormap=pylab.cm.jet, hover_notions=[("pat_id", pat_id2), ("label", labels2),
-                                                                        ("index", np.arange(len(labels2)))],
-                                  cmap_interval=np.max(pat_id2), xlabel="dimension #1", ylabel="dimension #1",
-                                  title="Title", mode="pacmap", plot_func="scatter",
-                                  postfix="colored by patient IDs - dataset2", save_dir=os.path.dirname(ori_data2))
-    interactive_bokeh_with_select(X_transformed[dataset_inds2, 0], X_transformed[dataset_inds2, 1], indiv_id="Dataset2",
-                                  colormap=pylab.cm.jet, hover_notions=[("pat_id", pat_id2), ("label", labels2),
-                                                                        ("index", np.arange(len(labels2)))],
-                                  cmap_interval=np.max(pat_id2), xlabel="dimension #1", ylabel="dimension #1",
-                                  title="Title", mode="pacmap", plot_func="scatter",
-                                  postfix="colored by patient IDs - dataset2", save_dir=os.path.dirname(ori_data2))
-    
-    
-    ### colored by voxel classes for both datasets
-    fig, axs = plt.subplots(2, 1, figsize=(15, 10))
-    colors = ["c", "m", "royalblue"]
-    for lb in range(3):
-        lb_inds = np.where(labels1==lb)[0]
-        sr1 = axs[0].scatter(X_transformed[dataset_inds1, 0][lb_inds], X_transformed[dataset_inds1, 1][lb_inds], color=colors[lb], alpha=0.25, s=20, edgecolor=None, label=f"class {lb}")
-    # axs[0].set_colorbar(sr1)
-    # fig.colorbar(sr1, ax=axs[0])
-    axs[0].legend(frameon=False)
-    axs[0].set_xlabel("dimension #1")
-    axs[0].set_ylabel("dimension #2")
-    axs[0].set_title("\n".join(wrap("Dataset1: colored by voxel labels (0-nontumor pat., 1-tumor pat. tumor hemi., 2-tumor pat. non-tumor hemi.)", 50)))
-    colors = ["c", "m", "royalblue"]  #ab.cm.cool(np.linspace(0, 1, 2))
-    for lb in range(2):
-        lb_inds = np.where(labels2 == lb)[0]
-        sr1 = axs[1].scatter(X_transformed[dataset_inds2, 0][lb_inds], X_transformed[dataset_inds2, 1][lb_inds],
-                             color=colors[lb], s=20, alpha=0.25, label=f"class {lb}", edgecolor=None)
-    # sr2 = axs[1].scatter(X_transformed[dataset_inds2, 0], X_transformed[dataset_inds2, 1], cmap=class_cmap, c=combined_vox_labels[dataset_inds2], s=20)
-    axs[1].set_title("\n".join(
-        wrap("Dataset2: colored by voxel labels (0-nontumor voxel, 1-tumor voxel)", 50)))
-    # axs[1].set_colorbar(sr2)
-    # fig.colorbar(sr2, ax=axs[1])
-    axs[1].legend(frameon=False)
-    axs[1].set_xlabel("dimension #1")
-    axs[1].set_ylabel("dimension #2")
-    plt.tight_layout()
-    plt.savefig(os.path.join(os.path.dirname(ori_data1), "pacmap-colored-by-labels-from-two-datasets.png"))
-    
-    ### colored by patient clusters, dataset1 patients has cluster 2
-    fig, axs = plt.subplots(2, 1, figsize=(15, 10))
-    sr = axs[0].scatter(X_transformed[:, 0], X_transformed[:, 1], alpha=0.35,  c=combined_clusters, s=20)
-    fig.colorbar(sr, ax=axs[0])
-    axs[0].set_title("\n".join(wrap("colored by patient clusters (0-Pseudo progress, 1-true progress, 2-dataset1)", 50)))
-    axs[0].set_xlabel("dimension #1")
-    axs[0].set_ylabel("dimension #2")
-    # uniq_pats, indices, counts = np.unique(pat_id1, return_index=True, return_counts=True)
-    # indi_sort_order = np.sort(indices)
-    # sort_uniq_pats = pat_id1[indi_sort_order]
-    # replace_uniq_pats = np.arange(len(uniq_pats))
-    # sort_pats_counts = np.append(indi_sort_order[1:] - indi_sort_order[0:-1], len(pat_id1)-indi_sort_order[-1])
-    # replaced_all_pats = np.repeat(replace_uniq_pats, sort_pats_counts)
-    ## replace patient ids with continuous orders
-    colors = pylab.cm.viridis(np.linspace(0, 1, len(uniq_pats)))
-    sr = axs[1].scatter(X_transformed[dataset_inds1, 0], X_transformed[dataset_inds1, 1], alpha=0.35, c=pat_id1, cmap="jet", s=20)
-    fig.colorbar(sr, ax=axs[1])
-    axs[1].set_title("\n".join(wrap("patient IDs from dataset1", 50)))
-    axs[1].set_xlabel("dimension #1")
-    axs[1].set_ylabel("dimension #2")
-    plt.tight_layout()
-    plt.savefig(os.path.join(os.path.dirname(ori_data1), "pacmap-colored-by-patient-clusters-two-datasets.png"))
-    
-    # #################################################
-    fig, ax = plt.subplots(1, 1, figsize=(10, 7))
-    sr = ax.scatter(X_transformed[dataset_inds1, 0], X_transformed[dataset_inds1, 1], alpha=0.25,  cmap="viridis", c=combined_pat_ids[dataset_inds1], s=20)
-    # plt.legend(sr)
-    fig.colorbar(sr, ax=ax)
-    plt.title("\n".join(wrap("Dataset 1: colored by patient ids ", 50)))
-    plt.xlabel("dimension #1")
-    plt.ylabel("dimension #2")
-    plt.savefig(os.path.join(os.path.dirname(ori_data1), "Dataset2-patient-IDs-pacmap.png"))
-
+    for data_name in ["data1", "data2"]:
+        colorby = "pat_id"
+        interactive_bokeh_with_select(X_transformed[collect_dataset_inds[data_name], 0], X_transformed[collect_dataset_inds[data_name], 1], indiv_id=data_name,
+                                      colormap=pylab.cm.viridis,
+                                      hover_notions=[("pat_id", collect_pat_ids[data_name]),
+                                                     ("label", collect_vox_labels[data_name]),
+                                                     ("index", np.arange(len(collect_vox_labels[data_name]))),
+                                                     ("cluster", collect_clusters[data_name].astype(np.int32))],
+                                      colorby=colorby,
+                                      cmap_interval=np.max(collect_pat_ids[data_name]), xlabel="dimension #1", ylabel="dimension #1",
+                                      title="Title", mode="pacmap", plot_func="scatter",
+                                      postfix=f"colored by patient IDs - {data_name}", save_dir=os.path.dirname(ori_data2))
+        
+    # visualize the embedding
+    for data_name in ["data1", "data2"]:
+        colorby = "label"
+        interactive_bokeh_with_select(X_transformed[collect_dataset_inds[data_name], 0], X_transformed[collect_dataset_inds[data_name], 1], indiv_id=data_name,
+                                      colormap=pylab.cm.viridis,
+                                      hover_notions=[("pat_id", collect_pat_ids[data_name]),
+                                                     ("label", collect_vox_labels[data_name]),
+                                                     ("index", np.arange(len(collect_vox_labels[data_name]))),
+                                                     ("cluster", collect_clusters[data_name].astype(np.int32))],
+                                      colorby=colorby,
+                                      cmap_interval=np.max(collect_vox_labels[data_name]), xlabel="dimension #1", ylabel="dimension #1",
+                                      title="Title", mode="pacmap", plot_func="scatter",
+                                      postfix=f"colored by voxel labels - {data_name}", save_dir=os.path.dirname(ori_data2))
     
     
     # mask the scatter plot
@@ -1884,6 +1886,7 @@ elif plot_name == "first_impression_on_datasets_interactive_bokeh":
     plt.plot(r0 * np.cos(theta), r0 * np.sin(theta))
 
     plt.show()
+   
     
 
 elif plot_name == "certain_samples":
@@ -1971,7 +1974,7 @@ elif plot_name == "distill_valid_labels":
     print("Plot_name: ", plot_name)
     # Nenad validated the labels of these samples
     m_file = "C:/Users/LDY/Desktop/all-experiment-results/metabolites/20190325-certain-Validate.mat"
-    mat = scipy.io.loadmat(m_file)["Validate"]  # [id, label, features]
+    mat = loadmat(m_file)["Validate"]  # [id, label, features]
     samp_ids = mat[:, 0]
     true_lables = mat[:, 1]
     labels = mat[:, 2]
@@ -2057,7 +2060,7 @@ elif plot_name == "re_split_data_0_9_except_5":
     coll_mat = np.empty((0, 290))
     for dd in data_source_dirs:
         ## load original .mat data and split train_val
-        mat = scipy.io.loadmat(dd)["DATA"]
+        mat = loadmat(dd)["DATA"]
         coll_mat = np.vstack((coll_mat, mat[mat[:,1]!=2]))
     np.random.shuffle(coll_mat)
     print("ok")
@@ -2071,7 +2074,7 @@ elif plot_name == "re_split_data_0_9_except_5":
     for ii in range(4):
         test_part[ii]["DATA"] = coll_mat[ii * part_len: (ii + 1) * part_len]
         num_pat = len(Counter(test_part[ii]["DATA"][:, 0]))
-        scipy.io.savemat(
+        savemat(
             os.path.join(os.path.dirname(dd),
                          "5_fold_randshuffle-2class_test_data{}.mat".format(ii)), test_part[ii])
         Count_test = Counter(test_part[ii]["DATA"][:, 0])
@@ -2089,7 +2092,7 @@ elif plot_name == "re_split_data_0_9_except_5":
                                 num_pat)),
                np.array([[pat, Count_test[pat]] for pat in Count_test.keys()]),
                delimiter=",", fmt="%d")
-    scipy.io.savemat(
+    savemat(
         os.path.join(os.path.dirname(dd),
                      "5_fold_randshuffle-2class_test_data{}.mat".format( ii)), test_part[ii])
 
@@ -2105,7 +2108,7 @@ elif plot_name == "re_split_data_0_9_except_5":
         for ind in current_train_folds:
             curren_train_coll["DATA"] = np.vstack((curren_train_coll["DATA"], test_part[ind]["DATA"]))
 
-        scipy.io.savemat(
+        savemat(
             os.path.join(os.path.dirname(dd),
                          "5_fold_randshuffle-2class_train_val_data{}.mat".format(jj)), curren_train_coll)
 
@@ -2132,7 +2135,7 @@ elif plot_name == "re_split_data_0_9_except_5_patient_wise_get_data_statistics":
     coll_mat = np.empty((0, 290))
     for dd in data_source_dirs:
         ## load original .mat data and split train_val
-        mat = scipy.io.loadmat(dd)["DATA"]
+        mat = loadmat(dd)["DATA"]
         coll_mat = np.vstack((coll_mat, mat))
     #------------------------------------------------------------------------------------------------------
 
@@ -2238,8 +2241,8 @@ elif plot_name == "re_split_data_0_9_except_5_patient_wise_get_data_statistics":
         for pat_id in test_pat_ids[:, 0]:
             new_CV_fold_test_data["DATA"] = np.vstack((new_CV_fold_test_data["DATA"], coll_mat[per_pat_spectra_inds[pat_id]]))
 
-        scipy.io.savemat(os.path.join(data_dir_root,"{}_fold_pat_split_20190325-2class_train_val_data{}.mat".format(n_cv_folds, cv_fold)), new_CV_fold_train_val_data)
-        scipy.io.savemat(os.path.join(data_dir_root, "{}_fold_pat_split_20190325-2class_test_data{}.mat".format(n_cv_folds, cv_fold)), new_CV_fold_test_data)
+        savemat(os.path.join(data_dir_root,"{}_fold_pat_split_20190325-2class_train_val_data{}.mat".format(n_cv_folds, cv_fold)), new_CV_fold_train_val_data)
+        savemat(os.path.join(data_dir_root, "{}_fold_pat_split_20190325-2class_test_data{}.mat".format(n_cv_folds, cv_fold)), new_CV_fold_test_data)
         print(os.path.join(data_dir_root, "5_fold_pat_split_20190325-2class_test_data{}.mat".format(cv_fold)))
 
     print("ok")
@@ -2263,12 +2266,12 @@ elif plot_name == "get_d_prime":
     # get the original labels
     data_dir = "../data/20190325"
     original = "../data/20190325/20190325-3class_lout40_val_data5-2class_human_performance844_with_labels.mat"
-    ori = scipy.io.loadmat(original)["DATA"]
+    ori = loadmat(original)["DATA"]
     true_label = ori[:, 1]
     
     # Get human's total labels
     human_rating = "../data/20190325/human-ratings-20190325-3class_lout40_val_data5-2class.mat"
-    hum_whole = scipy.io.loadmat(human_rating)["data_ratings"]
+    hum_whole = loadmat(human_rating)["data_ratings"]
     human_lb = hum_whole[:, 0]
     human_features = hum_whole[:, 1:]
     hum_fpr, hum_tpr, _ = metrics.roc_curve(true_label, human_lb)
