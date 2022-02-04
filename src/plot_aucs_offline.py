@@ -1,8 +1,8 @@
 import fnmatch
-import os
+from os import path as path
 import itertools
 import pickle
-import pacmap
+
 
 from scipy.io import loadmat, savemat
 import pandas as pd
@@ -41,7 +41,7 @@ def find_files(directory, pattern='*.csv'):
     files = []
     for root, dirnames, filenames in os.walk(directory):
         for filename in fnmatch.filter(filenames, pattern):
-            files.append(os.path.join(root, filename))
+            files.append(path.join(root, filename))
 
     return files
 
@@ -156,7 +156,7 @@ def get_auc_as_factor(data_dir, fold=None, epoch=5, factor=0.5, aug_meth=["same"
         sum_aucs = []
 
         for fn in files:
-            print("Model {}, fix_name1 {}: {}, fix_name2 {}: {}".format(os.path.basename(fn).split("_")[1], header[fix_ind1], fix_value1, header[fix_ind2], fix_value2))
+            print("Model {}, fix_name1 {}: {}, fix_name2 {}: {}".format(path.basename(fn).split("_")[1], header[fix_ind1], fix_value1, header[fix_ind2], fix_value2))
             data = pd.read_csv(fn, header=0).values
             need_inds = np.where(
                 (data[:, fix_ind1] == fix_value1) &
@@ -186,8 +186,8 @@ def get_auc_as_factor(data_dir, fold=None, epoch=5, factor=0.5, aug_meth=["same"
     plt.ylim([0.4, 0.82])
     plt.xlabel("{}".format(var_name))
     plt.ylabel("area under the curve")
-    plt.savefig(os.path.dirname(data_dir) + "/auc_as_factor_all_fix_{}-{}_and_{}-{}_var_{}-errbar.png".format(header[fix_ind1], fix_value1, header[fix_ind2], fix_value2, header[var_ind]), format="png")
-    plt.savefig(os.path.dirname(data_dir) + "/auc_as_factor_all_fix_{}-{}_and_{}-{}_var_{}-errbar.pdf".format(header[fix_ind1], fix_value1, header[fix_ind2], fix_value2, header[var_ind]), format="pdf")
+    plt.savefig(path.dirname(data_dir) + "/auc_as_factor_all_fix_{}-{}_and_{}-{}_var_{}-errbar.png".format(header[fix_ind1], fix_value1, header[fix_ind2], fix_value2, header[var_ind]), format="png")
+    plt.savefig(path.dirname(data_dir) + "/auc_as_factor_all_fix_{}-{}_and_{}-{}_var_{}-errbar.pdf".format(header[fix_ind1], fix_value1, header[fix_ind2], fix_value2, header[var_ind]), format="pdf")
     plt.close()
 
 
@@ -211,8 +211,8 @@ def plot_mean_spec_in_cluster(mean, std, cluster_id, num_clusters, postfix, cros
     plt.title("\n".join(wrap("{}-clusters No. {} cluster, count {}".format(num_clusters, cluster_id, crosstab_count), 60)))
     ylabel = "normalized value [a.u.]"
     plt.ylabel(ylabel)
-    plt.savefig(os.path.join(save_folder, "{}_clusters_label_{}-spec-{}-mean.png".format(num_clusters, cluster_id, postfix)), format="png")
-    plt.savefig(os.path.join(save_folder, "{}_clusters_label_{}-spec-{}-mean.pdf".format(num_clusters, cluster_id, postfix)), format="pdf")
+    plt.savefig(path.join(save_folder, "{}_clusters_label_{}-spec-{}-mean.png".format(num_clusters, cluster_id, postfix)), format="png")
+    plt.savefig(path.join(save_folder, "{}_clusters_label_{}-spec-{}-mean.pdf".format(num_clusters, cluster_id, postfix)), format="pdf")
     plt.close()
 
 
@@ -243,7 +243,7 @@ def get_data_from_certain_ids(certain_fns, mat_file="../data/lout40_train_val_da
         sort_samp_ids = sort_data[:, 0].astype(np.int)
         sort_rate = sort_data[:, 1].astype(np.float32)
         picked_ids = sort_samp_ids[-np.int(0.2 * len(sort_data)):]
-        print(os.path.basename(certain_fns), len(picked_ids), "samples\n")
+        print(path.basename(certain_fns), len(picked_ids), "samples\n")
     
     return sub_mat, new_mat[picked_ids]
 
@@ -406,11 +406,11 @@ def split_data_for_lout_val(data):
         train_test_mat["DATA"][:, 2:] = train_test_data[:, 2:]
         print("num_train\n", len(train_test_mat["DATA"][:, 1]))
         io.savemat(
-            os.path.dirname(args.input_data) + '/20190325-{}class_lout{}_val_data{}.mat'.format(args.num_classes,
+            path.dirname(args.input_data) + '/20190325-{}class_lout{}_val_data{}.mat'.format(args.num_classes,
                                                                                                 args.num_lout, i),
             val_mat)
         io.savemat(
-            os.path.dirname(args.input_data) + '/20190325-{}class_lout{}_train_test_data{}.mat'.format(args.num_classes,
+            path.dirname(args.input_data) + '/20190325-{}class_lout{}_train_test_data{}.mat'.format(args.num_classes,
                                                                                                        args.num_lout,
                                                                                                        i),
             train_test_mat)
@@ -474,20 +474,20 @@ def plot_bokeh_interactive(x, y, indiv_id="1227", colormap=pylab.cm.jet,
                 title=title)
     save(p)
 
-def interactive_bokeh_with_select(x, y, indiv_id="1227", colormap=pylab.cm.jet,
+def interactive_bokeh_with_select(x, y, indiv_id="1227", colormap="Category10",
                                   hover_notions=[("pat_ids", np.arange(10))],
                                   colorby="label", cmap_interval=10,
                                   xlabel="xlabel", ylabel="ylabel",
                                   title="Title", mode="tsne",
                                   plot_func="scatter", postfix="postfix",
-                                  save_dir="../results"):
+                                  save_dir="../results", scatter_size=3):
     """
         # Great! https://github.com/surfaceowl-ai/python_visualizations/blob/main/notebooks/bokeh_save_linked_plot_data.ipynb
             # Generate linked plots + TABLE displaying data + save button to export cvs of selected data
         :param x:
         :param y:
         :param indiv_id:
-        :param colormap:
+        :param colormap: bokeh palettes
         :param hover_notions:
         :param cmap_interval:
         :param xlabel:
@@ -501,15 +501,21 @@ def interactive_bokeh_with_select(x, y, indiv_id="1227", colormap=pylab.cm.jet,
         """
     from bokeh.io import show
     from bokeh.layouts import row, grid
-    from bokeh.models import CustomJS, ColumnDataSource, HoverTool, Button, ColorBar
+    from bokeh.models import CustomJS, ColumnDataSource, HoverTool, Button, ColorBar, FixedTicker
     from bokeh.events import ButtonClick  # for saving data
     from bokeh.models.widgets import DataTable, DateFormatter, TableColumn
     from bokeh.plotting import figure, show, save, output_file
     from bokeh.transform import linear_cmap
     import matplotlib.colors as clr
-    from bokeh.palettes import Category20b_20
+    from bokeh.palettes import Category20, Category10, Viridis3, Viridis256, Category10_3, Set2
     from bokeh.transform import factor_cmap, factor_mark
     
+    bokeh_color_palettes = {"Category10": Category10,
+                            "Category20": Category20,
+                            "Viridis256": Viridis256,
+                            "Viridis3": Viridis3,
+                            "Set2": Set2
+                            }
     tooltips = []
     data_dict = {"x": x, "y": y, "desc": np.arange(len(y))}
     plot_width = 600
@@ -529,10 +535,16 @@ def interactive_bokeh_with_select(x, y, indiv_id="1227", colormap=pylab.cm.jet,
         cmap_colors = pylab.cm.viridis(np.linspace(0, 1, len(uniq_values)))
         data_dict.update({"colors": ["#%02x%02x%02x" % (int(r), int(g), int(b)) for r, g, b, _ in
                                      255 * cmap_colors[replaced_all_pats]], })
+        used_color_palette = "Viridis256"
     else:
-        cmap_colors = pylab.cm.viridis(np.linspace(0, 1, len(np.unique(data_dict[colorby]))))
-        data_dict.update({"colors": ["#%02x%02x%02x" % (int(r), int(g), int(b)) for r, g, b, _ in
-                                     255 * cmap_colors[data_dict[colorby].astype(np.int32)]], })
+        uniq_values, indices, counts = np.unique(data_dict[colorby], return_index=True, return_counts=True)
+        cmap_colors = np.array(bokeh_color_palettes[colormap][3][0:len(uniq_values)])
+        data_dict.update({"colors": cmap_colors[data_dict[colorby]]})
+        used_color_palette = bokeh_color_palettes[colormap][3][0:len(uniq_values)]
+
+        # cmap_colors = pylab.cm.tab10(np.linspace(0, 1, len(np.unique(data_dict[colorby]))))
+        # data_dict.update({"colors": ["#%02x%02x%02x" % (int(r), int(g), int(b)) for r, g, b, _ in
+        #                              255 * cmap_colors[data_dict[colorby]]]})
         
     # data_dict.update({"colors": ["#%02x%02x%02x" % (int(r), int(g), int(b)) for r, g, b, _ in
     #                              255 * colormap(clr.Normalize()(np.arange(len(x))))], })
@@ -542,22 +554,24 @@ def interactive_bokeh_with_select(x, y, indiv_id="1227", colormap=pylab.cm.jet,
     fig01 = figure(plot_width=plot_width, plot_height=plot_height,
                    tools=[hovers, 'pan', 'wheel_zoom', 'box_select', 'lasso_select', 'poly_select', 'tap', 'reset'],
                    title="\n".join(wrap("{}-{}-{}".format(indiv_id, mode, postfix), 60)))
-    fig01.circle('x', 'y', size=5, fill_color='colors', line_color='colors', alpha=0.5, line_width=1, source=s1, name="train")
-    mapper = linear_cmap(field_name='time', palette="Viridis256", low=0, high=cmap_interval)
-    color_bar = ColorBar(color_mapper=mapper['transform'], width=12, location=(0, 0))
+    fig01.circle('x', 'y', size=scatter_size, fill_color='colors', line_color='colors', alpha=0.99, line_width=1, source=s1, name="train")
+    mapper = linear_cmap(field_name='time', palette=used_color_palette, low=0, high=cmap_interval)  #"Viridis256", palette=bokeh_color_palettes[colormap]
+    ticks = np.ceil(np.linspace(max(0, np.min(uniq_values)), cmap_interval, min(len(uniq_values), 5))).astype(np.int32)
+    color_ticks = FixedTicker(ticks=ticks)
+    color_bar = ColorBar(color_mapper=mapper['transform'], width=12, location=(0, 0), ticker=color_ticks)
     fig01.add_layout(color_bar, 'right')
-    
+
     ## plot selected points
     s2 = ColumnDataSource(data=dict(x=[], y=[], pat_id=[], index=[], colors=[]))
     # demo smart error msg:  `box_zoom`, vs `BoxZoomTool`
-    fig02 = figure(plot_width=400, plot_height=400, tools=["box_zoom", "wheel_zoom", "reset", "save"],
+    fig02 = figure(plot_width=500, plot_height=500, tools=["box_zoom", "wheel_zoom", "reset", "save"],
                    title="Selected are here", )  # x_range=(0, 1), y_range=(0, 1),
     # fig02.circle("x", "y", size=5, source=s2, alpha=0.5, color="firebrick")
-    fig02.circle("x", "y", size=5, source=s2, alpha=0.5, fill_color='colors', line_color='colors')
+    fig02.circle("x", "y", size=scatter_size+3, source=s2, alpha=0.99, fill_color='colors', line_color='colors')
     
     # create dynamic table of selected points
     columns = [TableColumn(field="pat_id", title="pat_id"), TableColumn(field="index", title="index"), TableColumn(field="label", title="label"), ]
-    table = DataTable(source=s2, columns=columns, width=200, height=plot_height, sortable=True, selectable=True,
+    table = DataTable(source=s2, columns=columns, width=400, height=plot_height, sortable=True, selectable=True,
                       editable=True)
     
     # fancy javascript to link subplots
@@ -572,13 +586,11 @@ def interactive_bokeh_with_select(x, y, indiv_id="1227", colormap=pylab.cm.jet,
         var d2 = s2.data;"""
 
     for key in data_dict.keys():
-        # if key != "colors":
         code += f"d2['{key}'] = []; \n"
     
     code += "for (var i = 0; i < inds.length; i++) {\n"
 
     for key in data_dict.keys():
-        # if key != "colors":
         code += f"d2['{key}'].push(d1['{key}'][inds[i]]);\n"
 
     code += """
@@ -593,7 +605,6 @@ def interactive_bokeh_with_select(x, y, indiv_id="1227", colormap=pylab.cm.jet,
         """
     code += "out+="
     for key in data_dict.keys():
-        # if key != "colors":
         code += f"data['{key}'][inds[i]] + \",\" +"
     code = code[:-5] # remove last ","
     code += '"\\n"; \n'
@@ -633,7 +644,7 @@ def interactive_bokeh_with_select(x, y, indiv_id="1227", colormap=pylab.cm.jet,
     
     # display results
     layout = grid([fig01, fig02, table, savebutton], ncols=4)
-    output_file(save_dir + '/2D-{}-on-{}-with-select-size5.html'.format(mode, postfix), title=title)
+    output_file(save_dir + '/2D-{}-on-{}-with-select-size{}.html'.format(mode, postfix, scatter_size), title=title)
     save(layout)
     # output_file(r"C:\Users\LDY\Desktop\1-all-experiment-results\test_bokeh2.html")
     # save(layout)
@@ -649,6 +660,21 @@ def interactive_bokeh_with_select(x, y, indiv_id="1227", colormap=pylab.cm.jet,
 plot_name = "first_impression_on_datasets_interactive_bokeh"
 
 
+def load_selected_bokeh_points_plot(features, filename, region=[-5,-9], dataset_name="Dataset1"):
+    saved_selected = r"C:\Users\LDY\Desktop\{}.txt".format(filename)
+    saved_data = pd.read_csv(saved_selected, header=0).values
+    saved_pat_ids = saved_data[:, 0]
+    saved_sample_index = saved_data[:, 1]
+    plt.figure()
+    plt.plot(features[saved_sample_index].T)
+    plt.xlabel("metabolite index")
+    plt.ylabel("amplitude [a.u.]")
+    plt.title("\n".join(wrap(f"{dataset_name}: region-{region}, filename-{filename}", 50)))
+    plt.savefig(path.join(path.dirname(ori_data2),
+                             f"plot_{dataset_name}_from_selected_{region}_{filename}.png"))
+    plt.close()
+
+
 if plot_name == "indi_rating_with_model":
     """
     Get performance of doctors, model_without_aug and model_with_aug on individual chuncks
@@ -658,11 +684,11 @@ if plot_name == "indi_rating_with_model":
     data_dir = "../data/20190325"
     # Get individual rater's prediction
     human_indi_rating = "../data/20190325/20190325-3class_lout40_test_data5-2class_doctor_ratings_individual_new.mat"
-    indi_mat = io.loadmat(human_indi_rating)['a']
+    indi_mat = loadmat(human_indi_rating)['a']
     indi_ratings = np.array(indi_mat)
 
     # Get model's prediction
-    true_data = io.loadmat("../data/20190325/20190325-3class_lout40_test_data5-2class_human_performance844_with_labels.mat")["DATA"]
+    true_data = loadmat("../data/20190325/20190325-3class_lout40_test_data5-2class_human_performance844_with_labels.mat")["DATA"]
     true_label = true_data[:, 1].astype(np.int)
     
     model_res_wo_aug_fn = "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/with-randDA-AUC_curve_step_0.00-auc_0.7198-data5-test.csv"
@@ -873,8 +899,8 @@ if plot_name == "indi_rating_with_model":
     plt.xlabel('false positive rate')
     plt.tight_layout()
     
-    plt.savefig(os.path.join(data_dir, "Model_with_indi_human_rating_only_AUC.png"), format='png')
-    plt.savefig(os.path.join(data_dir, "Model_with_indi_human_rating_only_AUC.pdf"), format='pdf')
+    plt.savefig(path.join(data_dir, "Model_with_indi_human_rating_only_AUC.png"), format='png')
+    plt.savefig(path.join(data_dir, "Model_with_indi_human_rating_only_AUC.pdf"), format='pdf')
     plt.close()
     
 
@@ -949,9 +975,9 @@ elif plot_name == "human_whole_with_model":
         plt.legend(loc=4)
         plt.ylabel('true positive rate', fontsize=18)
         plt.xlabel('false positive rate', fontsize=18)
-        plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively_certain.pdf"), format='pdf')
-        # plt.savefig(os.path.join(data_dir, "model_with_human_rating.eps"), format='eps')
-        plt.savefig(os.path.join(data_dir, "model_with_human_rating_collectively_certain.png"), format='png')
+        plt.savefig(path.join(data_dir, "model_with_human_rating_collectively_certain.pdf"), format='pdf')
+        # plt.savefig(path.join(data_dir, "model_with_human_rating.eps"), format='eps')
+        plt.savefig(path.join(data_dir, "model_with_human_rating_collectively_certain.png"), format='png')
         plt.close()
         
         ## Get four groups performance with model and humans: "agree_right", "agree_wrong", "disagree_human_correct", "disagree_human_wrong"
@@ -961,8 +987,8 @@ elif plot_name == "human_whole_with_model":
         disagree_human_wrong = np.where((label_with_aug!=human_lb) & (human_lb!=true_label))[0]
         
         for subfd in ["agree_all_right", "agree_all_wrong", "disagree_human_right", "disagree_human_wrong"]:
-            path = os.path.join(os.path.dirname(model_res_with_aug), subfd)
-            if not os.path.exists(path):
+            path = path.join(path.dirname(model_res_with_aug), subfd)
+            if not path.exists(path):
                 os.mkdir(path)
         
         group_compare_sum = {"agree_all_right":[], "agree_all_wrong":[], "disagree_human_right":[], "disagree_human_wrong":[]}
@@ -982,8 +1008,8 @@ elif plot_name == "human_whole_with_model":
                 # plt.ylabel("normalized value")
                 # plt.xlabel("index")
                 # plt.title("Patient {}, {}/{} {} (true {})".format(pat, len(pat_inds), pat_tot_num, name, pat_spec[0,1]))
-                # plt.savefig(os.path.join(data_dir, folder, "{}-out-{}-{}-patient-{}.png".format(len(pat_inds), pat_tot_num, name, pat)), format='png')
-                # plt.savefig(os.path.join(data_dir, folder,"{}-out-{}-{}-patient-{}.pdf".format(len(pat_inds), pat_tot_num, name, pat)), format='pdf')
+                # plt.savefig(path.join(data_dir, folder, "{}-out-{}-{}-patient-{}.png".format(len(pat_inds), pat_tot_num, name, pat)), format='png')
+                # plt.savefig(path.join(data_dir, folder,"{}-out-{}-{}-patient-{}.pdf".format(len(pat_inds), pat_tot_num, name, pat)), format='pdf')
                 # plt.close()
         # preprocess the summary matrix, assign 0 to non-existing pat-id
         for pat in patient_summary.keys():
@@ -1020,10 +1046,10 @@ elif plot_name == "human_whole_with_model":
         plt.xticks(xticks, temp_summary[:,2].astype(np.int32), rotation=90)
         plt.title("Summary of model-human agreeness")
         plt.tight_layout()
-        plt.savefig(os.path.join(data_dir, folder,
+        plt.savefig(path.join(data_dir, folder,
                                  "summary-{}.png".format( folder)),
                     format='png')
-        plt.savefig(os.path.join(data_dir, folder,
+        plt.savefig(path.join(data_dir, folder,
                                  "summary-{}.pdf".format( folder)),
                     format='pdf')
         plt.close()
@@ -1065,8 +1091,8 @@ elif plot_name == "all_ROCs":
     plt.legend(loc="best")
     plt.ylabel('true positive rate', fontsize=18)
     plt.xlabel('false positive rate', fontsize=18)
-    plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.png"), format='png')
-    plt.savefig(os.path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.pdf"), format='pdf')
+    plt.savefig(path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.png"), format='png')
+    plt.savefig(path.join(data_dir, "All ROC curves in cross validation test-lout40-validation.pdf"), format='pdf')
     plt.close()
 
 
@@ -1105,8 +1131,8 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
     from_dirs = False  #True   #
     if from_dirs:
         data_dir = "/home/epilepsy-data/data/metabolites/2020-08-30-restuls_after_review/3-certain-DA-with-distillation-MLP"
-        model = os.path.basename(data_dir).split("-")[-1]
-        exp_mode = os.path.basename(data_dir).split("-")[-2]
+        model = path.basename(data_dir).split("-")[-1]
+        exp_mode = path.basename(data_dir).split("-")[-2]
 
         for data_source in ["data1", "data2", "data3", "data4", "data5", "data6", "data7", "data8", "data9"]:  #, "data7", "data9", "data1", "data3"
             # data_source = "data7"
@@ -1121,7 +1147,7 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             aug_name_encode = {"same":0, "ops":1, "both":2}
             for fn in folders:
                 print(fn)
-                splits = os.path.basename(fn).split("-")
+                splits = path.basename(fn).split("-")
                 aug_name = aug_name_encode[splits[7+indplus2]]
                 aug_fold = np.int(splits[8+indplus2].split("x")[-1])
                 aug_factor = np.float(splits[10+indplus2])
@@ -1158,8 +1184,8 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
                         plt.plot(np.array(value_per_scale)[:, 0], np.array(value_per_scale)[:, 1], fold_markers[fold], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(value_per_scale)[:, 1])), color=meth_color[method])
             plt.legend(),
             plt.title("\n".join(wrap("{} with {} on {}".format(exp_mode, model, data_source), 60)))
-            plt.savefig(os.path.join(data_dir, "new-{}-with-{}-on-{}.png".format(exp_mode, model, data_source))),
-            plt.savefig(os.path.join(data_dir, "new-{}-with-{}-on-{}.pdf".format(exp_mode, model, data_source)), format="pdf")
+            plt.savefig(path.join(data_dir, "new-{}-with-{}-on-{}.png".format(exp_mode, model, data_source))),
+            plt.savefig(path.join(data_dir, "new-{}-with-{}-on-{}.pdf".format(exp_mode, model, data_source)), format="pdf")
             plt.close()
             
             # plot each fold and aug-method w.r.t augmentation factor alpha
@@ -1177,12 +1203,12 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             #             plt.plot(np.array(plot_vl)[:,0], np.array(plot_vl)[:,1], markers[fold], label="{}-fold{}-mean-{:.3f}".format(method, fold, np.mean(np.array(plot_vl)[:,1])), color=meth_color[method])
             # plt.legend(),
             # plt.title("\n".join(wrap("{} with {} on {}".format(exp_mode, model, data_source), 60)))
-            # plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.png".format(exp_mode, model, data_source))),
-            # plt.savefig(os.path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.pdf".format(exp_mode, model, data_source)), format="pdf")
+            # plt.savefig(path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.png".format(exp_mode, model, data_source))),
+            # plt.savefig(path.join(data_dir, "{}-with-{}-on-{}-best-same-fold3-scale0.5-both.pdf".format(exp_mode, model, data_source)), format="pdf")
             # plt.close()
             #
 
-            np.savetxt(os.path.join(data_dir, 'new-model_{}_all_different_config_theta{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same), exp_mode, model, data_source)), configs, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s")
+            np.savetxt(path.join(data_dir, 'new-model_{}_all_different_config_theta{}-{}+DA-with-{}-on-{}.txt'.format(model, len(aug_same), exp_mode, model, data_source)), configs, header="aug_name,aug_fold,aug_factor,cer_th,test_auc", delimiter=",", fmt="%s")
     else:
         file_dirs = [
             "C:/Users/LDY/Desktop/1-all-experiment-results/metabolites/auc-func-as-augmentation-parameters/new-model_Res_ECG_CAM_all_different_config_theta39-DA+DA-with-Res_ECG_CAM-on-data5.txt",
@@ -1198,7 +1224,7 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
         
         aug_name_encode = {"same": 0, "ops": 1,"both": 2}
         model_name = "Res_ECG_CAM"
-        data_source = "all-CVs"  #os.path.basename(fn).split("-")[-1].split(".")[0]
+        data_source = "all-CVs"  #path.basename(fn).split("-")[-1].split(".")[0]
         
         configs = np.empty((0, 5))
         for fn in file_dirs:
@@ -1266,8 +1292,8 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             print("ok")
             
             plt.title("\n".join(wrap("{} with {} on {}".format(method, model_name, data_source), 60)))
-            plt.savefig(os.path.join(os.path.dirname(fn), "{}-all-methods-in-one-{}-with-{}-on-{}.png".format(plot_style, method, model_name, data_source))),
-            plt.savefig(os.path.join(os.path.dirname(fn), "{}-all-methods-in-one-{}-with-{}-on-{}.pdf".format(plot_style, method, model_name, data_source)), format="pdf")
+            plt.savefig(path.join(path.dirname(fn), "{}-all-methods-in-one-{}-with-{}-on-{}.png".format(plot_style, method, model_name, data_source))),
+            plt.savefig(path.join(path.dirname(fn), "{}-all-methods-in-one-{}-with-{}-on-{}.pdf".format(plot_style, method, model_name, data_source)), format="pdf")
             plt.close()
         elif plot_style == "imshow":
             fig, axes = plt.subplots(1, 3, figsize=(21, 7))
@@ -1316,8 +1342,8 @@ elif plot_name == "test_performance_with_different_data_aug_parameters":
             plt.setp(axes, xticks=np.arange(0, 4, 1), xticklabels=[0.05, 0.2, 0.35, 0.5],
                     yticks=np.arange(0, 4, 1), yticklabels=[1,3,5,9])
 
-            plt.savefig(os.path.join(os.path.dirname(fn), "{}-3-in-1-method_{}-in-one-with-{}-on-{}-same-color-scale.png".format(plot_style, md, model_name, data_source)), bbox_inches='tight'),
-            plt.savefig(os.path.join(os.path.dirname(fn), "{}-3-in-1-method_{}-in-one-with-{}-on-{}-same-color-scale.pdf".format(plot_style, md, model_name, data_source)), format="pdf")
+            plt.savefig(path.join(path.dirname(fn), "{}-3-in-1-method_{}-in-one-with-{}-on-{}-same-color-scale.png".format(plot_style, md, model_name, data_source)), bbox_inches='tight'),
+            plt.savefig(path.join(path.dirname(fn), "{}-3-in-1-method_{}-in-one-with-{}-on-{}-same-color-scale.pdf".format(plot_style, md, model_name, data_source)), format="pdf")
             plt.close()
 
 
@@ -1337,8 +1363,8 @@ elif plot_name == "get_performance_metrices":
                                                                                                      alpha,
                                                                                                      data_source))
                         if len(folders) > 0:
-                            print(os.path.basename(data_dir), "{}x{}-{}-[{}]!".format(method, fold, alpha, [
-                                os.path.basename(fdn).split("-")[-3] for fdn in folders]))
+                            print(path.basename(data_dir), "{}x{}-{}-[{}]!".format(method, fold, alpha, [
+                                path.basename(fdn).split("-")[-3] for fdn in folders]))
                             performance = {"ACC": np.empty((0,)), "patient_ACC": np.empty((0,)), "AUC": np.empty((0,)),
                                            "SEN": np.empty((0,)), "SPE": np.empty((0,)), "F1_score": np.empty((0,)),
                                            "MCC": np.empty((0,))}
@@ -1347,10 +1373,10 @@ elif plot_name == "get_performance_metrices":
                             for fd in folders:
                                 file = find_files(fd, pattern="AUC_curve_step*.csv")
                                 num_patient = find_files(fd, pattern="*prob_distri_of*.png")
-                                # rat_id = os.path.basename(fn).split("-")[-3]
-                                data_names.append("{}-{}-{}\n".format(os.path.basename(fd).split("-")[-3],
-                                                                      os.path.basename(fd).split("-")[-5],
-                                                                      os.path.basename(fd).split("-")[-1]))
+                                # rat_id = path.basename(fn).split("-")[-3]
+                                data_names.append("{}-{}-{}\n".format(path.basename(fd).split("-")[-3],
+                                                                      path.basename(fd).split("-")[-5],
+                                                                      path.basename(fd).split("-")[-1]))
                                 if len(file) > 0:
                                     values = pd.read_csv(file[0], header=0).values
                                     true_labels = values[:, 0]  # assign true-lbs and probs in aggregation
@@ -1370,7 +1396,7 @@ elif plot_name == "get_performance_metrices":
                                     performance["patient_ACC"] = np.append(performance["patient_ACC"], patient_auc)
                                     
                                     performance_summary.append(["{}-{}x{}-{}-data[{}]\n".format(
-                                        os.path.basename(data_dir), method, fold, alpha, data_names),
+                                        path.basename(data_dir), method, fold, alpha, data_names),
                                                                 "Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(
                                                                     np.mean(performance["SEN"]), np.std(performance[
                                                                                                             "SEN"])) + "specificity: mean-{:.3f}, std-{:.3f}\n".format(
@@ -1390,13 +1416,13 @@ elif plot_name == "get_performance_metrices":
                                                                     np.std(performance["ACC"]))
                                     
                                                                 ])
-                            np.savetxt(os.path.join(data_dir,
+                            np.savetxt(path.join(data_dir,
                                                     "{}-AUC-{:.4f}-performance-summarries-of-{}x{}-{}-num{}-CVs.csv".format(
                                                         prefix, np.mean(performance["AUC"]), method, fold, alpha,
                                                         len(folders))), np.array(performance_summary), fmt="%s",
                                        delimiter=",")
                             
-                            print("{}-{}x{}-{}-data[{}]\n".format(os.path.basename(data_dir), method, fold, alpha,
+                            print("{}-{}x{}-{}-data[{}]\n".format(path.basename(data_dir), method, fold, alpha,
                                                                   data_names))
                             print("Sensitivity: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["SEN"]),
                                                                                   np.std(performance["SEN"])))
@@ -1413,7 +1439,7 @@ elif plot_name == "get_performance_metrices":
                             print("ACC: mean-{:.3f}, std-{:.3f}\n".format(np.mean(performance["ACC"]),
                                                                           np.std(performance["ACC"])))
                         else:
-                            print(os.path.basename(data_dir), "{}x{}-{}-No data!".format(method, fold, alpha))
+                            print(path.basename(data_dir), "{}x{}-{}-No data!".format(method, fold, alpha))
 
 
 elif plot_name == "certain_tsne_distillation":
@@ -1433,34 +1459,34 @@ elif plot_name == "certain_tsne_distillation":
     # data_source = data_dir.split("-")[-7]
     reduction_method = "PCA"
     if_save_data = True
-    # data_dir = os.path.dirname(ori_data_dir)
+    # data_dir = path.dirname(ori_data_dir)
     if_get_distilldata = False
     ## get the whole tsne projection
     if reduction_method == "tsne":
         if if_save_data:
             from bhtsne import tsne as TSNE
             reduced_proj_whole = TSNE(whole_data[:, feature_start_id:], dimensions=2)
-            np.savetxt(os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
+            np.savetxt(path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
             if if_get_distilldata:
                 reduced_proj_distill= TSNE(distill_data[:, feature_start_id:], dimensions=2)
-                np.savetxt(os.path.join(data_dir, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
+                np.savetxt(path.join(data_dir, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
         else:
-            filename_whole = os.path.join(data_dir, "{}-whole_data-lout5-2d.csv".format(reduction_method))
+            filename_whole = path.join(data_dir, "{}-whole_data-lout5-2d.csv".format(reduction_method))
             reduced_proj_whole = pd.read_csv(filename_whole, header=None).values
-            # filename_distill = os.path.join(data_dir, "distill_data_tsne-2d-from-whole-tsne.csv.csv".format(reduction_method))
+            # filename_distill = path.join(data_dir, "distill_data_tsne-2d-from-whole-tsne.csv.csv".format(reduction_method))
             # reduced_proj_distill = pd.read_csv(filename_distill, header=None).values
     elif reduction_method == "UMAP":
         if if_save_data:
             import umap.umap_ as umap
             reduced_proj_whole = umap.UMAP(random_state=42).fit_transform(whole_data[:, feature_start_id:])
-            np.savetxt(os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
+            np.savetxt(path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
             if if_get_distilldata:
                 reduced_proj_distill = umap.UMAP(random_state=42).fit_transform(distill_data[:, feature_start_id:])
-                np.savetxt(os.path.join(data_dir, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
+                np.savetxt(path.join(data_dir, "{}-distill_data-2d.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
         else:
-            filename_whole = os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method))
+            filename_whole = path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method))
             reduced_proj_whole = pd.read_csv(filename_whole, header=None).values
-            filename_distill = os.path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method))
+            filename_distill = path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method))
             reduced_proj_distill = pd.read_csv(filename_distill, header=None).values
     elif reduction_method == "MDS":
         if if_save_data:
@@ -1470,11 +1496,11 @@ elif plot_name == "certain_tsne_distillation":
             reduced_proj_whole = MDS_whole.fit_transform(whole_data[:, feature_start_id:])
             if if_get_distilldata:
                 reduced_proj_distill = MDS_distill.fit_transform(distill_data[:, feature_start_id:])
-                np.savetxt(os.path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
-            np.savetxt(os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
+                np.savetxt(path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method)), reduced_proj_distill, fmt="%.5f", delimiter=",")
+            np.savetxt(path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method)), reduced_proj_whole, fmt="%.5f", delimiter=","),
         else:
-            filename_whole = os.path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method))
-            filename_distill = os.path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method))
+            filename_whole = path.join(data_dir, "{}-whole_data-2d.csv".format(reduction_method))
+            filename_distill = path.join(data_dir, "{}-distill_data-2d-from-whole.csv".format(reduction_method))
             reduced_proj_whole = pd.read_csv(filename_whole, header=None).values
             reduced_proj_distill = pd.read_csv(filename_distill, header=None).values
     elif reduction_method == "PCA":
@@ -1505,8 +1531,8 @@ elif plot_name == "certain_tsne_distillation":
     plt.xlabel("dimension #1")
     plt.ylabel("dimension #2")
     plt.tight_layout()
-    plt.savefig(os.path.join(data_dir, "{}-whole-{}.png".format(reduction_method, data_source))),
-    plt.savefig(os.path.join(data_dir, "{}-whole-{}.pdf".format(reduction_method, data_source)), format="pdf")
+    plt.savefig(path.join(data_dir, "{}-whole-{}.png".format(reduction_method, data_source))),
+    plt.savefig(path.join(data_dir, "{}-whole-{}.pdf".format(reduction_method, data_source)), format="pdf")
     plt.close()
 
     # plot the whole set w.r.t patients
@@ -1527,8 +1553,8 @@ elif plot_name == "certain_tsne_distillation":
     plt.title("\n".join(wrap("Grouped by the patients", 40))),
     plt.xlabel("dimension #1"),
     plt.ylabel("dimension #2")
-    plt.savefig(os.path.join(data_dir, "grouped-by-samples-{}-whole-{}.png".format(reduction_method, data_source))),
-    plt.savefig(os.path.join(data_dir, "grouped-by-samples-{}-whole-{}.pdf".format(reduction_method, data_source)), format="pdf")
+    plt.savefig(path.join(data_dir, "grouped-by-samples-{}-whole-{}.png".format(reduction_method, data_source))),
+    plt.savefig(path.join(data_dir, "grouped-by-samples-{}-whole-{}.pdf".format(reduction_method, data_source)), format="pdf")
     plt.close()
 
     # plot the distill
@@ -1545,10 +1571,10 @@ elif plot_name == "certain_tsne_distillation":
     plt.title("TSNE of both classes (distilled)")
     plt.xlabel("dimension #1 (p={:.2E})".format(p_x_dis)),
     plt.ylabel("dimension #2 (p={:.2E})".format(p_x_dis))
-    plt.savefig(os.path.join(data_dir, "umap_visualization", "tsne-distill-{}.png".format(data_source)))
-    plt.savefig(os.path.join(data_dir, "umap_visualization", "tsne-distill-{}.pdf".format(data_source)), format="pdf")
-    plt.savefig(os.path.join(data_dir, "Distilled tumor samples-{}-from-{}.png".format(reduction_method, data_source))),
-    plt.savefig(os.path.join(data_dir, "Distilled tumor samples-{}-from-{}.pdf".format(reduction_method, data_source)), format="pdf")
+    plt.savefig(path.join(data_dir, "umap_visualization", "tsne-distill-{}.png".format(data_source)))
+    plt.savefig(path.join(data_dir, "umap_visualization", "tsne-distill-{}.pdf".format(data_source)), format="pdf")
+    plt.savefig(path.join(data_dir, "Distilled tumor samples-{}-from-{}.png".format(reduction_method, data_source))),
+    plt.savefig(path.join(data_dir, "Distilled tumor samples-{}-from-{}.pdf".format(reduction_method, data_source)), format="pdf")
     plt.close()
 
     # plot the same number as in distill from the whole set
@@ -1570,8 +1596,8 @@ elif plot_name == "certain_tsne_distillation":
     plt.title("\n".join(wrap("{} of both classes (random sampled from the whole)".format(reduction_method), 60)))
     plt.xlabel("dimension #1 (p={:.2E})".format(p_x_whole)),
     plt.ylabel("dimension #2 (p={:.2E})".format(p_y_whole))
-    plt.savefig(os.path.join(data_dir, "umap_visualization", "{}-subset-the-same-number-as-distill-from-whole-{}.png".format(reduction_method, data_source))),
-    plt.savefig(os.path.join(data_dir, "umap_visualization", "{}-subset-the-same-number-as-distill-from-whole-{}.pdf".format(reduction_method, data_source)),
+    plt.savefig(path.join(data_dir, "umap_visualization", "{}-subset-the-same-number-as-distill-from-whole-{}.png".format(reduction_method, data_source))),
+    plt.savefig(path.join(data_dir, "umap_visualization", "{}-subset-the-same-number-as-distill-from-whole-{}.pdf".format(reduction_method, data_source)),
                 format="pdf")
     plt.close()
 
@@ -1581,8 +1607,8 @@ elif plot_name == "certain_tsne_distillation":
     # plt.title("Patients from the distilled set  (healthy<1000, tumor>1000)")
     # plt.xlabel("dimension #1"),
     # plt.ylabel("dimension #2")
-    # plt.savefig(os.path.join(data_dir, "grouped-by-patients-{}-distill-{}.png".format(reduction_method, data_source))),
-    # plt.savefig(os.path.join(data_dir, "grouped-by-patients-{}-distill-{}.pdf".format(reduction_method, data_source)), format="pdf")
+    # plt.savefig(path.join(data_dir, "grouped-by-patients-{}-distill-{}.png".format(reduction_method, data_source))),
+    # plt.savefig(path.join(data_dir, "grouped-by-patients-{}-distill-{}.pdf".format(reduction_method, data_source)), format="pdf")
     # plt.close()
 
 
@@ -1615,8 +1641,8 @@ elif plot_name == "plot_metabolites_statistics":
     # plt.vlines(np.percentile(num_spectra, 90), 0, 40, label="90th")
     # plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(os.path.dirname(mat_file), "Distribution-of-number-of-spectra-in-patients-whole2.png")),
-    plt.savefig(os.path.join(os.path.dirname(mat_file), "Distribution-of-number-of-spectra-in-patients-whole2.pdf"))
+    plt.savefig(path.join(path.dirname(mat_file), "Distribution-of-number-of-spectra-in-patients-whole2.png")),
+    plt.savefig(path.join(path.dirname(mat_file), "Distribution-of-number-of-spectra-in-patients-whole2.pdf"))
     plt.close()
 
     ###################################################################
@@ -1630,8 +1656,8 @@ elif plot_name == "plot_metabolites_statistics":
     #     plt.title("Patient({})-lb{}-num({})".format(pat_id, label, num))
     #     plt.xlabel("metabolite index")
     #     plt.ylabel("norm. amplitude")
-    #     plt.savefig(os.path.join(os.path.dirname(mat_file), "plot-spectra-patient-wise", "Spectra-Patient-{}-lb{}-({}).png".format(pat_id, label, num))),
-    #     plt.savefig(os.path.join(os.path.dirname(mat_file), "plot-spectra-patient-wise", "Spectra-Patient-{}-lb{}-({}).pdf".format(pat_id, label, num))),
+    #     plt.savefig(path.join(path.dirname(mat_file), "plot-spectra-patient-wise", "Spectra-Patient-{}-lb{}-({}).png".format(pat_id, label, num))),
+    #     plt.savefig(path.join(path.dirname(mat_file), "plot-spectra-patient-wise", "Spectra-Patient-{}-lb{}-({}).pdf".format(pat_id, label, num))),
     #     plt.close()
     
     labels = original_data[:, 1]
@@ -1675,14 +1701,14 @@ elif plot_name == "plot_metabolites_statistics":
         certain = pd.read_csv(fn, header=0).values
         certain_inds = certain[:, 0].astype(np.int)
         certain_inds_tot = np.append(certain_inds_tot, certain_inds)
-        print(os.path.basename(fn), len(certain_inds), "samples\n")
+        print(path.basename(fn), len(certain_inds), "samples\n")
 
     uniq_inds = np.unique(certain_inds_tot).astype(np.int)
     certain_mat = original_data[uniq_inds]
 
     ###################################################################
     # plot the certain samples' PCA
-    # np.savetxt(os.path.join(data_dir, "certain_samples_lout40_fold5[smp_id,pat_id,label,meta]_class(0-1)=({}-{}).csv".format(len(np.where(certain_mat[:,2]==0)[0]), len(np.where(certain_mat[:,2]==1)[0]))), certain_mat, delimiter=",", fmt="%.5f")
+    # np.savetxt(path.join(data_dir, "certain_samples_lout40_fold5[smp_id,pat_id,label,meta]_class(0-1)=({}-{}).csv".format(len(np.where(certain_mat[:,2]==0)[0]), len(np.where(certain_mat[:,2]==1)[0]))), certain_mat, delimiter=",", fmt="%.5f")
     #
     # for c in range(2):
     #     inds = np.where(certain_mat[:,2]==c)[0]
@@ -1695,7 +1721,7 @@ elif plot_name == "plot_metabolites_statistics":
     #     plt.xlabel("sample index"),
     #     plt.ylabel("normalized amp.")
     #     plt.title("Certain samples from class {}".format(class_names[c]))
-    #     plt.savefig(os.path.join(data_dir, "certain_samples_class{}.png".format(c)))
+    #     plt.savefig(path.join(data_dir, "certain_samples_class{}.png".format(c)))
     #     plt.close()
 
     for c in range(2):
@@ -1717,177 +1743,181 @@ elif plot_name == "plot_metabolites_statistics":
                    verticalalignment='center'),
             f.subplots_adjust(hspace=0, wspace=0)
             plt.savefig(
-                os.path.join(data_dir, "certain_samples_class{}_fig_{}.png".format(c, ii)))
+                path.join(data_dir, "certain_samples_class{}_fig_{}.png".format(c, ii)))
             plt.close()
 
 
 elif plot_name == "first_impression_on_datasets_interactive_bokeh":
     from scipy.io import loadmat as loadmat
-    ### load the first version of data
+
     """
-    Dataset1
-    1= voxel from affected hemisphere of tumor patient;
-    2= voxel from healthy hemisphere of tumor patient;
-    0= voxel from both hemisphere of the patient suffering from smth. else.
-    """
+        Dataset1
+        1= voxel from affected hemisphere of tumor patient;
+        2= voxel from healthy hemisphere of tumor patient;
+        0= voxel from both hemisphere of the patient suffering from smth. else.
+        """
     ori_data1 = r"C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\data\20190325\2019.03.25-DATA.mat"
-    mat1 = loadmat(ori_data1)["DATA"]
-    pat_id1 = mat1[:, 0].astype(np.int32)
-    labels1 = mat1[:, 1].astype(np.int32)
-    features1 = mat1[:, 2:]
-    new_mat1 = np.zeros((mat1.shape[0], mat1.shape[1] + 1))
-    new_mat1[:, 0] = np.arange(mat1.shape[0])  # tag every sample
-    new_mat1[:, 1:] = mat1
-    
     ### load the second version of data
     """
-    Dataset2
-    % cluster=1 --> Tumor Progress
-    % cluster=0 --> Pseudo Progress
-    % class_label= 1 --> 'voxel in tumor'
-    % class_label= 0 -->'voxel in healthy part of the brain'
-    """
+	Dataset2
+	% cluster=1 --> Tumor Progress
+	% cluster=0 --> Pseudo Progress
+	% class_label= 1 --> 'voxel in tumor'
+	% class_label= 0 -->'voxel in healthy part of the brain'
+	"""
     ori_data2 = r"C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\data\2022.02.01\new_saved_Data_TT_vs_TP2.mat"
-    mat2 = loadmat(ori_data2)["DATA"]
-    pat_id2 = mat2[:, 0].astype(np.int32)
-    cluster2 = mat2[:, 1].astype(np.int32)
-    labels2 = mat2[:, 2].astype(np.int32)
-    features2 = mat2[:, 3:]
-    new_mat2 = np.zeros((mat2.shape[0], mat2.shape[1] + 1))
-    new_mat2[:, 0] = np.arange(mat2.shape[0])  # tag every sample
-    new_mat2[:, 1:] = mat2
     
-    combined_pat_ids = np.append(pat_id1, pat_id2)
-    combined_vox_labels = np.append(labels1 + 10, labels2)
-    combined_clusters = np.append(2 * np.ones(len(labels1)), cluster2)  # dataset1 patients has cluster 2
+    ##############################################################################
+    dict_pat_ids = {}
+    dict_vox_labels = {}
+    dict_clusters = {}
+    dict_features = {}
+    dict_dataset_inds = {}
     
+    ## load two datasets and combine them
+    for data_dir, data_name in zip([ori_data1, ori_data2], ["dataset1", "dataset2"]):
+        ### load the first version of data
+        mat = loadmat(data_dir)["DATA"]
+        pat_ids = mat[:, 0].astype(np.int32)
 
-    presaved_prj_file = r"C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\data\2022.02.01\pacmap_of_both_datasets_[pats,cluster,lb,proj].csv"
-    if presaved_prj_file is None:
-        combined_features = np.vstack((features1, features2))
-        embedding = pacmap.PaCMAP(n_dims=2, n_neighbors=None, MN_ratio=0.5, FP_ratio=2.0)
-        # fit the data (The index of transformed data corresponds to the index of the original data)
-        X_transformed = embedding.fit_transform(combined_features, init="pca")
-        np.savetxt(os.path.join(os.path.dirname(ori_data2), "pacmap_of_both_datasets_[pats,cluster,lb,proj].csv"),
-                   np.concatenate((combined_pat_ids.reshape(-1, 1), combined_clusters.reshape(-1, 1),
-                                   combined_vox_labels.reshape(-1, 1), X_transformed), axis=1), delimiter=",",
-                   fmt="%.4f")
-    else:
-        load_info = pd.read_csv(presaved_prj_file, header=None).values
-        load_combined_pat_ids = load_info[:, 0]
-        load_combined_clusters = load_info[:, 1]
-        load_combined_vox_labels = load_info[:, 2]
-        X_transformed = load_info[:, 3:]
-        assert np.sum(load_combined_pat_ids==combined_pat_ids) == len(combined_pat_ids), "order of data is missed up!"
-        assert np.sum(load_combined_vox_labels==combined_vox_labels) == len(combined_vox_labels), "order of data is missed up!"
-        assert np.sum(load_combined_clusters==combined_clusters) == len(combined_clusters), "order of data is missed up!"
-    
-    dataset_inds1 = np.arange(len(labels1))
-    dataset_inds2 = np.arange(len(labels1), len(X_transformed))
+        if data_name == "dataset1":
+            labels = mat[:, 1].astype(np.int32)
+            dict_clusters[data_name] = 2 * np.ones(len(labels))  # there is no cluster for dataset1, so assign 1
+            features = mat[:, 2:]
+        else:
+            clusters = mat[:, 1].astype(np.int32)
+            labels = mat[:, 2].astype(np.int32)
+            features = mat[:, 3:]
+            dict_clusters[data_name] = clusters
+        dict_pat_ids[data_name] = pat_ids
+        dict_vox_labels[data_name] = labels
+        dict_features[data_name] = features
 
-    collect_pat_ids = {}
-    collect_vox_labels = {}
-    collect_clusters = {}
-    collect_features = {}
-    collect_dataset_inds = {}
-    collect_pat_ids["data1"] = pat_id1
-    collect_vox_labels["data1"] = labels1
-    collect_clusters["data1"] = 2 * np.ones(len(labels1))
-    collect_features["data1"] = features1
-    collect_dataset_inds["data1"] = dataset_inds1
+    # presaved_prj_file = r"C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\data\2022.02.01\pacmap_of_both_datasets_[pats,cluster,lb,proj].csv"
+    presaved_prj_file = r"C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\data\2022.02.01\pacmap_of_both_datasets_[name,pats,cluster,lb,proj].csv"
+    # compute individual pacmap proj, and combined projection
+    if not presaved_prj_file:
+        from pacmap import PaCMAP  # it is very slow
+        combined_dataset_name = np.append(np.repeat("dataset1", len(dict_pat_ids["dataset1"])),
+                                          np.repeat("dataset2", len(dict_pat_ids["dataset2"])))
+        combined_pat_ids = np.append(dict_pat_ids["dataset1"], dict_pat_ids["dataset2"])
+        combined_vox_labels = np.append(dict_vox_labels["dataset1"] + 10, dict_vox_labels["dataset2"])
+        combined_clusters = np.append(dict_clusters["dataset1"],
+                                      dict_clusters["dataset2"])  # dataset1 patients has cluster 2
     
-    collect_pat_ids["data2"] = pat_id2
-    collect_vox_labels["data2"] = labels2
-    collect_features["data2"] = features2
-    collect_clusters["data2"] = cluster2
-    collect_dataset_inds["data2"] = dataset_inds2
-    
-    patient_ID_cmap = "viridis"
-    # class_cmap = ['tab:blue', 'tab:orange', 'tab:green']
-    class_cmap = "cool"
-    patient_cluster_cmap = "Dark2"
-    
-    
-    saved_selected = r"C:\Users\LDY\Desktop\selected-data (6).txt"
-    saved_data = pd.read_csv(saved_selected, header=0).values
-    saved_pat_ids = saved_data[:, 0]
-    saved_sample_index = saved_data[:, 1]
-    plt.figure()
-    plt.plot(features2[[1008, 6063]].T)
-    plt.xlabel("metabolite index")
-    plt.ylabel("amplitude [a.u.]")
-    plt.title("Dataset2: Samples in the smalles cluster")
-    region = "[:, -8]"
-    plt.figure()
-    plt.plot(features1[saved_sample_index].T)
-    plt.xlabel("metabolite index")
-    plt.ylabel("amplitude [a.u.]")
-    plt.title(f"Dataset1: Samples in the smalles cluster {region}")
-    plt.savefig(os.path.join(os.path.dirname(ori_data2), f"plot_data_from_selected_{region}_{os.path.basename(saved_selected)}.png"))
-    colorby = "cluster"
-    
-    
-    interactive_bokeh_with_select(X_transformed[:, 0],
-                                  X_transformed[:, 1], indiv_id="Both-datasets",
-                                  colormap=pylab.cm.viridis, hover_notions=[("pat_id", combined_pat_ids),
-                                                                        ("label", combined_vox_labels), (
-                                                                        "index", np.arange(
-                                                                            len(combined_vox_labels))),
-                                                                        ("cluster", combined_clusters.astype(np.int32))],
-                                  colorby=colorby, cmap_interval=np.max(combined_clusters),
-                                  xlabel="dimension #1", ylabel="dimension #1", title="Title", mode="pacmap",
-                                  plot_func="scatter",
-                                  postfix="colored by patient clusters of both datasets (0-Pseudo Progress, 1-true progress, 2-dataset1)",
-                                  save_dir=os.path.dirname(ori_data2))
-    # visualize the embedding
-    for data_name in ["data1", "data2"]:
-        colorby = "pat_id"
-        interactive_bokeh_with_select(X_transformed[collect_dataset_inds[data_name], 0], X_transformed[collect_dataset_inds[data_name], 1], indiv_id=data_name,
-                                      colormap=pylab.cm.viridis,
-                                      hover_notions=[("pat_id", collect_pat_ids[data_name]),
-                                                     ("label", collect_vox_labels[data_name]),
-                                                     ("index", np.arange(len(collect_vox_labels[data_name]))),
-                                                     ("cluster", collect_clusters[data_name].astype(np.int32))],
-                                      colorby=colorby,
-                                      cmap_interval=np.max(collect_pat_ids[data_name]), xlabel="dimension #1", ylabel="dimension #1",
-                                      title="Title", mode="pacmap", plot_func="scatter",
-                                      postfix=f"colored by patient IDs - {data_name}", save_dir=os.path.dirname(ori_data2))
         
-    # visualize the embedding
-    for data_name in ["data1", "data2"]:
-        colorby = "label"
-        interactive_bokeh_with_select(X_transformed[collect_dataset_inds[data_name], 0], X_transformed[collect_dataset_inds[data_name], 1], indiv_id=data_name,
-                                      colormap=pylab.cm.viridis,
-                                      hover_notions=[("pat_id", collect_pat_ids[data_name]),
-                                                     ("label", collect_vox_labels[data_name]),
-                                                     ("index", np.arange(len(collect_vox_labels[data_name]))),
-                                                     ("cluster", collect_clusters[data_name].astype(np.int32))],
-                                      colorby=colorby,
-                                      cmap_interval=np.max(collect_vox_labels[data_name]), xlabel="dimension #1", ylabel="dimension #1",
-                                      title="Title", mode="pacmap", plot_func="scatter",
-                                      postfix=f"colored by voxel labels - {data_name}", save_dir=os.path.dirname(ori_data2))
+        combined_features = np.vstack((dict_features["dataset1"],
+                                       dict_features["dataset2"]))
+        # fit the data (The index of transformed data corresponds to the index of the original data)
+        for data_name in [ "dataset2"]:  #"dataset1",
+            embedding = PaCMAP(n_dims=2, n_neighbors=None, MN_ratio=0.5, FP_ratio=2.0)
+            X_transformed = embedding.fit_transform(dict_features[data_name], init="pca")
+            
+            np.savetxt(path.join(path.dirname(ori_data2), f"pacmap_of_{data_name}_[name,pats,cluster,lb,proj].csv"),
+                                              np.concatenate((np.repeat(data_name, len(dict_pat_ids[data_name])).reshape(-1, 1),
+                                                              dict_pat_ids[data_name].reshape(-1, 1),
+                                                              dict_clusters[data_name].reshape(-1, 1),
+                                                              dict_vox_labels[data_name].reshape(-1, 1), X_transformed), axis=1), delimiter=",",
+                                              fmt="%s")
+        ## save combined projection
+        embedding = PaCMAP(n_dims=2, n_neighbors=None, MN_ratio=0.5, FP_ratio=2.0)
+        X_transformed_all = embedding.fit_transform(combined_features, init="pca")
+        np.savetxt(path.join(path.dirname(ori_data2), "pacmap_of_both_datasets_[name,pats,cluster,lb,proj].csv"),
+                   np.concatenate((combined_dataset_name.reshape(-1,1),
+                                   combined_pat_ids.reshape(-1, 1),
+                                   combined_clusters.reshape(-1, 1),
+                                   combined_vox_labels.reshape(-1, 1), X_transformed_all), axis=1), delimiter=",", fmt="%s")
+    else:
+        if "both_datasets" in path.basename(presaved_prj_file):
+            load_info = pd.read_csv(presaved_prj_file, header=None).values
+            load_combined_dataset_names = load_info[:, 0]
+            load_combined_pat_ids = load_info[:, 1].astype(np.int32)
+            load_combined_clusters = load_info[:, 2].astype(np.int32)
+            load_combined_vox_labels = load_info[:, 3].astype(np.int32)
+            X_transformed = load_info[:, 4:].astype(np.float32)
+            assert np.sum(load_combined_pat_ids==np.append(dict_pat_ids["dataset1"], dict_pat_ids["dataset2"])) == len(load_combined_pat_ids), "order of data is missed up at pat_ids!"
+            assert np.sum(load_combined_vox_labels==np.append(dict_vox_labels["dataset1"]+10, dict_vox_labels["dataset2"])) == len(load_combined_vox_labels), "order of data is missed up at vox_labels!"
+            assert np.sum(load_combined_clusters==np.append(dict_clusters["dataset1"], dict_clusters["dataset2"])) == len(load_combined_clusters), "order of data is missed up at clusters!"
     
-    
-    # mask the scatter plot
-    np.random.seed(19680801)
-    N = 100
-    r0 = 0.6
-    x = 0.9 * np.random.rand(N)
-    y = 0.9 * np.random.rand(N)
-    area = (20 * np.random.rand(N)) ** 2  # 0 to 10 point radii
-    c = np.sqrt(area)
-    r = np.sqrt(x ** 2 + y ** 2)
-    area1 = np.ma.masked_where(r < r0, area)
-    area2 = np.ma.masked_where(r >= r0, area)
-    plt.scatter(x, y, s=area1, marker='^', c=c)
-    plt.scatter(x, y, s=area2, marker='o', c=c)
-    # Show the boundary between the regions:
-    theta = np.arange(0, np.pi / 2, 0.01)
-    plt.plot(r0 * np.cos(theta), r0 * np.sin(theta))
+            dataset_inds1 = np.where(load_combined_dataset_names == "dataset1")[0]
+            dataset_inds2 = np.where(load_combined_dataset_names == "dataset2")[0]
+            dict_dataset_inds["dataset1"] = dataset_inds1
+            dict_dataset_inds["dataset2"] = dataset_inds2
+            color_palettes = {0:"Category10", 1:"Category10_3", 2:"Viridis256", 3: "Set2"}
+            # visualize the embedding
+            for data_name in ["dataset1", "dataset2"]:
+                for colorby, colorby_name, colorby_data, colormap in zip(["pat_id", "label", "cluster"],
+                                                               ["patient IDs", "voxel labels", "patient clusters"],
+                                                                [dict_pat_ids, dict_vox_labels, dict_clusters],
+                                                                         [color_palettes[2], color_palettes[0], color_palettes[3]]):
+                    if colorby == "cluster" and data_name == "dataset1":
+                        interactive_bokeh_with_select(X_transformed[:, 0], X_transformed[:, 1],
+                                                      indiv_id="Both-datasets", colormap=colormap,
+                                                      hover_notions=[("pat_id", load_combined_pat_ids),
+                                                                     ("label", load_combined_vox_labels),
+                                                                     ("index", np.arange(len(load_combined_vox_labels))),
+                                                                     ("cluster", load_combined_clusters.astype(np.int32))],
+                                                      colorby=colorby, cmap_interval=np.max(load_combined_clusters),
+                                                      xlabel="dimension #1", ylabel="dimension #1", title="Title",
+                                                      mode="pacmap", plot_func="scatter",
+                                                      postfix="colored by patient clusters of both datasets (0-Pseudo Progress, 1-true progress, 2-dataset1)",
+                                                      save_dir=path.dirname(ori_data2), scatter_size=0.5)#, scatter_size=3
+                    else:
+                        interactive_bokeh_with_select(X_transformed[dict_dataset_inds[data_name], 0],
+                                                      X_transformed[dict_dataset_inds[data_name], 1],
+                                                      indiv_id=data_name, colormap=colormap,
+                                                      hover_notions=[("pat_id", dict_pat_ids[data_name]),
+                                                                     ("label", dict_vox_labels[data_name]),
+                                                                     ("index", np.arange(len(dict_vox_labels[data_name]))),
+                                                                     ("cluster", dict_clusters[data_name].astype(np.int32))],
+                                                      colorby=colorby,
+                                                      cmap_interval=np.max(colorby_data[data_name]), xlabel="dimension #1", ylabel="dimension #1",
+                                                      title="Title", mode="pacmap", plot_func="scatter",
+                                                      postfix=f"colored by {colorby_name} - {data_name}",
+                                                      save_dir=path.dirname(ori_data2), scatter_size=0.5)
+                    
+                
+        else:
+            if "dataset1" in path.basename(presaved_prj_file):
+                pat_ids = pat_ids1
+                clusters = clusters1
+                labels = labels1
+                dataset_name = "Dataset1"
+            elif "dataset2" in path.basename(presaved_prj_file):
+                pat_ids = pat_ids2
+                clusters = clusters2
+                labels = labels2
+                dataset_name = "Dataset2"
+                
+            load_info = pd.read_csv(presaved_prj_file, header=None).values
+            load_dataset_names = load_info[:, 0]
+            load_pat_ids = load_info[:, 1]
+            load_clusters = load_info[:, 2]
+            load_labels = load_info[:, 3]
+            X_transformed = load_info[:, 4:]
 
-    plt.show()
-   
-    
+            assert np.sum(load_pat_ids == pat_ids) == len(
+                combined_pat_ids), "order of data is missed up!"
+            assert np.sum(load_labels == labels) == len(
+                combined_vox_labels), "order of data is missed up!"
+            assert np.sum(load_clusters == clusters) == len(
+                combined_clusters), "order of data is missed up!"
+
+            for colorby, colorby_name, colorby_data in zip(["pat_id", "label", "cluster"],
+                                                           ["patient IDs", "voxel labels", "patient clusters",
+                                                            load_pat_ids, load_labels, load_clusters]):
+                postfix = "(0-Pseudo Progress, 1-true progress, 2-dataset1)"
+                interactive_bokeh_with_select(X_transformed[:, 0], X_transformed[:, 1], indiv_id=dataset_name,
+                                              colormap="Category10",
+                                              hover_notions=[("pat_id", pat_ids), ("label", labels),
+                                                             ("index", np.arange(len(labels))),
+                                                             ("cluster", clusters.astype(np.int32))], colorby=colorby,
+                                              cmap_interval=np.max(colorby_data), xlabel="dimension #1",
+                                              ylabel="dimension #1", title="Title", mode="pacmap", plot_func="scatter",
+                                              postfix=f"colored by {colorby_name} of {colorby_name}",
+                                              save_dir=path.dirname(ori_data2))
+                ## plot rightaway with selected points  # load_selected_bokeh_points_plot(features1, "selected-data (6)", region=[-5,-9], dataset_name="Dataset1")
+        
 
 elif plot_name == "certain_samples":
     from scipy.io import loadmat as loadmat
@@ -1901,7 +1931,7 @@ elif plot_name == "certain_samples":
         """
     ori_data1 = r"C:\Users\LDY\Desktop\metabolites-0301\metabolites_tumour_classifier\data\20190325\2019.03.25-DATA.mat"
     mat1 = loadmat(ori_data1)["DATA"]
-    pat_id1 = mat1[:, 0].astype(np.int)
+    pat_ids1 = mat1[:, 0].astype(np.int)
     labels1 = mat1[:, 1].astype(np.int)
     features1 = mat1[:, 2:]
     new_mat1 = np.zeros((mat1.shape[0], mat1.shape[1] + 1))
@@ -1921,12 +1951,12 @@ elif plot_name == "certain_samples":
         certain = pd.read_csv(data_fn, header=0).values
         certain_inds = certain[:, 0].astype(np.int32)
         certain_inds_tot = np.append(certain_inds_tot, certain_inds)
-        print(os.path.basename(data_fn), len(certain_inds), "samples\n")
+        print(path.basename(data_fn), len(certain_inds), "samples\n")
     
     uniq_inds = np.unique(certain_inds_tot).astype(np.int32)
     certain_mat = new_mat[uniq_inds]
     
-    # np.savetxt(os.path.join(data_dir, "certain_samples_lout40_fold5[smp_id,pat_id,label,meta]_class(0-1)=({}-{}).csv".format(len(np.where(certain_mat[:,2]==0)[0]), len(np.where(certain_mat[:,2]==1)[0]))), certain_mat, delimiter=",", fmt="%.5f")
+    # np.savetxt(path.join(data_dir, "certain_samples_lout40_fold5[smp_id,pat_id,label,meta]_class(0-1)=({}-{}).csv".format(len(np.where(certain_mat[:,2]==0)[0]), len(np.where(certain_mat[:,2]==1)[0]))), certain_mat, delimiter=",", fmt="%.5f")
     #
     # for c in range(2):
     #     inds = np.where(certain_mat[:,2]==c)[0]
@@ -1939,7 +1969,7 @@ elif plot_name == "certain_samples":
     #     plt.xlabel("sample index"),
     #     plt.ylabel("normalized amp.")
     #     plt.title("Certain samples from class {}".format(class_names[c]))
-    #     plt.savefig(os.path.join(data_dir, "certain_samples_class{}.png".format(c)))
+    #     plt.savefig(path.join(data_dir, "certain_samples_class{}.png".format(c)))
     #     plt.close()
     
     
@@ -1963,7 +1993,7 @@ elif plot_name == "certain_samples":
                    verticalalignment='center'),
             f.subplots_adjust(hspace=0, wspace=0)
             plt.savefig(
-                os.path.join(data_dir,
+                path.join(data_dir,
                              "certain_samples_class{}_fig_{}.png".format(c, ii)))
             plt.close()
 
@@ -2026,8 +2056,8 @@ elif plot_name == "distill_valid_labels":
     plt.ylim([0,1.01]),
     plt.text(rocDF["fpr"], rocDF["tpr"], "ccr:{}".format(rocDF["threshold"].values[0])),
     plt.scatter(rocDF["fpr"].values, rocDF["tpr"].values, marker="o")
-    plt.savefig(os.path.join(os.path.dirname(ccr_summary), "optimal-theta-with-validated-labels-ccr-{:.4f}-theta{:.2f}.png".format(rocDF["threshold"].values[0], scipy.stats.percentileofscore(ccr_samp_ccr, threshold))))
-    plt.savefig(os.path.join(os.path.dirname(ccr_summary), "optimal-theta-with-validated-labels-ccr-{}-theta{:.2f}.pdf".format(rocDF["threshold"].values[0], scipy.stats.percentileofscore(ccr_samp_ccr, threshold))),  format="pdf")
+    plt.savefig(path.join(path.dirname(ccr_summary), "optimal-theta-with-validated-labels-ccr-{:.4f}-theta{:.2f}.png".format(rocDF["threshold"].values[0], scipy.stats.percentileofscore(ccr_samp_ccr, threshold))))
+    plt.savefig(path.join(path.dirname(ccr_summary), "optimal-theta-with-validated-labels-ccr-{}-theta{:.2f}.pdf".format(rocDF["threshold"].values[0], scipy.stats.percentileofscore(ccr_samp_ccr, threshold))),  format="pdf")
     plt.close()
     
     correct_ccr = valid_ccr[np.where(valid_ccr[:,3] == 1)[0]]
@@ -2042,8 +2072,8 @@ elif plot_name == "distill_valid_labels":
     plt.title("\n".join(wrap("Validated labels with CCR distribution p{:.2E}".format(p_rank), 60)))
     plt.xlabel("correct classification rate")
     plt.ylabel("frequency (density)")
-    plt.savefig(os.path.join("C:/Users/LDY/Desktop", "CCR-distribution-of-NP-validated-samples-p{:.2E}.png".format(p_rank)))
-    plt.savefig(os.path.join("C:/Users/LDY/Desktop", "CCR-distribution-of-NP-validated-samples-p{:.2E}.pdf".format(p_rank)), format="pdf")
+    plt.savefig(path.join("C:/Users/LDY/Desktop", "CCR-distribution-of-NP-validated-samples-p{:.2E}.png".format(p_rank)))
+    plt.savefig(path.join("C:/Users/LDY/Desktop", "CCR-distribution-of-NP-validated-samples-p{:.2E}.pdf".format(p_rank)), format="pdf")
     plt.close()
     print("ok")
 
@@ -2075,17 +2105,17 @@ elif plot_name == "re_split_data_0_9_except_5":
         test_part[ii]["DATA"] = coll_mat[ii * part_len: (ii + 1) * part_len]
         num_pat = len(Counter(test_part[ii]["DATA"][:, 0]))
         savemat(
-            os.path.join(os.path.dirname(dd),
+            path.join(path.dirname(dd),
                          "5_fold_randshuffle-2class_test_data{}.mat".format(ii)), test_part[ii])
         Count_test = Counter(test_part[ii]["DATA"][:, 0])
-        np.savetxt(os.path.join(os.path.dirname(dd), "5_fold_randshuffle-2class[{}-{}]_test_data{}_summary_pat_{}.csv".format(
+        np.savetxt(path.join(path.dirname(dd), "5_fold_randshuffle-2class[{}-{}]_test_data{}_summary_pat_{}.csv".format(
                                      np.sum(test_part[ii]["DATA"][:, 1] == 0),
                                      np.sum(test_part[ii]["DATA"][:, 1] == 1), ii, num_pat)), np.array([[pat, Count_test[pat]] for pat in Count_test.keys()]), delimiter=",", fmt="%d")
     ii = 4
     test_part[ii]["DATA"] = coll_mat[ii * part_len:]
     Count_test = Counter(test_part[ii]["DATA"][:, 0])
     num_pat = len(Count_test)
-    np.savetxt(os.path.join(os.path.dirname(dd),
+    np.savetxt(path.join(path.dirname(dd),
                             "5_fold_randshuffle-2class[{}-{}]_test_data{}_summary_pat_{}.csv".format(
                                 np.sum(test_part[ii]["DATA"][:, 1] == 0),
                                 np.sum(test_part[ii]["DATA"][:, 1] == 1), ii,
@@ -2093,7 +2123,7 @@ elif plot_name == "re_split_data_0_9_except_5":
                np.array([[pat, Count_test[pat]] for pat in Count_test.keys()]),
                delimiter=",", fmt="%d")
     savemat(
-        os.path.join(os.path.dirname(dd),
+        path.join(path.dirname(dd),
                      "5_fold_randshuffle-2class_test_data{}.mat".format( ii)), test_part[ii])
 
 
@@ -2109,12 +2139,12 @@ elif plot_name == "re_split_data_0_9_except_5":
             curren_train_coll["DATA"] = np.vstack((curren_train_coll["DATA"], test_part[ind]["DATA"]))
 
         savemat(
-            os.path.join(os.path.dirname(dd),
+            path.join(path.dirname(dd),
                          "5_fold_randshuffle-2class_train_val_data{}.mat".format(jj)), curren_train_coll)
 
         Count_train = Counter(curren_train_coll["DATA"][:, 0])
         num_pat = len(Count_train)
-        np.savetxt(os.path.join(os.path.dirname(dd),
+        np.savetxt(path.join(path.dirname(dd),
                                 "5_fold_randshuffle-2class[{}-{}]_train_val_data{}_summary_pat_{}.csv".format(
                                     np.sum(curren_train_coll["DATA"][:, 1] == 0),
                                     np.sum(curren_train_coll["DATA"][:, 1] == 1), jj,
@@ -2128,7 +2158,7 @@ elif plot_name == "re_split_data_0_9_except_5_patient_wise_get_data_statistics":
     print("Plot_name: ", plot_name)
     src_data = ["data{}".format(jj) for jj in [0,1,2,3,4,6,7,8,9]]
     data_dir_root = "../data/20190325"
-    data_source_dirs = [os.path.join(data_dir_root, "20190325-3class_lout40_test_{}.mat".format(
+    data_source_dirs = [path.join(data_dir_root, "20190325-3class_lout40_test_{}.mat".format(
                 src_dir)) for src_dir in src_data]
 
     # each cross_validation set
@@ -2234,16 +2264,16 @@ elif plot_name == "re_split_data_0_9_except_5_patient_wise_get_data_statistics":
         new_CV_fold_train_val_data = {"DATA": np.empty((0, 290))}  #np.empty((0, 290))
         for pat_id in trian_val_pat_ids[:, 0]:
             new_CV_fold_train_val_data["DATA"] = np.vstack((new_CV_fold_train_val_data["DATA"], coll_mat[per_pat_spectra_inds[pat_id]]))
-        np.savetxt(os.path.join(data_dir_root,"{}_fold_pat_split_20190325-2class_train_val_data{}_patient_ids_{}.csv".format(n_cv_folds, cv_fold, len(trian_val_pat_ids))), trian_val_pat_ids, header="pat_id,count,percentile{}".format(n_percentile_folds), fmt="%.3f", delimiter=",")
-        np.savetxt(os.path.join(data_dir_root,"{}_fold_pat_split_20190325-2class_test_data{}_patient_ids_{}.csv".format(n_cv_folds, cv_fold, len(test_pat_ids))), test_pat_ids, header="pat_id,count,percentile{}".format(n_percentile_folds), fmt="%.3f", delimiter=",")
+        np.savetxt(path.join(data_dir_root,"{}_fold_pat_split_20190325-2class_train_val_data{}_patient_ids_{}.csv".format(n_cv_folds, cv_fold, len(trian_val_pat_ids))), trian_val_pat_ids, header="pat_id,count,percentile{}".format(n_percentile_folds), fmt="%.3f", delimiter=",")
+        np.savetxt(path.join(data_dir_root,"{}_fold_pat_split_20190325-2class_test_data{}_patient_ids_{}.csv".format(n_cv_folds, cv_fold, len(test_pat_ids))), test_pat_ids, header="pat_id,count,percentile{}".format(n_percentile_folds), fmt="%.3f", delimiter=",")
         
         new_CV_fold_test_data = {"DATA": np.empty((0, 290))}  #np.empty((0, 290))
         for pat_id in test_pat_ids[:, 0]:
             new_CV_fold_test_data["DATA"] = np.vstack((new_CV_fold_test_data["DATA"], coll_mat[per_pat_spectra_inds[pat_id]]))
 
-        savemat(os.path.join(data_dir_root,"{}_fold_pat_split_20190325-2class_train_val_data{}.mat".format(n_cv_folds, cv_fold)), new_CV_fold_train_val_data)
-        savemat(os.path.join(data_dir_root, "{}_fold_pat_split_20190325-2class_test_data{}.mat".format(n_cv_folds, cv_fold)), new_CV_fold_test_data)
-        print(os.path.join(data_dir_root, "5_fold_pat_split_20190325-2class_test_data{}.mat".format(cv_fold)))
+        savemat(path.join(data_dir_root,"{}_fold_pat_split_20190325-2class_train_val_data{}.mat".format(n_cv_folds, cv_fold)), new_CV_fold_train_val_data)
+        savemat(path.join(data_dir_root, "{}_fold_pat_split_20190325-2class_test_data{}.mat".format(n_cv_folds, cv_fold)), new_CV_fold_test_data)
+        print(path.join(data_dir_root, "5_fold_pat_split_20190325-2class_test_data{}.mat".format(cv_fold)))
 
     print("ok")
     # -------------------------------------------------------------------------
@@ -2303,7 +2333,7 @@ elif plot_name == "get_d_prime":
 #
 #         spearmanr_rec = []
 #         # get correct count in 100 rauns
-#         data_source = os.path.basename(files[0]).split("_")[-4]
+#         data_source = path.basename(files[0]).split("_")[-4]
 #         for ind in tqdm(range(len(files))):
 #             values = pd.read_csv(files[ind], header=0).values
 #             smp_ids = values[:, 0].astype(np.int)
@@ -2372,15 +2402,15 @@ elif plot_name == "get_d_prime":
 #         plt.title("distillation effect-{}.png".format(data_source))
 #         plt.savefig(
 #             data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
-#                 os.path.basename(files[0]).split("_")[-6], total_num, data_source)),
+#                 path.basename(files[0]).split("_")[-6], total_num, data_source)),
 #         plt.savefig(
 #             data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
-#                 os.path.basename(files[0]).split("_")[-6], total_num, data_source), format="pdf")
+#                 path.basename(files[0]).split("_")[-6], total_num, data_source), format="pdf")
 #         print("ok")
 #         plt.close()
 #
 #     concat_data = np.concatenate((np.array(sort_inds).reshape(-1, 1), rates.reshape(-1, 1)), axis=1)
-#     np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
+#     np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, path.basename(
 #         files[0]).split("_")[7], total_num), concat_data, fmt="%.5f", delimiter=",",
 #                header="ori_sort_rate_id,ori_sort_rate,true_lbs,noisy_lbs")
 #
@@ -2402,7 +2432,7 @@ elif plot_name == "get_d_prime":
 #
 #         spearmanr_rec = []
 #         print("number of files: ", len(files))
-#         data_source = os.path.basename(files[0]).split("_")[-4]
+#         data_source = path.basename(files[0]).split("_")[-4]
 #         for ind in tqdm(range(len(files))):
 #             fn = find_files(data_dir, pattern="one_{}*.csv".format(ind))
 #             values = pd.read_csv(fn[0], header=0).values
@@ -2466,15 +2496,15 @@ elif plot_name == "get_d_prime":
 #         plt.title("distillation effect-{}.png".format(data_source))
 #         plt.savefig(
 #             data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.png".format(
-#                 os.path.basename(files[0]).split("_")[-5], total_num, data_source)),
+#                 path.basename(files[0]).split("_")[-5], total_num, data_source)),
 #         plt.savefig(
 #             data_dir + "/certain_correct_rate_with_certain-classfication-rate-in-100-runs-({}-{})-{}.pdf".format(
-#                 os.path.basename(files[0]).split("_")[-5], total_num, data_source), format="pdf")
+#                 path.basename(files[0]).split("_")[-5], total_num, data_source), format="pdf")
 #         print("ok")
 #         plt.close()
 #
 #     ipdb.set_trace()
 #     concat_data = np.concatenate((np.array(sort_inds).reshape(-1, 1), rates.reshape(-1, 1)), axis=1)
-#     np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, os.path.basename(
+#     np.savetxt(data_dir + "/full_summary-{}_100_runs_sort_inds_rate_({}-{}).csv".format(data_source, path.basename(
 #         files[0]).split("_")[-4], total_num), concat_data, fmt="%.5f", delimiter=",",
 #                header="ori_sort_rate_id,ori_sort_rate,true_lbs,noisy_lbs")
